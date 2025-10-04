@@ -11,5 +11,6 @@ To run the LM-Compass application locally,
 ```bash
 git clone git@github.com:LMCompass/LM-Compass.git
 cd lm-compass
+npm install
 npm run dev
 ```
