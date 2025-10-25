@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const completion = await openai.chat.completions.create({
-      model: 'openai/gpt-4o-mini',
+      model: 'tngtech/deepseek-r1t2-chimera:free',
       messages: messages,
     });
 
