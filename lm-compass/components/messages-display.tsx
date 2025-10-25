@@ -30,12 +30,6 @@ export function MessagesDisplay({
                 message.role === "user" ? "flex-row-reverse" : "flex-row"
               }`}
             >
-              <MessageAvatar
-                src={message.role === "user" ? "/user-avatar.png" : "/ai-avatar.png"}
-                alt={message.role === "user" ? "User" : "AI Assistant"}
-                fallback={message.role === "user" ? "U" : "AI"}
-                className="mt-1"
-              />
               <MessageContent 
                 markdown={message.role === "assistant"}
                 className={`max-w-none ${
