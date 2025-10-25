@@ -9,17 +9,75 @@ import {
 import { Button } from "@/components/ui/button"
 import { ArrowUp, Square } from "lucide-react"
 import { useState } from "react"
+import { Message } from "@/lib/types"
 
-export function PromptInputComponent() {
+type PromptInputComponentProps = {
+  messages: Message[]
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>
+}
+
+export function PromptInputComponent({
+  messages,
+  setMessages,
+}: PromptInputComponentProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!input.trim() || isLoading) return
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: input.trim(),
+    }
+
+    // Add user message to chat
+    setMessages((prev) => [...prev, userMessage])
+    setInput("")
     setIsLoading(true)
-    // simulate request
-    setTimeout(() => {
+
+    try {
+      // Send to API
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(({ role, content }) => ({
+            role,
+            content,
+          })),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to get response")
+      }
+
+      const data = await response.json()
+
+      // Add assistant response to chat
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.message.content,
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+    } catch (error) {
+      console.error("Error:", error)
+      // Add error message
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again.",
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
       setIsLoading(false)
-    }, 2000)
+    }
   }
 
   const handleValueChange = (value: string) => {
@@ -45,6 +103,7 @@ export function PromptInputComponent() {
               size="icon"
               className="h-8 w-8 rounded-full"
               onClick={handleSubmit}
+              disabled={isLoading || !input.trim()}
             >
               {isLoading ? (
                 <Square className="size-5 fill-current" />
