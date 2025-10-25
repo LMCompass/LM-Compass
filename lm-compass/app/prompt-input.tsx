@@ -30,7 +30,7 @@ export function PromptInputComponent({
     if (!input.trim() || isLoading) return
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: "user",
       content: input.trim(),
     }
@@ -63,7 +63,7 @@ export function PromptInputComponent({
 
       // Add assistant response to chat
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         role: "assistant",
         content: data.message.content,
       }
@@ -73,7 +73,7 @@ export function PromptInputComponent({
       console.error("Error:", error)
       // Add error message
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         role: "assistant",
         content: "Sorry, I encountered an error. Please try again.",
       }
@@ -93,6 +93,7 @@ export function PromptInputComponent({
       onValueChange={handleValueChange}
       isLoading={isLoading}
       onSubmit={handleSubmit}
+      disabled={isLoading}
       className="w-full max-w-(--breakpoint-md)"
     >
       <div className="flex items-end gap-2">

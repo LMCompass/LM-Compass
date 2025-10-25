@@ -2,11 +2,11 @@
 
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { cn } from "@/lib/utils"
 import React, {
   createContext,
@@ -50,6 +50,7 @@ type PromptInputProps = {
   onValueChange?: (value: string) => void
   maxHeight?: number | string
   onSubmit?: () => void
+  disabled?: boolean
   children: React.ReactNode
   className?: string
 }
@@ -61,6 +62,7 @@ function PromptInput({
   value,
   onValueChange,
   onSubmit,
+  disabled = false,
   children,
 }: PromptInputProps) {
   const [internalValue, setInternalValue] = useState(value || "")
@@ -80,6 +82,7 @@ function PromptInput({
           setValue: onValueChange ?? handleChange,
           maxHeight,
           onSubmit,
+          disabled,
           textareaRef,
         }}
       >
@@ -169,26 +172,25 @@ type PromptInputActionProps = {
   tooltip: React.ReactNode
   children: React.ReactNode
   side?: "top" | "bottom" | "left" | "right"
-} & React.ComponentProps<typeof Tooltip>
+}
 
 function PromptInputAction({
   tooltip,
   children,
   className,
   side = "top",
-  ...props
 }: PromptInputActionProps) {
-  const { disabled } = usePromptInput()
-
   return (
-    <Tooltip {...props}>
-      <TooltipTrigger asChild disabled={disabled} onClick={event => event.stopPropagation()}>
-        {children}
+    <TooltipPrimitive.Root>
+      <TooltipTrigger asChild onClick={event => event.stopPropagation()}>
+        <span tabIndex={0}>
+          {children}
+        </span>
       </TooltipTrigger>
       <TooltipContent side={side} className={className}>
         {tooltip}
       </TooltipContent>
-    </Tooltip>
+    </TooltipPrimitive.Root>
   )
 }
 

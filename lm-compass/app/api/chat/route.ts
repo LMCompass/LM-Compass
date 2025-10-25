@@ -13,14 +13,7 @@ const openai = new OpenAI({
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
-
-    if (!process.env.OPENROUTER_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenRouter API key not configured' },
-        { status: 500 }
-      );
-    }
-
+    
     const completion = await openai.chat.completions.create({
       model: 'tngtech/deepseek-r1t2-chimera:free',
       messages: messages,
