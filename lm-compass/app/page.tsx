@@ -2,7 +2,6 @@
 
 import { ThemeToggleButton } from "@/components/theme/theme-toggle-button";
 import { PromptInputComponent } from "./prompt-input";
-import { ChatMessages } from "@/components/chat-messages";
 import { Message } from "@/lib/types";
 import { useState, useEffect, useRef } from "react";
 
@@ -26,10 +25,6 @@ export default function Home() {
         </h1>
         <ThemeToggleButton />
       </header>
-      <div className="flex-1 overflow-y-auto">
-        <ChatMessages messages={messages} />
-        <div ref={messagesEndRef} />
-      </div>
       <div className="flex-shrink-0 flex justify-center p-4 border-t bg-background">
         <PromptInputComponent messages={messages} setMessages={setMessages} />
       </div>
