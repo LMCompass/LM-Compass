@@ -14,14 +14,17 @@ import { Message } from "@/lib/types"
 type PromptInputComponentProps = {
   messages: Message[]
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
+  isLoading: boolean
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export function PromptInputComponent({
   messages,
   setMessages,
+  isLoading,
+  setIsLoading,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async () => {
     if (!input.trim() || isLoading) return
