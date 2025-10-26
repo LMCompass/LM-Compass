@@ -12,5 +12,11 @@ To run the LM-Compass application locally,
 git clone git@github.com:LMCompass/LM-Compass.git
 cd lm-compass
 npm install
+```
+
+Before running the application, copy the example environment file and rename it to `.env`. Then, update the `.env` file with your configuration values as needed.
+
+```bash
+cp .env.example .env
 npm run dev
 ```

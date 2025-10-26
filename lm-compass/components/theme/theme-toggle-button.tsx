@@ -7,6 +7,25 @@ import { Button } from "@/components/ui/button";
 
 export function ThemeToggleButton() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  // Prevent hydration mismatch by only rendering after mount
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    // Return a placeholder that matches the expected structure
+    return (
+      <Button variant="outline" size="icon">
+        <span className="relative flex items-center justify-center w-5 h-5">
+          <Sun className="absolute h-5 w-5 transition-all scale-100 rotate-0" />
+          <Moon className="absolute h-5 w-5 transition-all scale-0 rotate-90" />
+        </span>
+        <span className="sr-only">Toggle theme</span>
+      </Button>
+    );
+  }
 
   const isDark = theme === "dark";
 
