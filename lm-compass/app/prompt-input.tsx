@@ -16,6 +16,7 @@ type PromptInputComponentProps = {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
   isLoading: boolean
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
+  selectedModel: string
 }
 
 export function PromptInputComponent({
@@ -23,6 +24,7 @@ export function PromptInputComponent({
   setMessages,
   isLoading,
   setIsLoading,
+  selectedModel,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("")
 
@@ -52,6 +54,7 @@ export function PromptInputComponent({
             role,
             content,
           })),
+          model: selectedModel,
         }),
       })
 

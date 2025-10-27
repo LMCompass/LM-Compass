@@ -12,20 +12,20 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { messages, model } = await req.json();
     
     const completion = await openai.chat.completions.create({
-      model: 'tngtech/deepseek-r1t2-chimera:free',
+      model: model || 'tngtech/deepseek-r1t2-chimera:free',
       messages: messages,
     });
 
     return NextResponse.json({
       message: completion.choices[0].message,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error calling OpenRouter:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to get response from AI' },
+      { error: error instanceof Error ? error.message : 'Failed to get response from AI' },
       { status: 500 }
     );
   }
