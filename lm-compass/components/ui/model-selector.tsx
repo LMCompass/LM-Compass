@@ -10,11 +10,12 @@ interface ModelSelectorProps {
 }
 
 const models = [
+  { value: "tngtech/deepseek-r1t2-chimera:free", label: "DeepSeek Chimera", provider: "DeepSeek" },
   { value: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "OpenAI" },
   { value: "openai/gpt-4o", label: "GPT-4o", provider: "OpenAI" },
   { value: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5", provider: "Anthropic" },
   { value: "anthropic/claude-opus-4", label: "Claude Opus 4", provider: "Anthropic" },
-  { value: "xai/grok-4-fast", label: "Grok 4 Fast", provider: "xAI" },
+  { value: "xai/grok-4-fast:free", label: "Grok 4 Fast", provider: "xAI" },
 ]
 
 export function ModelSelector({ value, onChange }: ModelSelectorProps) {
