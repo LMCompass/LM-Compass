@@ -100,7 +100,6 @@ export function PromptInputComponent({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
-    setIsLoading(false)
     setMessages((prev) => {
       const lastMessage = prev[prev.length - 1]
       if (lastMessage && lastMessage.role === 'user') {
