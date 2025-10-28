@@ -53,10 +53,12 @@ export function PromptInputComponent({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map(({ role, content }) => ({
-            role,
-            content,
-          })),
+          messages: [...messages, userMessage]
+            .filter(msg => !msg.isStopped)
+            .map(({ role, content }) => ({
+              role,
+              content,
+            })),
           model: selectedModel,
         }),
         signal: abortControllerRef.current.signal,
@@ -102,7 +104,7 @@ export function PromptInputComponent({
     setMessages((prev) => {
       const lastMessage = prev[prev.length - 1]
       if (lastMessage && lastMessage.role === 'user') {
-        return prev.slice(0, -1)
+        return [...prev.slice(0, -1), { ...lastMessage, isStopped: true }]
       }
       return prev
     })

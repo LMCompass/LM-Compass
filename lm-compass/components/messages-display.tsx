@@ -34,7 +34,9 @@ export function MessagesDisplay({
                 markdown={message.role === "assistant"}
                 className={`max-w-none ${
                   message.role === "user" 
-                    ? "bg-orange-500 text-white" 
+                    ? message.isStopped 
+                      ? "bg-gray-400 text-gray-600 opacity-60"
+                      : "bg-orange-500 text-white" 
                     : "bg-gray-300 text-gray-900"
                 }`}
               >
