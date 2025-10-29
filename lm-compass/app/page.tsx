@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { ModelSelector } from "@/components/ui/model-selector";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,51 +82,56 @@ export default function Home() {
   };
 
   return (
-    <div className="font-sans h-screen flex flex-col">
-      <header className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b">
-        <ModelSelector value={selectedModel} onChange={handleModelChange} />
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-          LM Compass
-        </h1>
-        <div className="flex items-center gap-2">
+    <SidebarInset>
+      <div className="font-sans h-screen flex flex-col">
+        <header className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger />
+            <ModelSelector value={selectedModel} onChange={handleModelChange} />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            LM Compass
+          </h1>
+          <div className="flex items-center gap-2">
           <Button variant="outline" onClick={handleNewChat} disabled={isLoading}>
             <Plus className="size-4 text-muted-foreground" />
             New Chat
           </Button>
         </div>
-      </header>
+        </header>
 
-      <MessagesDisplay 
-        messages={messages}
-        isLoading={isLoading}
-        messagesEndRef={messagesEndRef}
-      />
-
-      <div className="flex-shrink-0 flex justify-center p-4 border-t bg-background">
-        <PromptInputComponent 
-          key={chatId}
-          messages={messages} 
-          setMessages={setMessages} 
+        <MessagesDisplay 
+          messages={messages}
           isLoading={isLoading}
-          setIsLoading={setIsLoading}
-          selectedModel={selectedModel}
+          messagesEndRef={messagesEndRef}
         />
-      </div>
 
-      <AlertDialog open={showModelChangeDialog} onOpenChange={setShowModelChangeDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Change Model</AlertDialogTitle>
-            <AlertDialogDescription>
-              Changing the model will clear your conversation. Are you sure you want to continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelModelChange}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmModelChange}>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <div className="flex-shrink-0 flex justify-center p-4 border-t bg-background">
+          <PromptInputComponent 
+          key={chatId}
+            messages={messages} 
+            setMessages={setMessages} 
+            isLoading={isLoading}
+            setIsLoading={setIsLoading}
+            selectedModel={selectedModel}
+          />
+        </div>
+
+        <AlertDialog open={showModelChangeDialog} onOpenChange={setShowModelChangeDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Change Model</AlertDialogTitle>
+              <AlertDialogDescription>
+                Changing the model will clear your conversation. Are you sure you want to continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={cancelModelChange}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmModelChange}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </SidebarInset>
   );
 }
