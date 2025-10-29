@@ -6,6 +6,8 @@ import { MessagesDisplay } from "@/components/messages-display";
 import { Message as MessageType } from "@/lib/types";
 import { useState, useEffect, useRef } from "react";
 import { ModelSelector } from "@/components/ui/model-selector";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +19,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Generate a random chat ID
+const generateChatId = () => {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
 export default function Home() {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +32,7 @@ export default function Home() {
   const [chatStarted, setChatStarted] = useState(false);
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
   const [pendingModel, setPendingModel] = useState<string | null>(null);
+  const [chatId, setChatId] = useState(generateChatId());
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -67,6 +75,12 @@ export default function Home() {
     setPendingModel(null);
   };
 
+  const handleNewChat = () => {
+    setMessages([]);
+    setChatStarted(false);
+    setChatId(generateChatId());
+  };
+
   return (
     <div className="font-sans h-screen flex flex-col">
       <header className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b">
@@ -74,7 +88,13 @@ export default function Home() {
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
           LM Compass
         </h1>
-        <ThemeToggleButton />
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleNewChat} disabled={isLoading}>
+            <Plus className="size-4 mr-2" />
+            New Chat
+          </Button>
+          <ThemeToggleButton />
+        </div>
       </header>
 
       <MessagesDisplay 
@@ -85,6 +105,7 @@ export default function Home() {
 
       <div className="flex-shrink-0 flex justify-center p-4 border-t bg-background">
         <PromptInputComponent 
+          key={chatId}
           messages={messages} 
           setMessages={setMessages} 
           isLoading={isLoading}
