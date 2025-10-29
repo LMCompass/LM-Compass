@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/prompt-input"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, Square } from "lucide-react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Message } from "@/lib/types"
 
 type PromptInputComponentProps = {
@@ -27,6 +27,7 @@ export function PromptInputComponent({
   selectedModel,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("")
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const handleSubmit = async () => {
     if (!input.trim() || isLoading) return
@@ -42,6 +43,8 @@ export function PromptInputComponent({
     setInput("")
     setIsLoading(true)
 
+    abortControllerRef.current = new AbortController()
+
     try {
       // Send to API
       const response = await fetch("/api/chat", {
@@ -50,12 +53,15 @@ export function PromptInputComponent({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map(({ role, content }) => ({
-            role,
-            content,
-          })),
+          messages: [...messages, userMessage]
+            .filter(msg => !msg.isStopped)
+            .map(({ role, content }) => ({
+              role,
+              content,
+            })),
           model: selectedModel,
         }),
+        signal: abortControllerRef.current.signal,
       })
 
       if (!response.ok) {
@@ -72,9 +78,12 @@ export function PromptInputComponent({
       }
 
       setMessages((prev) => [...prev, assistantMessage])
-    } catch (error) {
-      console.error("Error:", error)
-      // Add error message
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return
+        }
+        
+        console.error("Error:", error)
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -83,7 +92,21 @@ export function PromptInputComponent({
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+      abortControllerRef.current = null
     }
+  }
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    setMessages((prev) => {
+      const lastMessage = prev[prev.length - 1]
+      if (lastMessage && lastMessage.role === 'user') {
+        return [...prev.slice(0, -1), { ...lastMessage, isStopped: true }]
+      }
+      return prev
+    })
   }
 
   const handleValueChange = (value: string) => {
@@ -109,8 +132,8 @@ export function PromptInputComponent({
               variant="default"
               size="icon"
               className="h-8 w-8 rounded-full"
-              onClick={handleSubmit}
-              disabled={isLoading || !input.trim()}
+              onClick={isLoading ? handleStop : handleSubmit}
+              disabled={!isLoading && !input.trim()}
             >
               {isLoading ? (
                 <Square className="size-5 fill-current" />
