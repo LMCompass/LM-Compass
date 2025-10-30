@@ -88,8 +88,8 @@ export default function Home() {
           LM Compass
         </h1>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={handleNewChat} disabled={isLoading}>
-            <Plus className="size-4 mr-2" />
+          <Button variant="outline" onClick={handleNewChat} disabled={isLoading}>
+            <Plus className="size-4 text-muted-foreground" />
             New Chat
           </Button>
         </div>
