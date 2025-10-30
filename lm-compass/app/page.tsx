@@ -84,7 +84,7 @@ export default function Home() {
 
   return (
     <SidebarInset>
-      <div className="font-sans h-screen flex flex-col">
+      <div className="h-screen flex flex-col">
         <header className="flex-shrink-0 flex items-center p-4 sm:p-6 border-b">
           <div className="flex items-center gap-4 flex-1">
             {!open && <SidebarTrigger />}
