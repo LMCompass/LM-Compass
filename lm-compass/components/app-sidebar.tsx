@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { User2, ChevronUp } from "lucide-react"
@@ -16,7 +17,10 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <h2 className="px-4 py-2 text-lg font-semibold">Chat History</h2>
+        <div className="flex items-center justify-between px-2 py-2">
+          <h2 className="text-lg font-semibold">Chat History</h2>
+          <SidebarTrigger />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <div className="px-4 py-2 text-sm text-muted-foreground">

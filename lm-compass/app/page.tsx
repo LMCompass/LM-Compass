@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { ModelSelector } from "@/components/ui/model-selector";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ const generateChatId = () => {
 };
 
 export default function Home() {
+  const { open } = useSidebar();
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -84,20 +85,20 @@ export default function Home() {
   return (
     <SidebarInset>
       <div className="font-sans h-screen flex flex-col">
-        <header className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger />
+        <header className="flex-shrink-0 flex items-center p-4 sm:p-6 border-b">
+          <div className="flex items-center gap-4 flex-1">
+            {!open && <SidebarTrigger />}
             <ModelSelector value={selectedModel} onChange={handleModelChange} />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             LM Compass
           </h1>
-          <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleNewChat} disabled={isLoading}>
-            <Plus className="size-4 text-muted-foreground" />
-            New Chat
-          </Button>
-        </div>
+          <div className="flex-1 flex justify-end">
+            <Button variant="outline" onClick={handleNewChat} disabled={isLoading}>
+              <Plus className="size-4 text-muted-foreground" />
+              New Chat
+            </Button>
+          </div>
         </header>
 
         <MessagesDisplay 
