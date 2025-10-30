@@ -35,9 +35,9 @@ export function MessagesDisplay({
                 className={`max-w-none ${
                   message.role === "user" 
                     ? message.isStopped 
-                      ? "bg-gray-400 text-gray-600 opacity-60"
-                      : "bg-orange-500 text-white" 
-                    : "bg-gray-300 text-gray-900"
+                      ? "opacity-60"
+                      : "bg-primary text-primary-foreground" 
+                    : "bg-card text-card-foreground"
                 }`}
               >
                 {message.content}
@@ -52,7 +52,7 @@ export function MessagesDisplay({
                 fallback="AI"
                 className="mt-1"
               />
-              <div className="rounded-lg p-2 bg-gray-300 text-gray-900 break-words whitespace-normal">
+              <div className="rounded-lg p-2 bg-card text-card-foreground break-words whitespace-normal">
                 <Loader variant="typing" size="md" />
               </div>
             </Message>

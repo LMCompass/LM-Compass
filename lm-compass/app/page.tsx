@@ -1,6 +1,5 @@
 "use client"
 
-import { ThemeToggleButton } from "@/components/theme/theme-toggle-button";
 import { PromptInputComponent } from "./prompt-input";
 import { MessagesDisplay } from "@/components/messages-display";
 import { Message as MessageType } from "@/lib/types";
@@ -93,7 +92,6 @@ export default function Home() {
             <Plus className="size-4 mr-2" />
             New Chat
           </Button>
-          <ThemeToggleButton />
         </div>
       </header>
 
