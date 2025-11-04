@@ -16,7 +16,7 @@ type PromptInputComponentProps = {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
   isLoading: boolean
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
-  selectedModel: string
+  selectedModels: string[]
 }
 
 export function PromptInputComponent({
@@ -24,10 +24,22 @@ export function PromptInputComponent({
   setMessages,
   isLoading,
   setIsLoading,
-  selectedModel,
+  selectedModels,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("")
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  type MultiResult = { model: string; message?: { role: string; content: string }; error?: string }
+
+  const coerceToString = (value: unknown): string => {
+    if (typeof value === "string") return value
+    if (value == null) return ""
+    try {
+      return JSON.stringify(value, null, 2)
+    } catch {
+      return String(value)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!input.trim() || isLoading) return
@@ -59,7 +71,7 @@ export function PromptInputComponent({
               role,
               content,
             })),
-          model: selectedModel,
+          models: selectedModels.length > 0 ? selectedModels : undefined,
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -70,14 +82,27 @@ export function PromptInputComponent({
 
       const data = await response.json()
 
-      // Add assistant response to chat
-      const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: data.message.content,
+      if (data.results && Array.isArray(data.results)) {
+        // Multi-model responses
+        const assistantMessage: Message = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "",
+          multiResults: (data.results as MultiResult[]).map((r) => ({
+            model: r.model,
+            content: r.error ? `Error: ${r.error}` : coerceToString(r.message?.content),
+          })),
+        }
+        setMessages((prev) => [...prev, assistantMessage])
+      } else {
+        // Single-model response (fallback, though shouldn't happen with multi-select)
+        const assistantMessage: Message = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: data.message?.content || "No response received",
+        }
+        setMessages((prev) => [...prev, assistantMessage])
       }
-
-      setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           return

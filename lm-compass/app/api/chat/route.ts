@@ -12,8 +12,38 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
-    const { messages, model } = await req.json();
-    
+    const { messages, model, models } = await req.json();
+
+    // Multi-model parallel querying
+    if (Array.isArray(models) && models.length > 0) {
+      const settled = await Promise.allSettled(
+        models.map(async (m: string) => {
+          const completion = await openai.chat.completions.create({
+            model: m,
+            messages: messages,
+          });
+          return {
+            model: m,
+            message: completion.choices[0].message,
+          };
+        })
+      );
+
+      const results = settled.map((res, idx) => {
+        const modelId = models[idx];
+        if (res.status === 'fulfilled') {
+          return { model: modelId, message: res.value.message };
+        }
+        return { 
+          model: modelId, 
+          error: res.reason instanceof Error ? res.reason.message : 'Request failed' 
+        };
+      });
+
+      return NextResponse.json({ results });
+    }
+
+    // Single-model
     const completion = await openai.chat.completions.create({
       model: model || 'tngtech/deepseek-r1t2-chimera:free',
       messages: messages,
