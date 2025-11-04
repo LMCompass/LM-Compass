@@ -48,7 +48,7 @@ export function MessagesDisplay({
         <>
           {messages.map((message) => (
             <div key={message.id} className="max-w-5xl mx-auto">
-              {message.role === "assistant" && message.multiResults ? (
+              {message.role === "assistant" && message.multiResults && message.multiResults.length > 1 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {message.multiResults.map((r) => {
                     const cardKey = `${message.id}-${r.model}`
@@ -74,6 +74,15 @@ export function MessagesDisplay({
                     )
                   })}
                 </div>
+              ) : message.role === "assistant" && message.multiResults && message.multiResults.length === 1 ? (
+                <Message className="max-w-4xl mx-auto flex flex-row">
+                  <MessageContent 
+                    markdown={true}
+                    className="max-w-none bg-card text-card-foreground"
+                  >
+                    {message.multiResults[0].content}
+                  </MessageContent>
+                </Message>
               ) : (
                 <Message 
                   className={`max-w-4xl mx-auto flex ${

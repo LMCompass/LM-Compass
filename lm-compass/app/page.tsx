@@ -60,11 +60,24 @@ export default function Home() {
   };
 
   const confirmModelChange = () => {
-    if (pendingModels) {
-      setSelectedModels(pendingModels);
-      setMessages([]);
-      setChatStarted(false);
+    // Reset to only the newly selected models (models that were added, not previously selected)
+    if (pendingModels && pendingModels.length > 0) {
+      // Find models that were newly added (in pendingModels but not in current selectedModels)
+      const newlySelected = pendingModels.filter(model => !selectedModels.includes(model));
+      
+      // If there are newly selected models, use only those. Otherwise use pendingModels as-is
+      if (newlySelected.length > 0) {
+        setSelectedModels(newlySelected);
+      } else {
+        // If no new models (all were deselected), use pendingModels (which should be empty or minimal)
+        setSelectedModels(pendingModels);
+      }
+    } else {
+      // Fallback to default if no pending models
+      setSelectedModels(["tngtech/deepseek-r1t2-chimera:free"]);
     }
+    setMessages([]);
+    setChatStarted(false);
     setShowModelChangeDialog(false);
     setPendingModels(null);
   };
