@@ -82,27 +82,21 @@ export function PromptInputComponent({
 
       const data = await response.json()
 
-      if (data.results && Array.isArray(data.results)) {
-        // Multi-model responses
-        const assistantMessage: Message = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: "",
-          multiResults: (data.results as MultiResult[]).map((r) => ({
-            model: r.model,
-            content: r.error ? `Error: ${r.error}` : coerceToString(r.message?.content),
-          })),
-        }
-        setMessages((prev) => [...prev, assistantMessage])
-      } else {
-        // Single-model response (fallback, though shouldn't happen with multi-select)
-        const assistantMessage: Message = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: data.message?.content || "No response received",
-        }
-        setMessages((prev) => [...prev, assistantMessage])
+      // API always returns { results } array for consistent format
+      if (!data.results || !Array.isArray(data.results)) {
+        throw new Error("Invalid response format")
       }
+
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "",
+        multiResults: (data.results as MultiResult[]).map((r) => ({
+          model: r.model,
+          content: r.error ? `Error: ${r.error}` : coerceToString(r.message?.content),
+        })),
+      }
+      setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           return

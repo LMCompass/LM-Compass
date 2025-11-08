@@ -14,44 +14,43 @@ export async function POST(req: Request) {
   try {
     const { messages, model, models } = await req.json();
 
-    // Multi-model parallel querying
+    // Normalize to models array - handle both single model (legacy) and multi-model cases
+    let modelsToQuery: string[];
+    
     if (Array.isArray(models) && models.length > 0) {
-      const settled = await Promise.allSettled(
-        models.map(async (m: string) => {
-          const completion = await llmClient.chat.completions.create({
-            model: m,
-            messages: messages,
-          });
-          return {
-            model: m,
-            message: completion.choices[0].message,
-          };
-        })
-      );
-
-      const results = settled.map((res, idx) => {
-        const modelId = models[idx];
-        if (res.status === 'fulfilled') {
-          return { model: modelId, message: res.value.message };
-        }
-        return { 
-          model: modelId, 
-          error: res.reason instanceof Error ? res.reason.message : 'Request failed' 
-        };
-      });
-
-      return NextResponse.json({ results });
+      modelsToQuery = models;
+    } else if (model) {
+      modelsToQuery = [model];
+    } else {
+      modelsToQuery = ['tngtech/deepseek-r1t2-chimera:free'];
     }
 
-    // Single-model
-    const completion = await llmClient.chat.completions.create({
-      model: model || 'tngtech/deepseek-r1t2-chimera:free',
-      messages: messages,
+    // Always use multi-model logic for consistent return format
+    const settled = await Promise.allSettled(
+      modelsToQuery.map(async (m: string) => {
+        const completion = await llmClient.chat.completions.create({
+          model: m,
+          messages: messages,
+        });
+        return {
+          model: m,
+          message: completion.choices[0].message,
+        };
+      })
+    );
+
+    const results = settled.map((res, idx) => {
+      const modelId = modelsToQuery[idx];
+      if (res.status === 'fulfilled') {
+        return { model: modelId, message: res.value.message };
+      }
+      return { 
+        model: modelId, 
+        error: res.reason instanceof Error ? res.reason.message : 'Request failed' 
+      };
     });
 
-    return NextResponse.json({
-      message: completion.choices[0].message,
-    });
+    return NextResponse.json({ results });
   } catch (error: unknown) {
     console.error('Error calling OpenRouter:', error);
     return NextResponse.json(
