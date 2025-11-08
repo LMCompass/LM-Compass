@@ -5,6 +5,7 @@ import { MessagesDisplay } from "@/components/messages-display";
 import { Message as MessageType } from "@/lib/types";
 import { useState, useEffect, useRef } from "react";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
+import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
@@ -30,6 +31,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>(["tngtech/deepseek-r1t2-chimera:free"]);
+  const [selectedRubric, setSelectedRubric] = useState("prompt-based");
   const [chatStarted, setChatStarted] = useState(false);
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
   const [pendingModels, setPendingModels] = useState<string[] | null>(null);
@@ -100,16 +102,17 @@ export default function Home() {
           <div className="flex items-center gap-4 flex-1">
             {!open && <SidebarTrigger />}
             <MultiModelSelector values={selectedModels} onChange={handleMultiModelChange} />
+            <EvaluationMethodSelector value={selectedRubric} onChange={setSelectedRubric} />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             LM Compass
           </h1>
-          <div className="flex-1 flex justify-end">
-            <Button variant="outline" onClick={handleNewChat} disabled={isLoading}>
-              <Plus className="size-4 text-muted-foreground" />
-              New Chat
-            </Button>
-          </div>
+            <div className="flex-1 flex justify-end">
+              <Button variant="outline" onClick={handleNewChat} disabled={isLoading}>
+                <Plus className="size-4 text-muted-foreground" />
+                New Chat
+              </Button>
+            </div>
         </header>
 
         <MessagesDisplay 
@@ -126,6 +129,7 @@ export default function Home() {
             isLoading={isLoading}
             setIsLoading={setIsLoading}
             selectedModels={selectedModels}
+            selectedRubric={selectedRubric}
           />
         </div>
 

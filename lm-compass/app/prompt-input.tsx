@@ -17,6 +17,7 @@ type PromptInputComponentProps = {
   isLoading: boolean
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
   selectedModels: string[]
+  selectedRubric: string;
 }
 
 export function PromptInputComponent({
