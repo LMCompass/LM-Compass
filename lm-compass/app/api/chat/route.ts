@@ -1,7 +1,7 @@
 import { OpenAI } from 'openai';
 import { NextResponse } from 'next/server';
 
-const openai = new OpenAI({
+const llmClient = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY,
   defaultHeaders: {
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     if (Array.isArray(models) && models.length > 0) {
       const settled = await Promise.allSettled(
         models.map(async (m: string) => {
-          const completion = await openai.chat.completions.create({
+          const completion = await llmClient.chat.completions.create({
             model: m,
             messages: messages,
           });
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     // Single-model
-    const completion = await openai.chat.completions.create({
+    const completion = await llmClient.chat.completions.create({
       model: model || 'tngtech/deepseek-r1t2-chimera:free',
       messages: messages,
     });
