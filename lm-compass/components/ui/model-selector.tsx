@@ -23,7 +23,7 @@ interface ModelSelectorProps {
   onChange: (value: string) => void
 }
 
-const models = [
+export const models = [
   // OpenAI Models
   { value: "openai/gpt-4o", label: "GPT-4o", provider: "OpenAI" },
   { value: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "OpenAI" },

@@ -4,7 +4,7 @@ import { PromptInputComponent } from "./prompt-input";
 import { MessagesDisplay } from "@/components/messages-display";
 import { Message as MessageType } from "@/lib/types";
 import { useState, useEffect, useRef } from "react";
-import { ModelSelector } from "@/components/ui/model-selector";
+import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
@@ -29,10 +29,10 @@ export default function Home() {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [selectedModel, setSelectedModel] = useState("tngtech/deepseek-r1t2-chimera:free");
+  const [selectedModels, setSelectedModels] = useState<string[]>(["tngtech/deepseek-r1t2-chimera:free"]);
   const [chatStarted, setChatStarted] = useState(false);
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
-  const [pendingModel, setPendingModel] = useState<string | null>(null);
+  const [pendingModels, setPendingModels] = useState<string[] | null>(null);
   const [chatId, setChatId] = useState(generateChatId());
 
   const scrollToBottom = () => {
@@ -50,30 +50,41 @@ export default function Home() {
     }
   }, [messages.length, chatStarted]);
 
-  const handleModelChange = (newModel: string) => {
+  const handleMultiModelChange = (newModels: string[]) => {
     if (chatStarted && messages.length > 0) {
-      // Show confirmation dialog
-      setPendingModel(newModel);
+      setPendingModels(newModels);
       setShowModelChangeDialog(true);
-    } else {
-      // No messages yet, change directly
-      setSelectedModel(newModel);
+      return;
     }
+    setSelectedModels(newModels);
   };
 
   const confirmModelChange = () => {
-    if (pendingModel) {
-      setSelectedModel(pendingModel);
-      setMessages([]);
-      setChatStarted(false);
+    // Reset to only the newly selected models (models that were added, not previously selected)
+    if (pendingModels && pendingModels.length > 0) {
+      // Find models that were newly added (in pendingModels but not in current selectedModels)
+      const newlySelected = pendingModels.filter(model => !selectedModels.includes(model));
+      
+      // If there are newly selected models, use only those. Otherwise use pendingModels as-is
+      if (newlySelected.length > 0) {
+        setSelectedModels(newlySelected);
+      } else {
+        // If no new models (all were deselected), use pendingModels (which should be empty or minimal)
+        setSelectedModels(pendingModels);
+      }
+    } else {
+      // Fallback to default if no pending models
+      setSelectedModels(["tngtech/deepseek-r1t2-chimera:free"]);
     }
+    setMessages([]);
+    setChatStarted(false);
     setShowModelChangeDialog(false);
-    setPendingModel(null);
+    setPendingModels(null);
   };
 
   const cancelModelChange = () => {
     setShowModelChangeDialog(false);
-    setPendingModel(null);
+    setPendingModels(null);
   };
 
   const handleNewChat = () => {
@@ -88,7 +99,7 @@ export default function Home() {
         <header className="flex-shrink-0 flex items-center p-4 sm:p-6 border-b">
           <div className="flex items-center gap-4 flex-1">
             {!open && <SidebarTrigger />}
-            <ModelSelector value={selectedModel} onChange={handleModelChange} />
+            <MultiModelSelector values={selectedModels} onChange={handleMultiModelChange} />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             LM Compass
@@ -114,7 +125,7 @@ export default function Home() {
             setMessages={setMessages} 
             isLoading={isLoading}
             setIsLoading={setIsLoading}
-            selectedModel={selectedModel}
+            selectedModels={selectedModels}
           />
         </div>
 

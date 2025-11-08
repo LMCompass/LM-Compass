@@ -3,4 +3,5 @@ export type Message = {
   content: string;
   id: string;
   isStopped?: boolean;
+  multiResults?: { model: string; content: string }[];
 };
