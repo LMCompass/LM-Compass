@@ -11,7 +11,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import { User2, ChevronUp } from "lucide-react"
+import { User2, ChevronUp, FileText } from "lucide-react"
+import Link from "next/link"
 
 export function AppSidebar() {
   return (
@@ -23,8 +24,21 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <div className="px-4 py-2 text-sm text-muted-foreground">
-          No chats yet
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link href="/rubric/view">
+                <FileText className="size-4" />
+                <span>View Rubrics</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <div className="px-4 py-2 mt-4">
+          <h3 className="text-sm font-semibold mb-2">Chat History</h3>
+          <div className="text-sm text-muted-foreground">
+            No chats yet
+          </div>
         </div>
       </SidebarContent>
       <SidebarFooter>
