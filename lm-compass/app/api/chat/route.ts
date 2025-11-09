@@ -1,5 +1,6 @@
 import { OpenAI } from 'openai';
 import { NextResponse } from 'next/server';
+import { PromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
 
 const llmClient = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
@@ -9,6 +10,20 @@ const llmClient = new OpenAI({
     'X-Title': 'LM Compass',
   },
 });
+
+/**
+ * Extracts the user query from the messages array (last user message)
+ */
+function extractUserQuery(messages: Array<{ role: string; content: string }>): string {
+  // Find the last user message
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      return messages[i].content;
+    }
+  }
+  // Fallback: return empty string if no user message found
+  return '';
+}
 
 export async function POST(req: Request) {
   try {
@@ -39,7 +54,7 @@ export async function POST(req: Request) {
       })
     );
 
-    const results = settled.map((res, idx) => {
+    const allResults = settled.map((res, idx) => {
       const modelId = modelsToQuery[idx];
       if (res.status === 'fulfilled') {
         return { model: modelId, message: res.value.message };
@@ -50,7 +65,62 @@ export async function POST(req: Request) {
       };
     });
 
-    return NextResponse.json({ results });
+    // Filter successful responses for evaluation
+    const successfulResults: ModelResponse[] = allResults
+      .filter((r) => {
+        if (r.error) return false;
+        const content = r.message?.content;
+        return content && content.trim().length > 0;
+      })
+      .map((r) => ({
+        model: r.model,
+        content: r.message?.content || '',
+      }));
+
+    // If we have 2 or more successful responses, use evaluation to find the winner
+    if (successfulResults.length >= 2) {
+      try {
+        const userQuery = extractUserQuery(messages);
+
+        // Create evaluator and evaluate responses
+        const evaluator = new PromptBasedEvaluator(llmClient);
+        const evaluationResult = await evaluator.evaluate(successfulResults, {
+          userQuery,
+        });
+
+        // Aggregate reasoning for each model
+        const modelReasoning: Record<string, string[]> = {};
+        successfulResults.forEach((r) => {
+          modelReasoning[r.model] = [];
+        });
+        evaluationResult.scores.forEach((score) => {
+          if (score.reasoning !== null) {
+            modelReasoning[score.evaluatedModel].push(score.reasoning);
+          }
+        });
+
+        // Create evaluation metadata
+        const evaluationMetadata: EvaluationMetadata = {
+          winnerModel: evaluationResult.winner.model,
+          scores: evaluationResult.scores,
+          meanScores: evaluationResult.meanScores,
+          modelReasoning,
+        };
+
+        // Return ALL results with evaluation metadata
+        return NextResponse.json({
+          results: allResults,
+          evaluationMetadata,
+        });
+      } catch (evaluationError) {
+        // If evaluation fails, log error and return all results without metadata
+        console.error('Evaluation failed:', evaluationError);
+        // Fall through to return all results without metadata
+      }
+    }
+
+    // (0-1 responses, or evaluation error)
+    return NextResponse.json({ results: allResults });
   } catch (error: unknown) {
     console.error('Error calling OpenRouter:', error);
     return NextResponse.json(

@@ -1,0 +1,327 @@
+/**
+ * Prompt-based evaluator implementation using n² judging approach
+ * Ports the Python notebook logic to TypeScript
+ */
+
+import type { OpenAI } from 'openai';
+import type { IEvaluationService } from './interfaces';
+import type { ModelResponse, EvaluationResult, EvaluationOptions, EvaluationScore } from './types';
+
+/**
+ * Default rubric for evaluation
+ */
+const DEFAULT_RUBRIC = `Correctness & Accuracy (25 points) — Ensures claims are factually accurate and verifiable, addressing the most critical concern of hallucination-free responses. This is weighted highest because inaccurate information undermines all other qualities.
+
+Completeness (20 points) - Verifies the answer addresses all aspects of the query without significant omissions. This prevents shallow or partial responses that technically answer only part of the question.
+
+Clarity & Coherence (18 points) - Assesses whether the answer is well-organized with logical flow. Research shows that coherence and relevance are strong signals of problem-solving quality.
+
+Relevance (18 points) - Ensures all information pertains to the question, avoiding tangential content that confuses the issue. This maintains focus and efficiency.
+
+Conciseness (10 points) - Rewards efficiency by penalizing unnecessary verbosity or repetition while maintaining completeness. This balances against verbose but complete responses.
+
+Appropriateness for Context (9 points) — Checks whether tone, depth, and format match what the questioner likely needs. Technical questions require different treatment than conversational ones.`;
+
+/**
+ * Creates a scoring query prompt for evaluation
+ */
+function createScoringQuery(userQuery: string, candidateAnswer: string, rubric: string): string {
+  return `You are an expert evaluator for a large language model comparison tool. Your role is to provide an objective, rubric-based score for the candidate's response to a user's query.
+
+QUERY:
+${userQuery}
+
+CANDIDATE RESPONSE:
+${candidateAnswer}
+
+RUBRIC:
+${rubric}
+
+Instructions:
+
+Evaluate the Candidate Response on all rubric dimensions individually, strictly applying the rubric's defined score ranges and weightings—for example, Correctness & Accuracy is out of 25 points, Completeness 20 points, etc.
+
+If the Candidate Response contains any factual inaccuracies, assign the Correctness & Accuracy score corresponding to those errors as explicitly defined in the rubric, which could be as low as 0-4 out of 25 for fundamental factual errors. Do not inflate this score due to other qualities.
+
+Calculate the overall score as the weighted sum of all dimension scores, without subjective adjustment or rounding beyond rubric guidance.
+
+Your output must be ONLY a JSON object with:
+
+1. "reasoning": "<One-sentence justification explicitly referencing rubric criteria and weights, including correctness importance>",
+
+2."score": <integer score from 0 to 100>
+
+Use your judgment to apply rubric weightings accurately, and remember that Correctness & Accuracy has the highest impact on the overall score.`;
+}
+
+/**
+ * Prompt-based evaluator
+ */
+export class PromptBasedEvaluator implements IEvaluationService {
+  private client: OpenAI;
+
+  constructor(client: OpenAI) {
+    this.client = client;
+  }
+
+  /**
+   * Main evaluation method
+   */
+  async evaluate(
+    responses: ModelResponse[],
+    options: EvaluationOptions
+  ): Promise<EvaluationResult> {
+    const validResponses = responses.filter((r) => !r.error && r.content.trim().length > 0);
+
+    console.log(`[Evaluation] Starting evaluation with ${validResponses.length} valid responses`);
+
+    if (validResponses.length < 2) {
+      // If less than 2 valid responses, return the first one (or throw if none)
+      if (validResponses.length === 0) {
+        throw new Error('No valid responses to evaluate');
+      }
+      console.log(`[Evaluation] Only ${validResponses.length} response(s), skipping evaluation`);
+      return {
+        winner: validResponses[0],
+        scores: [],
+        meanScores: { [validResponses[0].model]: 0 },
+      };
+    }
+
+    const rubric = options.rubric || DEFAULT_RUBRIC;
+    const userQuery = options.userQuery;
+
+    console.log(`[Evaluation] Evaluating ${validResponses.length} models using n² approach`);
+    console.log(`[Evaluation] Models: ${validResponses.map(r => r.model).join(', ')}`);
+
+    const { judgeModels, scoringQueries, evaluatedModels } = this.buildScoringQueries(
+      validResponses,
+      userQuery,
+      rubric
+    );
+
+    console.log(`[Evaluation] Generated ${scoringQueries.length} evaluation queries`);
+
+    // Execute all evaluation queries in parallel
+    const evaluationResults = await Promise.allSettled(
+      judgeModels.map(async (judgeModel, index) => {
+        const completion = await this.client.chat.completions.create({
+          model: judgeModel,
+          messages: [{ role: 'user', content: scoringQueries[index] }],
+        });
+        return {
+          judgeModel,
+          evaluatedModel: evaluatedModels[index],
+          response: completion.choices[0].message.content || '',
+        };
+      })
+    );
+
+    // Extract scores and reasoning from responses
+    const scores: EvaluationScore[] = evaluationResults.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        const { score, reasoning } = this.extractScoreAndReasoning(result.value.response);
+        
+        // Log each evaluation score
+        if (score !== null) {
+          console.log(
+            `[Evaluation] ${result.value.judgeModel} → ${result.value.evaluatedModel}: ${score}/100`
+          );
+        } else {
+          console.warn(
+            `[Evaluation] Failed to extract score: ${result.value.judgeModel} → ${result.value.evaluatedModel}`
+          );
+        }
+        
+        return {
+          judgeModel: result.value.judgeModel,
+          evaluatedModel: result.value.evaluatedModel,
+          score,
+          reasoning,
+        };
+      }
+      // If the evaluation query failed, return null score and reasoning
+      console.error(
+        `[Evaluation] Query failed: ${judgeModels[index]} → ${evaluatedModels[index]}`,
+        result.status === 'rejected' ? result.reason : 'Unknown error'
+      );
+      return {
+        judgeModel: judgeModels[index],
+        evaluatedModel: evaluatedModels[index],
+        score: null,
+        reasoning: null,
+      };
+    });
+
+    // Calculate mean scores for each model
+    const meanScores = this.calculateMeanScores(scores, validResponses.map((r) => r.model));
+
+    // Log mean scores
+    console.log('[Evaluation] Mean scores:');
+    Object.entries(meanScores).forEach(([model, meanScore]) => {
+      console.log(`[Evaluation]   ${model}: ${meanScore.toFixed(2)}/100`);
+    });
+
+    // Find the winner
+    const winner = this.findWinner(validResponses, meanScores);
+
+    console.log(`[Evaluation] Winner: ${winner.model} (Score: ${meanScores[winner.model]?.toFixed(2) || 'N/A'}/100)`);
+
+    return {
+      winner,
+      scores,
+      meanScores,
+    };
+  }
+
+  /**
+   * Builds the n² scoring queries where each model judges all other models
+   */
+  private buildScoringQueries(
+    responses: ModelResponse[],
+    userQuery: string,
+    rubric: string
+  ): {
+    judgeModels: string[];
+    scoringQueries: string[];
+    evaluatedModels: string[];
+  } {
+    const judgeModels: string[] = [];
+    const scoringQueries: string[] = [];
+    const evaluatedModels: string[] = [];
+
+    // Create response map for quick lookup
+    const responseMap = new Map<string, string>();
+    responses.forEach((r) => {
+      responseMap.set(r.model, r.content);
+    });
+
+    // each model judges all other models
+    for (const judgeResponse of responses) {
+      for (const candidateResponse of responses) {
+        if (judgeResponse.model !== candidateResponse.model) {
+          judgeModels.push(judgeResponse.model);
+          evaluatedModels.push(candidateResponse.model);
+          scoringQueries.push(
+            createScoringQuery(userQuery, candidateResponse.content, rubric)
+          );
+        }
+      }
+    }
+
+    return { judgeModels, scoringQueries, evaluatedModels };
+  }
+
+  /**
+   * Extracts the score and reasoning from an LLM response, handling various JSON formats
+   */
+  private extractScoreAndReasoning(responseText: string): { score: number | null; reasoning: string | null } {
+    if (!responseText || responseText.trim().length === 0) {
+      return { score: null, reasoning: null };
+    }
+
+    let jsonStr: string | null = null;
+
+    // First, try to extract JSON from markdown code blocks
+    // Use [\s\S] instead of . with 's' flag for ES2017 compatibility
+    const markdownMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+    if (markdownMatch) {
+      jsonStr = markdownMatch[1];
+    } else {
+      // Try to find any JSON object in the text
+      // Use [\s\S] to match any character including newlines
+      const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[0];
+      }
+    }
+
+    if (!jsonStr) {
+      return { score: null, reasoning: null };
+    }
+
+    try {
+      const parsed = JSON.parse(jsonStr);
+      const score = parsed.score;
+      const reasoning = parsed.reasoning;
+      
+      const extractedScore = typeof score === 'number' && score >= 0 && score <= 100
+        ? Math.round(score)
+        : null;
+      
+      const extractedReasoning = typeof reasoning === 'string' && reasoning.trim().length > 0
+        ? reasoning.trim()
+        : null;
+
+      return { score: extractedScore, reasoning: extractedReasoning };
+    } catch {
+      return { score: null, reasoning: null };
+    }
+  }
+
+  /**
+   * Calculates mean scores for each model based on evaluation scores
+   */
+  private calculateMeanScores(
+    scores: EvaluationScore[],
+    modelNames: string[]
+  ): Record<string, number> {
+    // Build score matrix: model -> array of scores from judges
+    const scoreMatrix: Record<string, number[]> = {};
+    modelNames.forEach((model) => {
+      scoreMatrix[model] = [];
+    });
+
+    // Collect scores for each evaluated model
+    scores.forEach((score) => {
+      if (score.score !== null) {
+        scoreMatrix[score.evaluatedModel].push(score.score);
+      }
+    });
+
+    // Calculate mean for each model
+    const meanScores: Record<string, number> = {};
+    modelNames.forEach((model) => {
+      const modelScores = scoreMatrix[model];
+      if (modelScores.length > 0) {
+        const sum = modelScores.reduce((acc, val) => acc + val, 0);
+        meanScores[model] = sum / modelScores.length;
+      } else {
+        // If no valid scores, set to 0
+        meanScores[model] = 0;
+      }
+    });
+
+    return meanScores;
+  }
+
+  /**
+   * Finds the winning response based on mean scores
+   */
+  private findWinner(responses: ModelResponse[], meanScores: Record<string, number>): ModelResponse {
+    // Create response map for quick lookup
+    const responseMap = new Map<string, ModelResponse>();
+    responses.forEach((r) => {
+      responseMap.set(r.model, r);
+    });
+
+    // Find model with highest mean score
+    let maxMean = -1;
+    let winnerModel: string | null = null;
+
+    Object.entries(meanScores).forEach(([model, meanScore]) => {
+      if (meanScore > maxMean) {
+        maxMean = meanScore;
+        winnerModel = model;
+      }
+    });
+
+    // If no winner found (shouldn't happen), return first response
+    if (!winnerModel || !responseMap.has(winnerModel)) {
+      return responses[0];
+    }
+
+    return responseMap.get(winnerModel)!;
+  }
+}
+

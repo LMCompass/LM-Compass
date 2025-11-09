@@ -95,6 +95,7 @@ export function PromptInputComponent({
           model: r.model,
           content: r.error ? `Error: ${r.error}` : coerceToString(r.message?.content),
         })),
+        evaluationMetadata: data.evaluationMetadata,
       }
       setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
