@@ -57,8 +57,8 @@ export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSe
                 <CommandItem
                   key={method.value}
                   value={method.value}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue)
+                  onSelect={() => {
+                    onChange(method.value)
                     setOpen(false)
                   }}
                 >

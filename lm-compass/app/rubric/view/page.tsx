@@ -1,12 +1,20 @@
 "use client"
 
+import { useState } from "react";
 import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
+import { AddRubricDialog } from "@/components/add-rubric-dialog";
 
 export default function ViewRubricsPage() {
   const { open } = useSidebar();
+  const [showAddRubricDialog, setShowAddRubricDialog] = useState(false);
+
+  const handleSaveRubric = (rubric: { name: string; description: string }) => {
+    // TODO: Add rubric save logic here (e.g., API call, local storage, etc.)
+    console.log("Saving rubric:", rubric);
+  };
 
   return (
     <SidebarInset>
@@ -22,6 +30,10 @@ export default function ViewRubricsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex-1">
             View Rubrics
           </h1>
+          <Button variant="outline" onClick={() => setShowAddRubricDialog(true)}>
+            <Plus className="size-4 mr-2" />
+            Add Rubric
+          </Button>
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
@@ -30,6 +42,12 @@ export default function ViewRubricsPage() {
             <p>This page will display your rubrics.</p>
           </div>
         </div>
+
+        <AddRubricDialog 
+          open={showAddRubricDialog} 
+          onOpenChange={setShowAddRubricDialog}
+          onSave={handleSaveRubric}
+        />
       </div>
     </SidebarInset>
   );

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,9 +23,26 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
   const [rubricName, setRubricName] = useState("");
   const [rubricDescription, setRubricDescription] = useState("");
 
+  // Clear form when dialog is closed (handles ESC, click outside, etc.)
+  useEffect(() => {
+    if (!open) {
+      setRubricName("");
+      setRubricDescription("");
+    }
+  }, [open]);
+
+  const clearForm = () => {
+    // Clear form and close dialog
+    setRubricName("");
+    setRubricDescription("");
+    onOpenChange(false);
+  };
+
+  const isFormValid = rubricName.trim() !== "" && rubricDescription.trim() !== "";
+
   const handleSave = () => {
     // Validation: both fields must be filled
-    if (!rubricName.trim() || !rubricDescription.trim()) {
+    if (!isFormValid) {
       return;
     }
 
@@ -39,19 +56,11 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
       console.log("Saving rubric:", rubric);
     }
     
-    // Clear form and close dialog
-    setRubricName("");
-    setRubricDescription("");
-    onOpenChange(false);
+    clearForm();
   };
 
-  const isFormValid = rubricName.trim() !== "" && rubricDescription.trim() !== "";
-
   const handleCancel = () => {
-    // Clear form and close dialog
-    setRubricName("");
-    setRubricDescription("");
-    onOpenChange(false);
+    clearForm();
   };
 
   return (
@@ -73,6 +82,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
               placeholder="Enter rubric name"
               value={rubricName}
               onChange={(e) => setRubricName(e.target.value)}
+              aria-required={true}
             />
           </div>
           <div className="space-y-2">
@@ -85,6 +95,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
               value={rubricDescription}
               onChange={(e) => setRubricDescription(e.target.value)}
               rows={4}
+              aria-required={true}
             />
           </div>
         </div>

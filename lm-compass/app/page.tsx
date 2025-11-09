@@ -107,12 +107,12 @@ export default function Home() {
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             LM Compass
           </h1>
-            <div className="flex-1 flex justify-end">
-              <Button variant="outline" onClick={handleNewChat} disabled={isLoading}>
-                <Plus className="size-4 text-muted-foreground" />
-                New Chat
-              </Button>
-            </div>
+          <div className="flex-1 flex justify-end">
+            <Button variant="outline" onClick={handleNewChat} disabled={isLoading}>
+              <Plus className="size-4 text-muted-foreground" />
+              New Chat
+            </Button>
+          </div>
         </header>
 
         <MessagesDisplay 
@@ -129,7 +129,6 @@ export default function Home() {
             isLoading={isLoading}
             setIsLoading={setIsLoading}
             selectedModels={selectedModels}
-            selectedRubric={selectedRubric}
           />
         </div>
 
