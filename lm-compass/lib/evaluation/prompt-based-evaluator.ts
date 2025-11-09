@@ -316,7 +316,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
       }
     });
 
-    // If no winner found (shouldn't happen), return first response
+    // If no winner found, return first response
     if (!winnerModel || !responseMap.has(winnerModel)) {
       return responses[0];
     }
