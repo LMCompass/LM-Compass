@@ -151,6 +151,10 @@ export function PromptInputComponent({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
+
+    setIsLoading(false)
+    abortControllerRef.current = null
+
     setMessages((prev) => {
       const lastMessage = prev[prev.length - 1]
       if (lastMessage && lastMessage.role === 'user') {
@@ -166,11 +170,11 @@ export function PromptInputComponent({
 
   return (
     <div className="w-[75%]">
-      {/* {needsWinnerSelection && (
+      {needsWinnerSelection && (
         <div className="mb-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-lg text-sm text-yellow-800 dark:text-yellow-200">
           Please select a winning response from the options above before continuing the conversation.
         </div>
-      )} */}
+      )}
       <PromptInput
         value={input}
         onValueChange={handleValueChange}
@@ -193,7 +197,7 @@ export function PromptInputComponent({
                 size="icon"
                 className="h-8 w-8 rounded-full"
                 onClick={isLoading ? handleStop : handleSubmit}
-                disabled={isLoading || !input.trim() || needsWinnerSelection}
+                disabled={!isLoading && (needsWinnerSelection || !input.trim())}
               >
                 {isLoading ? (
                   <Square className="size-5 fill-current" />

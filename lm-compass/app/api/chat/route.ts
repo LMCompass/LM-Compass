@@ -115,7 +115,6 @@ export async function POST(req: Request) {
       } catch (evaluationError) {
         // If evaluation fails, log error and return all results without metadata
         console.error('Evaluation failed:', evaluationError);
-        // Fall through to return all results without metadata
       }
     }
 

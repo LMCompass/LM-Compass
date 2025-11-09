@@ -8,7 +8,7 @@ import type { IEvaluationService } from './interfaces';
 import type { ModelResponse, EvaluationResult, EvaluationOptions, EvaluationScore } from './types';
 
 /**
- * Default rubric for evaluation
+ * Default rubric for evaluation (SHOULD BE EXTERNALIZED AND IMPORTED)
  */
 const DEFAULT_RUBRIC = `Correctness & Accuracy (25 points) — Ensures claims are factually accurate and verifiable, addressing the most critical concern of hallucination-free responses. This is weighted highest because inaccurate information undermines all other qualities.
 
@@ -23,7 +23,7 @@ Conciseness (10 points) - Rewards efficiency by penalizing unnecessary verbosity
 Appropriateness for Context (9 points) — Checks whether tone, depth, and format match what the questioner likely needs. Technical questions require different treatment than conversational ones.`;
 
 /**
- * Creates a scoring query prompt for evaluation
+ * Creates a scoring query prompt for evaluation (system prompt is currently designed for default rubric but should be generalized)
  */
 function createScoringQuery(userQuery: string, candidateAnswer: string, rubric: string): string {
   return `You are an expert evaluator for a large language model comparison tool. Your role is to provide an objective, rubric-based score for the candidate's response to a user's query.
@@ -73,14 +73,11 @@ export class PromptBasedEvaluator implements IEvaluationService {
   ): Promise<EvaluationResult> {
     const validResponses = responses.filter((r) => !r.error && r.content.trim().length > 0);
 
-    console.log(`[Evaluation] Starting evaluation with ${validResponses.length} valid responses`);
-
     if (validResponses.length < 2) {
       // If less than 2 valid responses, return the first one (or throw if none)
       if (validResponses.length === 0) {
         throw new Error('No valid responses to evaluate');
       }
-      console.log(`[Evaluation] Only ${validResponses.length} response(s), skipping evaluation`);
       return {
         winner: validResponses[0],
         scores: [],
@@ -91,16 +88,11 @@ export class PromptBasedEvaluator implements IEvaluationService {
     const rubric = options.rubric || DEFAULT_RUBRIC;
     const userQuery = options.userQuery;
 
-    console.log(`[Evaluation] Evaluating ${validResponses.length} models`);
-    console.log(`[Evaluation] Models: ${validResponses.map(r => r.model).join(', ')}`);
-
     const { judgeModels, scoringQueries, evaluatedModels } = this.buildScoringQueries(
       validResponses,
       userQuery,
       rubric
     );
-
-    console.log(`[Evaluation] Generated ${scoringQueries.length} evaluation queries`);
 
     // Execute all evaluation queries in parallel
     const evaluationResults = await Promise.allSettled(
@@ -122,17 +114,6 @@ export class PromptBasedEvaluator implements IEvaluationService {
       if (result.status === 'fulfilled') {
         const { score, reasoning } = this.extractScoreAndReasoning(result.value.response);
         
-        // Log each evaluation score
-        if (score !== null) {
-          console.log(
-            `[Evaluation] ${result.value.judgeModel} → ${result.value.evaluatedModel}: ${score}/100`
-          );
-        } else {
-          console.warn(
-            `[Evaluation] Failed to extract score: ${result.value.judgeModel} → ${result.value.evaluatedModel}`
-          );
-        }
-
         return {
           judgeModel: result.value.judgeModel,
           evaluatedModel: result.value.evaluatedModel,
@@ -156,20 +137,8 @@ export class PromptBasedEvaluator implements IEvaluationService {
     // Calculate mean scores for each model
     const meanScores = this.calculateMeanScores(scores, validResponses.map((r) => r.model));
 
-    // Log mean scores
-    console.log('[Evaluation] Mean scores:');
-    Object.entries(meanScores).forEach(([model, meanScore]) => {
-      console.log(`[Evaluation]   ${model}: ${meanScore.toFixed(2)}/100`);
-    });
-
     // Find the winner
     const winner = this.findWinner(validResponses, meanScores);
-
-    if (winner === null) {
-      console.log(`[Evaluation] No winner found - multiple models are tied for the highest score`);
-    } else {
-      console.log(`[Evaluation] Winner: ${winner.model} (Score: ${meanScores[winner.model]?.toFixed(2) || 'N/A'}/100)`);
-    }
 
     return {
       winner,
