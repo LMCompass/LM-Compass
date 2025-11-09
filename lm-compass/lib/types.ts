@@ -1,5 +1,5 @@
 export type EvaluationMetadata = {
-  winnerModel: string;
+  winnerModel: string | null;
   scores: Array<{
     judgeModel: string;
     evaluatedModel: string;
@@ -17,4 +17,5 @@ export type Message = {
   isStopped?: boolean;
   multiResults?: { model: string; content: string }[];
   evaluationMetadata?: EvaluationMetadata;
+  userSelectedWinner?: string;
 };

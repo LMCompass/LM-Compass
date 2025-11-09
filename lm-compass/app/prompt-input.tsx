@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/prompt-input"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, Square } from "lucide-react"
-import { useState, useRef } from "react"
+import { useState, useRef, useMemo } from "react"
 import { Message } from "@/lib/types"
 
 type PromptInputComponentProps = {
@@ -31,6 +31,23 @@ export function PromptInputComponent({
 
   type MultiResult = { model: string; message?: { role: string; content: string }; error?: string }
 
+  // Check if user needs to select a winner before sending another message
+  const needsWinnerSelection = useMemo(() => {
+    if (messages.length === 0) return false
+    const lastMessage = messages[messages.length - 1]
+    
+    // Check if last message is an assistant message with evaluation metadata
+    if (lastMessage.role === 'assistant' && lastMessage.evaluationMetadata) {
+      // Check if there's a tie (no winner) and no user selection yet
+      const hasTie = lastMessage.evaluationMetadata.winnerModel === null
+      const hasNoSelection = !lastMessage.userSelectedWinner
+      const hasMultipleResults = lastMessage.multiResults && lastMessage.multiResults.length > 1
+      
+      return hasTie && hasNoSelection && hasMultipleResults
+    }
+    return false
+  }, [messages])
+
   const coerceToString = (value: unknown): string => {
     if (typeof value === "string") return value
     if (value == null) return ""
@@ -42,7 +59,8 @@ export function PromptInputComponent({
   }
 
   const handleSubmit = async () => {
-    if (!input.trim() || isLoading) return
+    // Prevent submission if waiting for winner selection
+    if (!input.trim() || isLoading || needsWinnerSelection) return
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -67,6 +85,8 @@ export function PromptInputComponent({
         body: JSON.stringify({
           messages: [...messages, userMessage]
             .filter(msg => !msg.isStopped)
+            // Filter out assistant messages with empty content (tie scenarios without selection)
+            .filter(msg => msg.role !== 'assistant' || msg.content.trim().length > 0)
             .map(({ role, content }) => ({
               role,
               content,
@@ -87,14 +107,25 @@ export function PromptInputComponent({
         throw new Error("Invalid response format")
       }
 
+      const multiResults = (data.results as MultiResult[]).map((r) => ({
+        model: r.model,
+        content: r.error ? `Error: ${r.error}` : coerceToString(r.message?.content),
+      }));
+
+      // Set content to winning response if winner exists, otherwise keep empty (tie scenario)
+      let content = "";
+      if (data.evaluationMetadata?.winnerModel) {
+        const winnerResult = multiResults.find((r) => r.model === data.evaluationMetadata.winnerModel);
+        if (winnerResult) {
+          content = winnerResult.content;
+        }
+      }
+
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "",
-        multiResults: (data.results as MultiResult[]).map((r) => ({
-          model: r.model,
-          content: r.error ? `Error: ${r.error}` : coerceToString(r.message?.content),
-        })),
+        content,
+        multiResults,
         evaluationMetadata: data.evaluationMetadata,
       }
       setMessages((prev) => [...prev, assistantMessage])
@@ -134,36 +165,46 @@ export function PromptInputComponent({
   }
 
   return (
-    <PromptInput
-      value={input}
-      onValueChange={handleValueChange}
-      isLoading={isLoading}
-      onSubmit={handleSubmit}
-      disabled={isLoading}
-      className="w-full max-w-(--breakpoint-md)"
-    >
-      <div className="flex items-end gap-2">
-        <PromptInputTextarea placeholder="Ask me anything..." className="flex-1" />
-        <PromptInputActions>
-          <PromptInputAction
-            tooltip={isLoading ? "Stop generation" : "Send message"}
-          >
-            <Button
-              variant="default"
-              size="icon"
-              className="h-8 w-8 rounded-full"
-              onClick={isLoading ? handleStop : handleSubmit}
-              disabled={!isLoading && !input.trim()}
+    <div className="w-[75%]">
+      {/* {needsWinnerSelection && (
+        <div className="mb-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-lg text-sm text-yellow-800 dark:text-yellow-200">
+          Please select a winning response from the options above before continuing the conversation.
+        </div>
+      )} */}
+      <PromptInput
+        value={input}
+        onValueChange={handleValueChange}
+        isLoading={isLoading}
+        onSubmit={handleSubmit}
+        disabled={isLoading || needsWinnerSelection}
+      >
+        <div className="flex items-end gap-2">
+          <PromptInputTextarea 
+            placeholder={needsWinnerSelection ? "Please select a winner first..." : "Ask me anything..."} 
+            className="flex-1"
+            disabled={needsWinnerSelection}
+          />
+          <PromptInputActions>
+            <PromptInputAction
+              tooltip={isLoading ? "Stop generation" : needsWinnerSelection ? "Select a winner first" : "Send message"}
             >
-              {isLoading ? (
-                <Square className="size-5 fill-current" />
-              ) : (
-                <ArrowUp className="size-5" />
-              )}
-            </Button>
-          </PromptInputAction>
-        </PromptInputActions>
-      </div>
-    </PromptInput>
+              <Button
+                variant="default"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={isLoading ? handleStop : handleSubmit}
+                disabled={isLoading || !input.trim() || needsWinnerSelection}
+              >
+                {isLoading ? (
+                  <Square className="size-5 fill-current" />
+                ) : (
+                  <ArrowUp className="size-5" />
+                )}
+              </Button>
+            </PromptInputAction>
+          </PromptInputActions>
+        </div>
+      </PromptInput>
+    </div>
   )
 }

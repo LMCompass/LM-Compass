@@ -91,7 +91,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
     const rubric = options.rubric || DEFAULT_RUBRIC;
     const userQuery = options.userQuery;
 
-    console.log(`[Evaluation] Evaluating ${validResponses.length} models using n² approach`);
+    console.log(`[Evaluation] Evaluating ${validResponses.length} models`);
     console.log(`[Evaluation] Models: ${validResponses.map(r => r.model).join(', ')}`);
 
     const { judgeModels, scoringQueries, evaluatedModels } = this.buildScoringQueries(
@@ -132,7 +132,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
             `[Evaluation] Failed to extract score: ${result.value.judgeModel} → ${result.value.evaluatedModel}`
           );
         }
-        
+
         return {
           judgeModel: result.value.judgeModel,
           evaluatedModel: result.value.evaluatedModel,
@@ -165,7 +165,11 @@ export class PromptBasedEvaluator implements IEvaluationService {
     // Find the winner
     const winner = this.findWinner(validResponses, meanScores);
 
-    console.log(`[Evaluation] Winner: ${winner.model} (Score: ${meanScores[winner.model]?.toFixed(2) || 'N/A'}/100)`);
+    if (winner === null) {
+      console.log(`[Evaluation] No winner found - multiple models are tied for the highest score`);
+    } else {
+      console.log(`[Evaluation] Winner: ${winner.model} (Score: ${meanScores[winner.model]?.toFixed(2) || 'N/A'}/100)`);
+    }
 
     return {
       winner,
@@ -297,28 +301,35 @@ export class PromptBasedEvaluator implements IEvaluationService {
 
   /**
    * Finds the winning response based on mean scores
+   * Returns null if there's a tie (multiple models with the same highest score)
    */
-  private findWinner(responses: ModelResponse[], meanScores: Record<string, number>): ModelResponse {
+  private findWinner(responses: ModelResponse[], meanScores: Record<string, number>): ModelResponse | null {
     // Create response map for quick lookup
     const responseMap = new Map<string, ModelResponse>();
     responses.forEach((r) => {
       responseMap.set(r.model, r);
     });
 
-    // Find model with highest mean score
-    let maxMean = -1;
-    let winnerModel: string | null = null;
+    // Find maximum mean score
+    const scores = Object.values(meanScores);
+    if (scores.length === 0) {
+      return null;
+    }
+    
+    const maxScore = Math.max(...scores);
 
-    Object.entries(meanScores).forEach(([model, meanScore]) => {
-      if (meanScore > maxMean) {
-        maxMean = meanScore;
-        winnerModel = model;
-      }
-    });
+    // Count how many models have the maximum score
+    const modelsWithMaxScore = Object.entries(meanScores).filter(([_, score]) => score === maxScore);
 
-    // If no winner found, return first response
-    if (!winnerModel || !responseMap.has(winnerModel)) {
-      return responses[0];
+    // If multiple models have the same highest score, it's a tie
+    if (modelsWithMaxScore.length > 1) {
+      return null;
+    }
+
+    // Single winner exists
+    const winnerModel = modelsWithMaxScore[0][0];
+    if (!responseMap.has(winnerModel)) {
+      return null;
     }
 
     return responseMap.get(winnerModel)!;

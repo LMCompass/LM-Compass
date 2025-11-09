@@ -101,7 +101,7 @@ export async function POST(req: Request) {
 
         // Create evaluation metadata
         const evaluationMetadata: EvaluationMetadata = {
-          winnerModel: evaluationResult.winner.model,
+          winnerModel: evaluationResult.winner ? evaluationResult.winner.model : null,
           scores: evaluationResult.scores,
           meanScores: evaluationResult.meanScores,
           modelReasoning,

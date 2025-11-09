@@ -25,7 +25,7 @@ export type EvaluationScore = {
  * Result of an evaluation containing the winner and scoring details
  */
 export type EvaluationResult = {
-  winner: ModelResponse;
+  winner: ModelResponse | null;
   scores: EvaluationScore[];
   meanScores: Record<string, number>;
 };
@@ -35,7 +35,7 @@ export type EvaluationResult = {
  * Contains information about the evaluation process and results
  */
 export type EvaluationMetadata = {
-  winnerModel: string;
+  winnerModel: string | null;
   scores: EvaluationScore[];
   meanScores: Record<string, number>;
   modelReasoning: Record<string, string[]>; // Aggregated reasoning for each model

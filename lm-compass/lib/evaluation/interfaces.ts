@@ -13,7 +13,7 @@ export interface IEvaluationService {
    * Evaluate multiple model responses and return the best one
    * @param responses Array of model responses to evaluate
    * @param options Configuration options for evaluation
-   * @returns Promise resolving to the evaluation result with the winner
+   * @returns Promise resolving to the evaluation result with the winner (null if there's a tie)
    */
   evaluate(
     responses: ModelResponse[],
