@@ -85,8 +85,16 @@ export function PromptInputComponent({
         body: JSON.stringify({
           messages: [...messages, userMessage]
             .filter(msg => !msg.isStopped)
-            // Filter out assistant messages with empty content (tie scenarios without selection)
-            .filter(msg => msg.role !== 'assistant' || msg.content.trim().length > 0)
+            // Filter out assistant messages with empty content only in tie scenarios (evaluationMetadata present, no winnerModel)
+            .filter(msg =>
+              msg.role !== 'assistant' ||
+              msg.content.trim().length > 0 ||
+              !(
+                msg.evaluationMetadata &&
+                !msg.evaluationMetadata.winnerModel &&
+                msg.content.trim().length === 0
+              )
+            )
             .map(({ role, content }) => ({
               role,
               content,
