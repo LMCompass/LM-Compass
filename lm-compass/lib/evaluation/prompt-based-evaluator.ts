@@ -201,11 +201,25 @@ export class PromptBasedEvaluator implements IEvaluationService {
     if (markdownMatch) {
       jsonStr = markdownMatch[1];
     } else {
-      // Try to find any JSON object in the text
-      // Use [\s\S] to match any character including newlines
-      const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[0];
+      // Try to find any JSON object in the text using brace counting
+      const firstBrace = responseText.indexOf('{');
+      if (firstBrace !== -1) {
+        let braceCount = 0;
+        let end = -1;
+        for (let i = firstBrace; i < responseText.length; i++) {
+          if (responseText[i] === '{') {
+            braceCount++;
+          } else if (responseText[i] === '}') {
+            braceCount--;
+            if (braceCount === 0) {
+              end = i;
+              break;
+            }
+          }
+        }
+        if (end !== -1) {
+          jsonStr = responseText.slice(firstBrace, end + 1);
+        }
       }
     }
 
