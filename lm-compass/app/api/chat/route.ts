@@ -113,8 +113,15 @@ export async function POST(req: Request) {
           evaluationMetadata,
         });
       } catch (evaluationError) {
-        // If evaluation fails, log error and return all results without metadata
+        // If evaluation fails, log error and return all results with evaluationMetadata indicating failure
         console.error('Evaluation failed:', evaluationError);
+        return NextResponse.json({
+          results: allResults,
+          evaluationMetadata: {
+            status: 'error',
+            errorMessage: evaluationError instanceof Error ? evaluationError.message : 'Evaluation failed',
+          },
+        });
       }
     }
 
