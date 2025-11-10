@@ -1,14 +1,4 @@
-export type EvaluationMetadata = {
-  winnerModel: string | null;
-  scores: Array<{
-    judgeModel: string;
-    evaluatedModel: string;
-    score: number | null;
-    reasoning: string | null;
-  }>;
-  meanScores: Record<string, number>;
-  modelReasoning: Record<string, string[]>;
-};
+import type { EvaluationMetadata } from './evaluation/types';
 
 export type Message = {
   role: 'user' | 'assistant' | 'system';
