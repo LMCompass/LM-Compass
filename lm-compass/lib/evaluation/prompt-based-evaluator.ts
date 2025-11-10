@@ -47,9 +47,9 @@ Calculate the overall score as the weighted sum of all dimension scores, without
 
 Your output must be ONLY a JSON object with:
 
-1. "reasoning": "<One-sentence justification explicitly referencing rubric criteria and weights, including correctness importance>",
+1. "reasoning": "<One-sentence justification explicitly referencing rubric criteria and weights, including correctness importance>"
 
-2."score": <integer score from 0 to 100>
+2. "score": <integer score from 0 to 100>
 
 Use your judgment to apply rubric weightings accurately, and remember that Correctness & Accuracy has the highest impact on the overall score.`;
 }
@@ -233,9 +233,9 @@ export class PromptBasedEvaluator implements IEvaluationService {
       const reasoning = parsed.reasoning;
       
       const extractedScore = typeof score === 'number' && score >= 0 && score <= 100
-        ? Math.round(score)
+        ? score
         : null;
-      
+
       const extractedReasoning = typeof reasoning === 'string' && reasoning.trim().length > 0
         ? reasoning.trim()
         : null;
