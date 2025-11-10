@@ -16,10 +16,13 @@ const llmClient = new OpenAI({
  */
 function extractUserQuery(messages: Array<{ role: string; content: string }>): string {
   // Find the last user message
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') {
-      return messages[i].content;
-    }
+  // for (let i = messages.length - 1; i >= 0; i--) {
+  //   if (messages[i].role === 'user') {
+  //     return messages[i].content;
+  //   }
+  // }
+  if (messages.length >= 2 && messages[messages.length - 2].role === 'user') {
+    return messages[messages.length - 2].content;
   }
   // Fallback: return empty string if no user message found
   return '';

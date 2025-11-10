@@ -73,16 +73,15 @@ export class PromptBasedEvaluator implements IEvaluationService {
   ): Promise<EvaluationResult> {
     const validResponses = responses.filter((r) => !r.error && r.content.trim().length > 0);
 
-    if (validResponses.length < 2) {
-      // If less than 2 valid responses, return the first one (or throw if none)
-      if (validResponses.length === 0) {
-        throw new Error('No valid responses to evaluate');
-      }
+    // If there is only one valid response, return it.
+    if (validResponses.length === 1) {
       return {
         winner: validResponses[0],
         scores: [],
         meanScores: { [validResponses[0].model]: 0 },
       };
+    } else if (validResponses.length === 0) {
+      throw new Error('No valid responses to evaluate');
     }
 
     const rubric = options.rubric || DEFAULT_RUBRIC;
@@ -195,8 +194,8 @@ export class PromptBasedEvaluator implements IEvaluationService {
 
     let jsonStr: string | null = null;
 
-    // First, try to extract JSON from markdown code blocks
-    // Use [\s\S] instead of . with 's' flag for ES2017 compatibility
+    // The regex matches a code block in markdown (with optional 'json' after the backticks) and captures the JSON object inside the code fence.
+    // Example matched pattern: ```json { "score": 75, "reasoning": "..." } ```
     const markdownMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
     if (markdownMatch) {
       jsonStr = markdownMatch[1];
