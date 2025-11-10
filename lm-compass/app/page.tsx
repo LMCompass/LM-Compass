@@ -119,6 +119,7 @@ export default function Home() {
           messages={messages}
           isLoading={isLoading}
           messagesEndRef={messagesEndRef}
+          setMessages={setMessages}
         />
 
         <div className="flex-shrink-0 flex justify-center p-4 border-t bg-background">
