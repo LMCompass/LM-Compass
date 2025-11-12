@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/prompt-input"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, Square } from "lucide-react"
-import { useState, useRef, useMemo, useEffect } from "react"
+import { useState, useRef, useMemo } from "react"
 import { Message } from "@/lib/types"
 
 type PromptInputComponentProps = {
@@ -30,7 +30,6 @@ export function PromptInputComponent({
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("")
   const abortControllerRef = useRef<AbortController | null>(null)
-  const evaluationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   type MultiResult = { model: string; message?: { role: string; content: string }; error?: string }
 
@@ -79,15 +78,6 @@ export function PromptInputComponent({
 
     abortControllerRef.current = new AbortController()
 
-    // Switch to evaluating phase after a delay (assuming models take some time to respond)
-    // This gives a better UX by showing evaluation status
-    evaluationTimeoutRef.current = setTimeout(() => {
-      // Only switch if we have multiple models (evaluation only happens with 2+ models)
-      if (selectedModels.length >= 2) {
-        setLoadingPhase("evaluating")
-      }
-    }, 3000) // Switch to evaluating after 3 seconds
-
     try {
       // Send to API
       const response = await fetch("/api/chat", {
@@ -121,22 +111,70 @@ export function PromptInputComponent({
         throw new Error("Failed to get response")
       }
 
-      const data = await response.json()
+      // Handle streaming response
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      if (!reader) {
+        throw new Error("No response body")
+      }
+
+      let finalData: any = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || ""
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              
+              // Update loading phase when evaluation starts
+              if (data.phase === "evaluating") {
+                setLoadingPhase("evaluating")
+              }
+              
+              // Store final data when complete
+              if (data.phase === "complete") {
+                finalData = data
+              }
+              
+              // Handle errors
+              if (data.phase === "error") {
+                throw new Error(data.error || "Unknown error")
+              }
+            } catch (e) {
+              console.error("Error parsing SSE data:", e)
+            }
+          }
+        }
+      }
+
+      if (!finalData) {
+        throw new Error("No data received")
+      }
 
       // API always returns { results } array for consistent format
-      if (!data.results || !Array.isArray(data.results)) {
+      if (!finalData.results || !Array.isArray(finalData.results)) {
         throw new Error("Invalid response format")
       }
 
-      const multiResults = (data.results as MultiResult[]).map((r) => ({
+      const multiResults = (finalData.results as MultiResult[]).map((r) => ({
         model: r.model,
         content: r.error ? `Error: ${r.error}` : coerceToString(r.message?.content),
       }));
 
       // Set content to winning response if winner exists, otherwise keep empty (tie scenario)
       let content = "";
-      if (data.evaluationMetadata?.winnerModel) {
-        const winnerResult = multiResults.find((r) => r.model === data.evaluationMetadata.winnerModel);
+      if (finalData.evaluationMetadata?.winnerModel) {
+        const winnerResult = multiResults.find((r) => r.model === finalData.evaluationMetadata.winnerModel);
         if (winnerResult) {
           content = winnerResult.content;
         }
@@ -147,7 +185,7 @@ export function PromptInputComponent({
         role: "assistant",
         content,
         multiResults,
-        evaluationMetadata: data.evaluationMetadata,
+        evaluationMetadata: finalData.evaluationMetadata,
       }
       setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
@@ -165,10 +203,6 @@ export function PromptInputComponent({
     } finally {
       setIsLoading(false)
       setLoadingPhase("querying")
-      if (evaluationTimeoutRef.current) {
-        clearTimeout(evaluationTimeoutRef.current)
-        evaluationTimeoutRef.current = null
-      }
       abortControllerRef.current = null
     }
   }
@@ -188,21 +222,8 @@ export function PromptInputComponent({
 
     setIsLoading(false)
     setLoadingPhase("querying")
-    if (evaluationTimeoutRef.current) {
-      clearTimeout(evaluationTimeoutRef.current)
-      evaluationTimeoutRef.current = null
-    }
     abortControllerRef.current = null
   }
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (evaluationTimeoutRef.current) {
-        clearTimeout(evaluationTimeoutRef.current)
-      }
-    }
-  }, [])
 
   const handleValueChange = (value: string) => {
     setInput(value)
