@@ -18,15 +18,19 @@ import { Trophy, ChevronDown, ChevronUp, Check } from "lucide-react";
 type MessagesDisplayProps = {
   messages: MessageType[];
   isLoading: boolean;
+  loadingPhase: "querying" | "evaluating";
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   setMessages: React.Dispatch<React.SetStateAction<MessageType[]>>;
+  selectedModels: string[];
 }
 
 export function MessagesDisplay({ 
   messages, 
   isLoading, 
+  loadingPhase,
   messagesEndRef,
-  setMessages
+  setMessages,
+  selectedModels
 }: MessagesDisplayProps) {
   const [detail, setDetail] = useState<null | { model: string; label: string; content: string }>(null)
   const [showComparison, setShowComparison] = useState<string | null>(null)
@@ -311,7 +315,24 @@ export function MessagesDisplay({
                 className="mt-1"
               />
               <div className="rounded-lg p-2 bg-card text-card-foreground break-words whitespace-normal">
-                <Loader variant="typing" size="md" />
+                <div className="flex items-center gap-2">
+                  <Loader variant="typing" size="md" />
+                  <span className="text-sm text-muted-foreground">
+                    {loadingPhase === "querying" ? (
+                      selectedModels.length > 0 ? (
+                        selectedModels.length === 1 ? (
+                          `Querying ${modelLabelMap[selectedModels[0]] || selectedModels[0]}`
+                        ) : (
+                          `Querying ${selectedModels.map(m => modelLabelMap[m] || m).join(", ")}`
+                        )
+                      ) : (
+                        "Thinking"
+                      )
+                    ) : (
+                      "Evaluating responses"
+                    )}
+                  </span>
+                </div>
               </div>
             </Message>
           )}

@@ -29,6 +29,7 @@ export default function Home() {
   const { open } = useSidebar();
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">("querying");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>(["tngtech/deepseek-r1t2-chimera:free"]);
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
@@ -118,8 +119,10 @@ export default function Home() {
         <MessagesDisplay 
           messages={messages}
           isLoading={isLoading}
+          loadingPhase={loadingPhase}
           messagesEndRef={messagesEndRef}
           setMessages={setMessages}
+          selectedModels={selectedModels}
         />
 
         <div className="flex-shrink-0 flex justify-center p-4 border-t bg-background">
@@ -129,6 +132,7 @@ export default function Home() {
             setMessages={setMessages} 
             isLoading={isLoading}
             setIsLoading={setIsLoading}
+            setLoadingPhase={setLoadingPhase}
             selectedModels={selectedModels}
           />
         </div>

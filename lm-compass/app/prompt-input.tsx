@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/prompt-input"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, Square } from "lucide-react"
-import { useState, useRef, useMemo } from "react"
+import { useState, useRef, useMemo, useEffect } from "react"
 import { Message } from "@/lib/types"
 
 type PromptInputComponentProps = {
@@ -16,6 +16,7 @@ type PromptInputComponentProps = {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
   isLoading: boolean
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
+  setLoadingPhase: React.Dispatch<React.SetStateAction<"querying" | "evaluating">>
   selectedModels: string[]
 }
 
@@ -24,10 +25,12 @@ export function PromptInputComponent({
   setMessages,
   isLoading,
   setIsLoading,
+  setLoadingPhase,
   selectedModels,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("")
   const abortControllerRef = useRef<AbortController | null>(null)
+  const evaluationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   type MultiResult = { model: string; message?: { role: string; content: string }; error?: string }
 
@@ -72,8 +75,18 @@ export function PromptInputComponent({
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
+    setLoadingPhase("querying")
 
     abortControllerRef.current = new AbortController()
+
+    // Switch to evaluating phase after a delay (assuming models take some time to respond)
+    // This gives a better UX by showing evaluation status
+    evaluationTimeoutRef.current = setTimeout(() => {
+      // Only switch if we have multiple models (evaluation only happens with 2+ models)
+      if (selectedModels.length >= 2) {
+        setLoadingPhase("evaluating")
+      }
+    }, 3000) // Switch to evaluating after 3 seconds
 
     try {
       // Send to API
@@ -151,6 +164,11 @@ export function PromptInputComponent({
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+      setLoadingPhase("querying")
+      if (evaluationTimeoutRef.current) {
+        clearTimeout(evaluationTimeoutRef.current)
+        evaluationTimeoutRef.current = null
+      }
       abortControllerRef.current = null
     }
   }
@@ -169,8 +187,22 @@ export function PromptInputComponent({
     })
 
     setIsLoading(false)
+    setLoadingPhase("querying")
+    if (evaluationTimeoutRef.current) {
+      clearTimeout(evaluationTimeoutRef.current)
+      evaluationTimeoutRef.current = null
+    }
     abortControllerRef.current = null
   }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (evaluationTimeoutRef.current) {
+        clearTimeout(evaluationTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleValueChange = (value: string) => {
     setInput(value)
