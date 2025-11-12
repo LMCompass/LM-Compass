@@ -122,39 +122,48 @@ export function PromptInputComponent({
 
       let finalData: any = null
 
-      while (true) {
-        const { done, value } = await reader.read()
-        
-        if (done) break
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          
+          if (done) break
 
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() || ""
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          buffer = lines.pop() || ""
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6))
-              
-              // Update loading phase when evaluation starts
-              if (data.phase === "evaluating") {
-                setLoadingPhase("evaluating")
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6))
+                
+                // Update loading phase when evaluation starts
+                if (data.phase === "evaluating") {
+                  setLoadingPhase("evaluating")
+                }
+                
+                // Store final data when complete
+                if (data.phase === "complete") {
+                  finalData = data
+                }
+                
+                // Handle errors
+                if (data.phase === "error") {
+                  throw new Error(data.error || "Unknown error")
+                }
+              } catch (e) {
+                console.error("Error parsing SSE data:", e)
+                // Re-throw if we failed to parse critical phase data
+                if (line.includes('"phase":"complete"') || line.includes('"phase":"error"')) {
+                  throw new Error("Failed to parse server response")
+                }
               }
-              
-              // Store final data when complete
-              if (data.phase === "complete") {
-                finalData = data
-              }
-              
-              // Handle errors
-              if (data.phase === "error") {
-                throw new Error(data.error || "Unknown error")
-              }
-            } catch (e) {
-              console.error("Error parsing SSE data:", e)
             }
           }
         }
+      } finally {
+        // Ensure reader is released even if request is aborted or an error occurs
+        reader.releaseLock()
       }
 
       if (!finalData) {

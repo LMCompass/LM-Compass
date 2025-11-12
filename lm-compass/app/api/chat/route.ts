@@ -125,13 +125,13 @@ export async function POST(req: Request) {
                 evaluationMetadata,
               });
             } catch (evaluationError) {
-              // If evaluation fails, log error and return all results with evaluationMetadata indicating failure
+              // If evaluation fails, log error and return all results with evaluationError
               console.error('Evaluation failed:', evaluationError);
               sendProgress({
                 phase: 'complete',
                 results: allResults,
-                evaluationMetadata: {
-                  status: 'error',
+                evaluationMetadata: undefined,
+                evaluationError: {
                   errorMessage: evaluationError instanceof Error ? evaluationError.message : 'Evaluation failed',
                 },
               });
