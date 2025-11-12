@@ -30,6 +30,7 @@ export default function Home() {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>(["tngtech/deepseek-r1t2-chimera:free"]);
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
   const [chatStarted, setChatStarted] = useState(false);
@@ -38,7 +39,12 @@ export default function Home() {
   const [chatId, setChatId] = useState(generateChatId());
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   };
 
   useEffect(() => {
@@ -96,8 +102,8 @@ export default function Home() {
   };
 
   return (
-    <SidebarInset>
-      <div className="h-screen flex flex-col">
+    <SidebarInset className="overflow-hidden">
+      <div className="h-screen flex flex-col overflow-hidden">
         <header className="flex-shrink-0 flex items-center p-4 sm:p-6 border-b">
           <div className="flex items-center gap-4 flex-1">
             {!open && <SidebarTrigger />}
@@ -119,6 +125,7 @@ export default function Home() {
           messages={messages}
           isLoading={isLoading}
           messagesEndRef={messagesEndRef}
+          messagesContainerRef={messagesContainerRef}
           setMessages={setMessages}
         />
 
