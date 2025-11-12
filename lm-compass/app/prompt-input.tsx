@@ -16,6 +16,7 @@ type PromptInputComponentProps = {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
   isLoading: boolean
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
+  setLoadingPhase: React.Dispatch<React.SetStateAction<"querying" | "evaluating">>
   selectedModels: string[]
 }
 
@@ -24,6 +25,7 @@ export function PromptInputComponent({
   setMessages,
   isLoading,
   setIsLoading,
+  setLoadingPhase,
   selectedModels,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("")
@@ -72,6 +74,7 @@ export function PromptInputComponent({
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
+    setLoadingPhase("querying")
 
     abortControllerRef.current = new AbortController()
 
@@ -108,22 +111,79 @@ export function PromptInputComponent({
         throw new Error("Failed to get response")
       }
 
-      const data = await response.json()
+      // Handle streaming response
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      if (!reader) {
+        throw new Error("No response body")
+      }
+
+      let finalData: any = null
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          buffer = lines.pop() || ""
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6))
+                
+                // Update loading phase when evaluation starts
+                if (data.phase === "evaluating") {
+                  setLoadingPhase("evaluating")
+                }
+                
+                // Store final data when complete
+                if (data.phase === "complete") {
+                  finalData = data
+                }
+                
+                // Handle errors
+                if (data.phase === "error") {
+                  throw new Error(data.error || "Unknown error")
+                }
+              } catch (e) {
+                console.error("Error parsing SSE data:", e)
+                // Re-throw if we failed to parse critical phase data
+                if (line.includes('"phase":"complete"') || line.includes('"phase":"error"')) {
+                  throw new Error("Failed to parse server response")
+                }
+              }
+            }
+          }
+        }
+      } finally {
+        // Ensure reader is released even if request is aborted or an error occurs
+        reader.releaseLock()
+      }
+
+      if (!finalData) {
+        throw new Error("No data received")
+      }
 
       // API always returns { results } array for consistent format
-      if (!data.results || !Array.isArray(data.results)) {
+      if (!finalData.results || !Array.isArray(finalData.results)) {
         throw new Error("Invalid response format")
       }
 
-      const multiResults = (data.results as MultiResult[]).map((r) => ({
+      const multiResults = (finalData.results as MultiResult[]).map((r) => ({
         model: r.model,
         content: r.error ? `Error: ${r.error}` : coerceToString(r.message?.content),
       }));
 
       // Set content to winning response if winner exists, otherwise keep empty (tie scenario)
       let content = "";
-      if (data.evaluationMetadata?.winnerModel) {
-        const winnerResult = multiResults.find((r) => r.model === data.evaluationMetadata.winnerModel);
+      if (finalData.evaluationMetadata?.winnerModel) {
+        const winnerResult = multiResults.find((r) => r.model === finalData.evaluationMetadata.winnerModel);
         if (winnerResult) {
           content = winnerResult.content;
         }
@@ -134,7 +194,7 @@ export function PromptInputComponent({
         role: "assistant",
         content,
         multiResults,
-        evaluationMetadata: data.evaluationMetadata,
+        evaluationMetadata: finalData.evaluationMetadata,
       }
       setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
@@ -151,6 +211,7 @@ export function PromptInputComponent({
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+      setLoadingPhase("querying")
       abortControllerRef.current = null
     }
   }
@@ -169,6 +230,7 @@ export function PromptInputComponent({
     })
 
     setIsLoading(false)
+    setLoadingPhase("querying")
     abortControllerRef.current = null
   }
 
