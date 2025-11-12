@@ -20,6 +20,7 @@ type MessagesDisplayProps = {
   isLoading: boolean;
   loadingPhase: "querying" | "evaluating";
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  messagesContainerRef: React.RefObject<HTMLDivElement | null>;
   setMessages: React.Dispatch<React.SetStateAction<MessageType[]>>;
   selectedModels: string[];
 }
@@ -29,6 +30,7 @@ export function MessagesDisplay({
   isLoading, 
   loadingPhase,
   messagesEndRef,
+  messagesContainerRef,
   setMessages,
   selectedModels
 }: MessagesDisplayProps) {
@@ -65,7 +67,7 @@ export function MessagesDisplay({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
       {messages.length === 0 ? (
         <div className="flex items-center justify-center h-full text-muted-foreground">
           <p>Start a conversation by typing a message below.</p>
