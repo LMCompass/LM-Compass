@@ -7,20 +7,28 @@ import type { OpenAI } from 'openai';
 import type { IEvaluationService } from './interfaces';
 import type { ModelResponse, EvaluationResult, EvaluationOptions, EvaluationScore } from './types';
 
-/**
- * Default rubric for evaluation (SHOULD BE EXTERNALIZED AND IMPORTED)
- */
-const DEFAULT_RUBRIC = `Correctness & Accuracy (25 points) — Ensures claims are factually accurate and verifiable, addressing the most critical concern of hallucination-free responses. This is weighted highest because inaccurate information undermines all other qualities.
+// Load default rubric from file (app/rubric/types/default.txt) with a safe fallback.
+// We read from disk at runtime so the rubric isn't hardcoded here. If the file
+// is missing or unreadable (e.g., running in an environment without filesystem
+// access), we log a warning and return an empty string.
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-Completeness (20 points) - Verifies the answer addresses all aspects of the query without significant omissions. This prevents shallow or partial responses that technically answer only part of the question.
+// Build the rubric filepath at runtime instead of importing the .txt file.
+// Importing a .txt directly requires a bundler loader in Next.js and causes
+// the "Unknown module type" error. Reading the file at runtime avoids that.
+const DEFAULT_RUBRIC_PATH = join(process.cwd(), 'app', 'rubric', 'types', 'default.txt');
 
-Clarity & Coherence (18 points) - Assesses whether the answer is well-organized with logical flow. Research shows that coherence and relevance are strong signals of problem-solving quality.
+function loadDefaultRubric(): string {
+  try {
+    return readFileSync(DEFAULT_RUBRIC_PATH, 'utf-8');
+  } catch (err) {
+    console.warn(`[PromptBasedEvaluator] could not read default rubric at ${DEFAULT_RUBRIC_PATH}:`, err);
+    return '';
+  }
+}
 
-Relevance (18 points) - Ensures all information pertains to the question, avoiding tangential content that confuses the issue. This maintains focus and efficiency.
-
-Conciseness (10 points) - Rewards efficiency by penalizing unnecessary verbosity or repetition while maintaining completeness. This balances against verbose but complete responses.
-
-Appropriateness for Context (9 points) — Checks whether tone, depth, and format match what the questioner likely needs. Technical questions require different treatment than conversational ones.`;
+const DEFAULT_RUBRIC = loadDefaultRubric();
 
 /**
  * Creates a scoring query prompt for evaluation (system prompt is currently designed for default rubric but should be generalized)
