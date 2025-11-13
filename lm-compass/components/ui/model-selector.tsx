@@ -25,48 +25,39 @@ interface ModelSelectorProps {
 
 export const models = [
   // OpenAI Models
-  { value: "openai/gpt-4o", label: "GPT-4o", provider: "OpenAI" },
-  { value: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "OpenAI" },
-  { value: "openai/gpt-4-turbo", label: "GPT-4 Turbo", provider: "OpenAI" },
-  { value: "openai/gpt-3.5-turbo", label: "GPT-3.5 Turbo", provider: "OpenAI" },
-  
+  { value: "openai/gpt-5.1", label: "GPT-5.1", provider: "OpenAI" },
+  { value: "openai/gpt-5-mini", label: "GPT-5 Mini", provider: "OpenAI" },
+  { value: "openai/gpt-5-nano", label: "GPT-5 Nano", provider: "OpenAI" },
+  { value: "openai/gpt-4.1", label: "GPT-4.1", provider: "OpenAI" },
+
   // Anthropic Models
   { value: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5", provider: "Anthropic" },
-  { value: "anthropic/claude-opus-4", label: "Claude Opus 4", provider: "Anthropic" },
-  { value: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku", provider: "Anthropic" },
-  { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet", provider: "Anthropic" },
+  { value: "anthropic/claude-haiku-4.5", label: "Claude 4.5 Haiku", provider: "Anthropic" },
+  { value: "anthropic/claude-opus-4.1", label: "Claude Opus 4.1", provider: "Anthropic" },
+  { value: "anthropic/claude-3.7-sonnet", label: "Claude 3.7 Sonnet", provider: "Anthropic" },
   
   // Google Models
-  { value: "google/gemini-pro-1.5", label: "Gemini Pro 1.5", provider: "Google" },
-  { value: "google/gemini-flash-1.5", label: "Gemini Flash 1.5", provider: "Google" },
-  { value: "google/gemini-pro", label: "Gemini Pro", provider: "Google" },
+  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "Google" },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "Google" },
+  { value: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", provider: "Google" },
   
   // Meta Models
-  { value: "meta-llama/llama-3.1-405b-instruct", label: "Llama 3.1 405B", provider: "Meta" },
-  { value: "meta-llama/llama-3.1-70b-instruct", label: "Llama 3.1 70B", provider: "Meta" },
-  { value: "meta-llama/llama-3.1-8b-instruct", label: "Llama 3.1 8B", provider: "Meta" },
+  { value: "meta-llama/llama-4-maverick", label: "Llama 4 Maverick", provider: "Meta" },
+  { value: "meta-llama/llama-4-scout", label: "Llama 4 Scout", provider: "Meta" },
   
   // DeepSeek Models
   { value: "tngtech/deepseek-r1t2-chimera:free", label: "DeepSeek Chimera", provider: "DeepSeek" },
-  { value: "deepseek/deepseek-chat", label: "DeepSeek Chat", provider: "DeepSeek" },
-  { value: "deepseek/deepseek-coder", label: "DeepSeek Coder", provider: "DeepSeek" },
+  { value: "deepseek/deepseek-chat-v3-0324", label: "DeepSeek Chat", provider: "DeepSeek" },
+  { value: "deepseek/deepseek-v3.2-exp", label: "DeepSeek Coder", provider: "DeepSeek" },
   
   // xAI Models
-  { value: "xai/grok-4-fast:free", label: "Grok 4 Fast", provider: "xAI" },
-  { value: "xai/grok-2", label: "Grok 2", provider: "xAI" },
+  { value: "x-ai/grok-4", label: "Grok 4", provider: "xAI" },
+  { value: "x-ai/grok-4-fast", label: "Grok 4 Fast", provider: "xAI" },
+  { value: "x-ai/grok-code-fast-1", label: "Grok Code Fast 1", provider: "xAI" },
   
   // Mistral Models
-  { value: "mistralai/mistral-7b-instruct", label: "Mistral 7B", provider: "Mistral" },
-  { value: "mistralai/mixtral-8x7b-instruct", label: "Mixtral 8x7B", provider: "Mistral" },
-  { value: "mistralai/mixtral-8x22b-instruct", label: "Mixtral 8x22B", provider: "Mistral" },
-  
-  // Cohere Models
-  { value: "cohere/command-r-plus", label: "Command R+", provider: "Cohere" },
-  { value: "cohere/command-r", label: "Command R", provider: "Cohere" },
-  
-  // Perplexity Models
-  { value: "perplexity/llama-3.1-sonar-small-128k-online", label: "Sonar Small", provider: "Perplexity" },
-  { value: "perplexity/llama-3.1-sonar-large-128k-online", label: "Sonar Large", provider: "Perplexity" },
+  { value: "mistralai/mistral-nemo", label: "Mistral Nemo", provider: "Mistral" },
+  { value: "mistralai/mistral-small-3.2-24b-instruct", label: "Mistral Small 3.2", provider: "Mistral" },
 ]
 
 export function ModelSelector({ value, onChange }: ModelSelectorProps) {
