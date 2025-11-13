@@ -25,7 +25,7 @@ interface ModelSelectorProps {
 
 export const models = [
   // OpenAI Models
-  { value: "openai/gpt-5", label: "GPT-5", provider: "OpenAI" },
+  { value: "openai/gpt-5.1", label: "GPT-5.1", provider: "OpenAI" },
   { value: "openai/gpt-5-mini", label: "GPT-5 Mini", provider: "OpenAI" },
   { value: "openai/gpt-5-nano", label: "GPT-5 Nano", provider: "OpenAI" },
   { value: "openai/gpt-4.1", label: "GPT-4.1", provider: "OpenAI" },
