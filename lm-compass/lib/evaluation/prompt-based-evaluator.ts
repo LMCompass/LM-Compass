@@ -7,28 +7,22 @@ import type { OpenAI } from 'openai';
 import type { IEvaluationService } from './interfaces';
 import type { ModelResponse, EvaluationResult, EvaluationOptions, EvaluationScore } from './types';
 
-// Load default rubric from file (app/rubric/types/default.txt) with a safe fallback.
-// We read from disk at runtime so the rubric isn't hardcoded here. If the file
-// is missing or unreadable (e.g., running in an environment without filesystem
-// access), we log a warning and return an empty string.
+// Load rubric from file (app/rubric/types/default.txt) with a safe fallback.
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-// Build the rubric filepath at runtime instead of importing the .txt file.
-// Importing a .txt directly requires a bundler loader in Next.js and causes
-// the "Unknown module type" error. Reading the file at runtime avoids that.
-const DEFAULT_RUBRIC_PATH = join(process.cwd(), 'app', 'rubric', 'types', 'default.txt');
+const SELECTED_RUBRIC_PATH = join(process.cwd(), 'app', 'rubric', 'types', 'default.txt');
 
-function loadDefaultRubric(): string {
+function loadRubric(): string {
   try {
-    return readFileSync(DEFAULT_RUBRIC_PATH, 'utf-8');
+    return readFileSync(SELECTED_RUBRIC_PATH, 'utf-8');
   } catch (err) {
-    console.warn(`[PromptBasedEvaluator] could not read default rubric at ${DEFAULT_RUBRIC_PATH}:`, err);
+    console.warn(`[PromptBasedEvaluator] could not read default rubric at ${SELECTED_RUBRIC_PATH}:`, err);
     return '';
   }
 }
 
-const DEFAULT_RUBRIC = loadDefaultRubric();
+const SELECTED_RUBRIC = loadRubric();
 
 /**
  * Creates a scoring query prompt for evaluation (system prompt is currently designed for default rubric but should be generalized)
@@ -92,7 +86,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
       throw new Error('No valid responses to evaluate');
     }
 
-    const rubric = options.rubric || DEFAULT_RUBRIC;
+    const rubric = options.rubric || SELECTED_RUBRIC;
     const userQuery = options.userQuery;
 
     const { judgeModels, scoringQueries, evaluatedModels } = this.buildScoringQueries(
