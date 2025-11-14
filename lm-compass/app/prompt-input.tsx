@@ -246,7 +246,7 @@ export function PromptInputComponent({
         </div>
       )}
       {selectedModels.length === 0 && !needsWinnerSelection && (
-        <div className="mb-2 px-4 py-2bg-yellow-50 dark:bg-yellow-950/20 border border-blue-200 dark:border-blue-900 rounded-lg text-sm text-black-800 dark:text-black-200">
+        <div className="mb-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-950/20 border border-blue-200 dark:border-blue-900 rounded-lg text-sm text-black-800 dark:text-black-200">
           Please select at least one model from the dropdown above before sending a message.
         </div>
       )}
