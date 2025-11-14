@@ -31,7 +31,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">("querying");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [selectedModels, setSelectedModels] = useState<string[]>(["tngtech/deepseek-r1t2-chimera:free"]);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
   const [chatStarted, setChatStarted] = useState(false);
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
@@ -76,8 +76,8 @@ export default function Home() {
         setSelectedModels(pendingModels);
       }
     } else {
-      // Fallback to default if no pending models
-      setSelectedModels(["tngtech/deepseek-r1t2-chimera:free"]);
+      // If no pending models, set to empty array (user must select)
+      setSelectedModels([]);
     }
     setMessages([]);
     setChatStarted(false);
