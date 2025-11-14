@@ -241,7 +241,7 @@ export function PromptInputComponent({
   return (
     <div className="w-full md:w-3/4 lg:w-2/3">
       {needsWinnerSelection && (
-        <div className="mb-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-lg text-sm text-yellow-800 dark:text-yellow-200">
+        <div className="mb-2 px-4 py-2bg-yellow-50 dark:bg-yellow-950/20 border border-blue-200 dark:border-blue-900 rounded-lg text-sm text-black-800 dark:text-black-200">
           Please select a winning response from the options above before continuing the conversation.
         </div>
       )}
