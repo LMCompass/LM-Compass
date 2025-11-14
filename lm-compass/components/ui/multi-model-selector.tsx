@@ -32,6 +32,17 @@ export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps
   const selectedLabels = selected.map((m) => m.label)
   const selectedCount = values.length
 
+  // Sort models by selected status, so the selected models are at the top
+  const sortedModels = React.useMemo(() => {
+    return [...models].sort((a, b) => {
+      const aSelected = values.includes(a.value)
+      const bSelected = values.includes(b.value)
+      if (aSelected && !bSelected) return -1
+      if (!aSelected && bSelected) return 1
+      return 0
+    })
+  }, [values])
+
   const toggleValue = (val: string) => {
     const exists = values.includes(val)
     if (exists) {
@@ -47,37 +58,36 @@ export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={open}
-                className="w-[250px] justify-between"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Sparkles className="h-4 w-4 text-muted-foreground" />
-                  {selectedCount === 0 ? (
-                    <span className="text-muted-foreground truncate">Select models (max 4)</span>
-                  ) : (
-                    <span className="truncate">
-                      {selectedCount} {selectedCount === 1 ? 'model' : 'models'} selected
-                    </span>
-                  )}
-                </div>
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          {selectedLabels.length > 0 && (
-            <TooltipContent side="bottom">
-              {selectedLabels.join(", ")}
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-[250px] justify-between"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+                {selectedCount === 0 ? (
+                  <span className="text-muted-foreground truncate">Select models (max 4)</span>
+                ) : (
+                  <span className="truncate">
+                    {selectedCount} {selectedCount === 1 ? 'model' : 'models'} selected
+                  </span>
+                )}
+              </div>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {selectedLabels.length > 0
+              ? selectedLabels.join(", ")
+              : "No models selected"
+            }
+          </TooltipContent>
+      </Tooltip>
 
       <PopoverContent className="w-[320px] p-0">
         <Command>
@@ -85,15 +95,7 @@ export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps
           <CommandList>
             <CommandEmpty>No model found.</CommandEmpty>
             <CommandGroup>
-              {models
-                .sort((a, b) => {
-                  const aSelected = values.includes(a.value)
-                  const bSelected = values.includes(b.value)
-                  if (aSelected && !bSelected) return -1
-                  if (!aSelected && bSelected) return 1
-                  return 0
-                })
-                .map((model) => (
+              {sortedModels.map((model) => (
                   <CommandItem
                     key={model.value}
                     value={model.value}
