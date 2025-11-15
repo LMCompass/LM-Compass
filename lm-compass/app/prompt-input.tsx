@@ -61,8 +61,8 @@ export function PromptInputComponent({
   }
 
   const handleSubmit = async () => {
-    // Prevent submission if waiting for winner selection
-    if (!input.trim() || isLoading || needsWinnerSelection) return
+    // Prevent submission if waiting for winner selection, no input, or no models selected
+    if (!input.trim() || isLoading || needsWinnerSelection || selectedModels.length === 0) return
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -241,8 +241,13 @@ export function PromptInputComponent({
   return (
     <div className="w-full md:w-3/4 lg:w-2/3">
       {needsWinnerSelection && (
-        <div className="mb-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-lg text-sm text-yellow-800 dark:text-yellow-200">
+        <div className="mb-2 px-4 py-2bg-yellow-50 dark:bg-yellow-950/20 border border-blue-200 dark:border-blue-900 rounded-lg text-sm text-black-800 dark:text-black-200">
           Please select a winning response from the options above before continuing the conversation.
+        </div>
+      )}
+      {selectedModels.length === 0 && !needsWinnerSelection && (
+        <div className="mb-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-950/20 border border-blue-200 dark:border-blue-900 rounded-lg text-sm text-black-800 dark:text-black-200">
+          Please select at least one model from the dropdown above before sending a message.
         </div>
       )}
       <PromptInput
@@ -250,24 +255,38 @@ export function PromptInputComponent({
         onValueChange={handleValueChange}
         isLoading={isLoading}
         onSubmit={handleSubmit}
-        disabled={isLoading || needsWinnerSelection}
+        disabled={isLoading || needsWinnerSelection || selectedModels.length === 0}
       >
         <div className="flex items-end gap-2">
           <PromptInputTextarea 
-            placeholder={needsWinnerSelection ? "Please select a winner first..." : "Ask me anything..."} 
+            placeholder={
+              needsWinnerSelection 
+                ? "Please select a winner first..." 
+                : selectedModels.length === 0 
+                ? "Please select at least one model first..." 
+                : "Ask me anything..."
+            } 
             className="flex-1"
-            disabled={needsWinnerSelection}
+            disabled={needsWinnerSelection || selectedModels.length === 0}
           />
           <PromptInputActions>
             <PromptInputAction
-              tooltip={isLoading ? "Stop generation" : needsWinnerSelection ? "Select a winner first" : "Send message"}
+              tooltip={
+                isLoading 
+                  ? "Stop generation" 
+                  : needsWinnerSelection 
+                  ? "Select a winner first" 
+                  : selectedModels.length === 0
+                  ? "Select at least one model first"
+                  : "Send message"
+              }
             >
               <Button
                 variant="default"
                 size="icon"
                 className="h-8 w-8 rounded-full"
                 onClick={isLoading ? handleStop : handleSubmit}
-                disabled={!isLoading && (needsWinnerSelection || !input.trim())}
+                disabled={!isLoading && (needsWinnerSelection || !input.trim() || selectedModels.length === 0)}
               >
                 {isLoading ? (
                   <Square className="size-5 fill-current" />
