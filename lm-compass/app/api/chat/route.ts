@@ -120,6 +120,7 @@ export async function POST(req: Request) {
                 scores: evaluationResult.scores,
                 meanScores: evaluationResult.meanScores,
                 modelReasoning,
+                tiedModels: evaluationResult.tiedModels,
               };
 
               // Send final results

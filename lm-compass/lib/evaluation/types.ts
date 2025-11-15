@@ -28,6 +28,7 @@ export type EvaluationResult = {
   winner: ModelResponse | null;
   scores: EvaluationScore[];
   meanScores: Record<string, number>;
+  tiedModels: string[]; // List of model names that are tied for the highest score
 };
 
 /**
@@ -39,6 +40,7 @@ export type EvaluationMetadata = {
   scores: EvaluationScore[];
   meanScores: Record<string, number>;
   modelReasoning: Record<string, string[]>; // Aggregated reasoning for each model
+  tiedModels: string[]; // List of model names that are tied for the highest score
 };
 
 /**
