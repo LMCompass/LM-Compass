@@ -28,7 +28,7 @@ export type EvaluationResult = {
   winner: ModelResponse | null;
   scores: EvaluationScore[];
   meanScores: Record<string, number>;
-  tiedModels: string[]; // List of model names that are tied for the highest score
+  tiedModels: string[]; // List of model IDs that are tied for the highest score
 };
 
 /**
