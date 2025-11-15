@@ -18,6 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { models } from "@/components/ui/model-selector"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface MultiModelSelectorProps {
   values: string[]
@@ -29,8 +30,18 @@ export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps
 
   const selected = models.filter((m) => values.includes(m.value))
   const selectedLabels = selected.map((m) => m.label)
-  const displayLabels = selectedLabels.slice(0, 2)
-  const overflowCount = Math.max(0, selectedLabels.length - 2)
+  const selectedCount = values.length
+
+  // Sort models by selected status, so the selected models are at the top
+  const sortedModels = React.useMemo(() => {
+    return [...models].sort((a, b) => {
+      const aSelected = values.includes(a.value)
+      const bSelected = values.includes(b.value)
+      if (aSelected && !bSelected) return -1
+      if (!aSelected && bSelected) return 1
+      return 0
+    })
+  }, [values])
 
   const toggleValue = (val: string) => {
     const exists = values.includes(val)
@@ -38,6 +49,7 @@ export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps
       onChange(values.filter((v) => v !== val))
     } else {
       if (values.length >= 4) {
+        // TODO: Show a toast notification that the user has selected the maximum number of models
         return
       }
       onChange([...values, val])
@@ -46,61 +58,61 @@ export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-[280px] justify-between"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Sparkles className="h-4 w-4 text-muted-foreground" />
-            {selectedLabels.length === 0 ? (
-              <span className="text-muted-foreground truncate">Select models (max 4)</span>
-            ) : (
-              <div className="flex items-center gap-1 min-w-0">
-                {displayLabels.map((label) => (
-                  <span
-                    key={label}
-                    className="max-w-[110px] truncate text-xs px-1.5 py-0.5 rounded bg-muted text-foreground border"
-                    title={label}
-                  >
-                    {label}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-[250px] justify-between"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+                {selectedCount === 0 ? (
+                  <span className="text-muted-foreground truncate">Select models (max 4)</span>
+                ) : (
+                  <span className="truncate">
+                    {selectedCount} {selectedCount === 1 ? 'model' : 'models'} selected
                   </span>
-                ))}
-                {overflowCount > 0 && (
-                  <span className="text-xs text-muted-foreground">+{overflowCount}</span>
                 )}
               </div>
-            )}
-          </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {selectedLabels.length > 0
+              ? selectedLabels.join(", ")
+              : "No models selected"
+            }
+          </TooltipContent>
+      </Tooltip>
+
       <PopoverContent className="w-[320px] p-0">
         <Command>
           <CommandInput placeholder="Search models..." />
           <CommandList>
             <CommandEmpty>No model found.</CommandEmpty>
             <CommandGroup>
-              {models.map((model) => (
-                <CommandItem
-                  key={model.value}
-                  value={model.value}
-                  onSelect={() => toggleValue(model.value)}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      values.includes(model.value) ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <div className="flex flex-col">
-                    <span className="font-medium">{model.label}</span>
-                    <span className="text-xs text-muted-foreground">{model.provider}</span>
-                  </div>
-                </CommandItem>
-              ))}
+              {sortedModels.map((model) => (
+                  <CommandItem
+                    key={model.value}
+                    value={model.value}
+                    onSelect={() => toggleValue(model.value)}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        values.includes(model.value) ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-medium">{model.label}</span>
+                      <span className="text-xs text-muted-foreground">{model.provider}</span>
+                    </div>
+                  </CommandItem>
+                ))}
             </CommandGroup>
           </CommandList>
         </Command>
