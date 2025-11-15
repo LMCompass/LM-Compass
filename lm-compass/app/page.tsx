@@ -43,7 +43,7 @@ export default function Home() {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTo({
         top: messagesContainerRef.current.scrollHeight,
-        behavior: 'smooth'
+        behavior: "smooth"
       });
     }
   };
@@ -122,7 +122,6 @@ export default function Home() {
           messages={messages}
           isLoading={isLoading}
           loadingPhase={loadingPhase}
-          messagesEndRef={messagesEndRef}
           messagesContainerRef={messagesContainerRef}
           setMessages={setMessages}
           selectedModels={selectedModels}

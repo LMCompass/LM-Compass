@@ -19,7 +19,6 @@ type MessagesDisplayProps = {
   messages: MessageType[];
   isLoading: boolean;
   loadingPhase: "querying" | "evaluating";
-  messagesEndRef: React.RefObject<HTMLDivElement | null>;
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
   setMessages: React.Dispatch<React.SetStateAction<MessageType[]>>;
   selectedModels: string[];
@@ -29,7 +28,6 @@ export function MessagesDisplay({
   messages, 
   isLoading, 
   loadingPhase,
-  messagesEndRef,
   messagesContainerRef,
   setMessages,
   selectedModels
@@ -352,7 +350,6 @@ export function MessagesDisplay({
           </Dialog>
         </>
       )}
-      <div ref={messagesEndRef} />
     </div>
   );
 }
