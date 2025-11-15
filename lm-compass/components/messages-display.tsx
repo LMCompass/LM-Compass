@@ -80,6 +80,7 @@ export function MessagesDisplay({
             const hasEvaluation = hasMultipleResults && evaluationMetadata;
             const hasNoWinner = evaluationMetadata?.winnerModel === null;
             const userSelectedWinner = message.userSelectedWinner;
+            const tiedModels = evaluationMetadata?.tiedModels || [];
 
             const displayModel = userSelectedWinner || evaluationMetadata?.winnerModel || null;
             const displayResult = displayModel && message.multiResults
@@ -87,7 +88,6 @@ export function MessagesDisplay({
               : null;
             
             const shouldShowWinnerBubble = hasEvaluation && displayResult !== null;
-            const shouldShowSelectionButtons = hasNoWinner && !userSelectedWinner;
 
             return (
               <div key={message.id} className="max-w-4xl mx-auto space-y-3">
@@ -101,6 +101,8 @@ export function MessagesDisplay({
                       const isWinner = message.evaluationMetadata?.winnerModel === r.model
                       const isUserSelected = userSelectedWinner === r.model
                       const isSelected = isWinner || isUserSelected
+                      const isTied = tiedModels.includes(r.model)
+                      const shouldShowSelectionButton = hasNoWinner && !userSelectedWinner && isTied
                       return (
                         <div
                           key={cardKey}
@@ -138,7 +140,7 @@ export function MessagesDisplay({
                             <Button size="sm" variant="secondary" onClick={() => openDetail(r.model, label, r.content)}>
                               Show more
                             </Button>
-                            {shouldShowSelectionButtons && (
+                            {shouldShowSelectionButton && (
                               <Button 
                                 size="sm" 
                                 variant="default" 

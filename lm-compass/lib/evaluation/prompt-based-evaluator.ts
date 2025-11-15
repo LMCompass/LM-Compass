@@ -81,6 +81,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
         winner: validResponses[0],
         scores: [],
         meanScores: { [validResponses[0].model]: 0 },
+        tiedModels: [],
       };
     } else if (validResponses.length === 0) {
       throw new Error('No valid responses to evaluate');
@@ -139,12 +140,13 @@ export class PromptBasedEvaluator implements IEvaluationService {
     const meanScores = this.calculateMeanScores(scores, validResponses.map((r) => r.model));
 
     // Find the winner
-    const winner = this.findWinner(validResponses, meanScores);
+    const { winner, tiedModels } = this.findWinner(validResponses, meanScores);
 
     return {
       winner,
       scores,
       meanScores,
+      tiedModels,
     };
   }
 
@@ -286,8 +288,9 @@ export class PromptBasedEvaluator implements IEvaluationService {
   /**
    * Finds the winning response based on mean scores
    * Returns null if there's a tie (multiple models with the same highest score)
+   * Also returns the list of models that are tied for the highest score
    */
-  private findWinner(responses: ModelResponse[], meanScores: Record<string, number>): ModelResponse | null {
+  private findWinner(responses: ModelResponse[], meanScores: Record<string, number>): { winner: ModelResponse | null; tiedModels: string[] } {
     // Create response map for quick lookup
     const responseMap = new Map<string, ModelResponse>();
     responses.forEach((r) => {
@@ -297,7 +300,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
     // Find maximum mean score
     const scores = Object.values(meanScores);
     if (scores.length === 0) {
-      return null;
+      return { winner: null, tiedModels: [] };
     }
     
     const maxScore = Math.max(...scores);
@@ -307,16 +310,22 @@ export class PromptBasedEvaluator implements IEvaluationService {
 
     // If multiple models have the same highest score, it's a tie
     if (modelsWithMaxScore.length > 1) {
-      return null;
+      return { 
+        winner: null, 
+        tiedModels: modelsWithMaxScore.map(([model, _]) => model)
+      };
     }
 
     // Single winner exists
     const winnerModel = modelsWithMaxScore[0][0];
     if (!responseMap.has(winnerModel)) {
-      return null;
+      return { winner: null, tiedModels: [] };
     }
 
-    return responseMap.get(winnerModel)!;
+    return { 
+      winner: responseMap.get(winnerModel)!, 
+      tiedModels: []
+    };
   }
 }
 
