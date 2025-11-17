@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { PromptInputComponent } from "./prompt-input";
 import { MessagesDisplay } from "@/components/messages-display";
@@ -8,7 +8,11 @@ import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,14 +26,19 @@ import {
 
 // Generate a random chat ID
 const generateChatId = () => {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
 };
 
 export default function Home() {
   const { open } = useSidebar();
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">("querying");
+  const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">(
+    "querying"
+  );
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
@@ -43,7 +52,7 @@ export default function Home() {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTo({
         top: messagesContainerRef.current.scrollHeight,
-        behavior: "smooth"
+        behavior: "smooth",
       });
     }
   };
@@ -70,8 +79,10 @@ export default function Home() {
 
   const confirmModelChange = () => {
     if (pendingModels && pendingModels.length > 0) {
-      const newlySelected = pendingModels.filter(model => !selectedModels.includes(model));
-      
+      const newlySelected = pendingModels.filter(
+        (model) => !selectedModels.includes(model)
+      );
+
       // If there are newly selected models, use only those. Otherwise use pendingModels as-is
       if (newlySelected.length > 0) {
         setSelectedModels(newlySelected);
@@ -104,21 +115,31 @@ export default function Home() {
         <header className="flex-shrink-0 flex items-center p-4 sm:p-6 border-b">
           <div className="flex items-center gap-4 flex-1">
             {!open && <SidebarTrigger />}
-            <MultiModelSelector values={selectedModels} onChange={handleMultiModelChange} />
-            <EvaluationMethodSelector value={selectedRubric} onChange={setSelectedRubric} />
+            <MultiModelSelector
+              values={selectedModels}
+              onChange={handleMultiModelChange}
+            />
+            <EvaluationMethodSelector
+              value={selectedRubric}
+              onChange={setSelectedRubric}
+            />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             LM Compass
           </h1>
           <div className="flex-1 flex justify-end">
-            <Button variant="outline" onClick={handleNewChat} disabled={isLoading}>
+            <Button
+              variant="outline"
+              onClick={handleNewChat}
+              disabled={isLoading}
+            >
               <Plus className="size-4 text-muted-foreground" />
               New Chat
             </Button>
           </div>
         </header>
 
-        <MessagesDisplay 
+        <MessagesDisplay
           messages={messages}
           isLoading={isLoading}
           loadingPhase={loadingPhase}
@@ -127,11 +148,11 @@ export default function Home() {
           selectedModels={selectedModels}
         />
 
-        <div className="flex-shrink-0 flex justify-center p-4 border-t bg-background">
-          <PromptInputComponent 
-          key={chatId}
-            messages={messages} 
-            setMessages={setMessages} 
+        <div className="flex-shrink-0 flex justify-center p-4 bg-background">
+          <PromptInputComponent
+            key={chatId}
+            messages={messages}
+            setMessages={setMessages}
             isLoading={isLoading}
             setIsLoading={setIsLoading}
             setLoadingPhase={setLoadingPhase}
@@ -139,17 +160,25 @@ export default function Home() {
           />
         </div>
 
-        <AlertDialog open={showModelChangeDialog} onOpenChange={setShowModelChangeDialog}>
+        <AlertDialog
+          open={showModelChangeDialog}
+          onOpenChange={setShowModelChangeDialog}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Change Model</AlertDialogTitle>
               <AlertDialogDescription>
-                Changing the model will clear your conversation. Are you sure you want to continue?
+                Changing the model will clear your conversation. Are you sure
+                you want to continue?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={cancelModelChange}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmModelChange}>Continue</AlertDialogAction>
+              <AlertDialogCancel onClick={cancelModelChange}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={confirmModelChange}>
+                Continue
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
