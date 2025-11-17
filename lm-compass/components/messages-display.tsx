@@ -23,7 +23,7 @@ type MessagesDisplayProps = {
   messages: MessageType[];
   isLoading: boolean;
   loadingPhase: "querying" | "evaluating";
-  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  messagesContainerRef: React.RefObject<HTMLDivElement | null>;
   setMessages: React.Dispatch<React.SetStateAction<MessageType[]>>;
   selectedModels: string[];
 };
@@ -32,7 +32,7 @@ export function MessagesDisplay({
   messages,
   isLoading,
   loadingPhase,
-  messagesEndRef,
+  messagesContainerRef,
   setMessages,
   selectedModels,
 }: MessagesDisplayProps) {
@@ -79,7 +79,10 @@ export function MessagesDisplay({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <div
+      ref={messagesContainerRef}
+      className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4"
+    >
       {messages.length === 0 ? (
         <EmptyChatHeader />
       ) : (
@@ -93,6 +96,7 @@ export function MessagesDisplay({
             const hasEvaluation = hasMultipleResults && evaluationMetadata;
             const hasNoWinner = evaluationMetadata?.winnerModel === null;
             const userSelectedWinner = message.userSelectedWinner;
+            const tiedModels = evaluationMetadata?.tiedModels || [];
 
             const displayModel =
               userSelectedWinner || evaluationMetadata?.winnerModel || null;
@@ -233,7 +237,6 @@ export function MessagesDisplay({
           </Dialog>
         </>
       )}
-      <div ref={messagesEndRef} />
     </div>
   );
 }

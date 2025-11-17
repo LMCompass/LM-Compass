@@ -35,7 +35,11 @@ export async function POST(req: Request) {
     } else if (model) {
       modelsToQuery = [model];
     } else {
-      modelsToQuery = ['tngtech/deepseek-r1t2-chimera:free'];
+      // No models provided - return error
+      return NextResponse.json(
+        { error: 'No models selected. Please select at least one model before querying.' },
+        { status: 400 }
+      );
     }
 
     // Create a readable stream for progress updates
@@ -116,6 +120,7 @@ export async function POST(req: Request) {
                 scores: evaluationResult.scores,
                 meanScores: evaluationResult.meanScores,
                 modelReasoning,
+                tiedModels: evaluationResult.tiedModels,
               };
 
               // Send final results

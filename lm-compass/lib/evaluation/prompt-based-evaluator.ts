@@ -7,20 +7,22 @@ import type { OpenAI } from 'openai';
 import type { IEvaluationService } from './interfaces';
 import type { ModelResponse, EvaluationResult, EvaluationOptions, EvaluationScore } from './types';
 
-/**
- * Default rubric for evaluation (SHOULD BE EXTERNALIZED AND IMPORTED)
- */
-const DEFAULT_RUBRIC = `Correctness & Accuracy (25 points) — Ensures claims are factually accurate and verifiable, addressing the most critical concern of hallucination-free responses. This is weighted highest because inaccurate information undermines all other qualities.
+// Load rubric from file (app/rubric/types/default.txt) with a safe fallback.
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-Completeness (20 points) - Verifies the answer addresses all aspects of the query without significant omissions. This prevents shallow or partial responses that technically answer only part of the question.
+const SELECTED_RUBRIC_PATH = join(process.cwd(), 'app', 'rubric', 'types', 'default.txt');
 
-Clarity & Coherence (18 points) - Assesses whether the answer is well-organized with logical flow. Research shows that coherence and relevance are strong signals of problem-solving quality.
+function loadRubric(): string {
+  try {
+    return readFileSync(SELECTED_RUBRIC_PATH, 'utf-8');
+  } catch (err) {
+    console.warn(`[PromptBasedEvaluator] could not read default rubric at ${SELECTED_RUBRIC_PATH}:`, err);
+    return '';
+  }
+}
 
-Relevance (18 points) - Ensures all information pertains to the question, avoiding tangential content that confuses the issue. This maintains focus and efficiency.
-
-Conciseness (10 points) - Rewards efficiency by penalizing unnecessary verbosity or repetition while maintaining completeness. This balances against verbose but complete responses.
-
-Appropriateness for Context (9 points) — Checks whether tone, depth, and format match what the questioner likely needs. Technical questions require different treatment than conversational ones.`;
+const SELECTED_RUBRIC = loadRubric();
 
 /**
  * Creates a scoring query prompt for evaluation (system prompt is currently designed for default rubric but should be generalized)
@@ -79,12 +81,13 @@ export class PromptBasedEvaluator implements IEvaluationService {
         winner: validResponses[0],
         scores: [],
         meanScores: { [validResponses[0].model]: 0 },
+        tiedModels: [],
       };
     } else if (validResponses.length === 0) {
       throw new Error('No valid responses to evaluate');
     }
 
-    const rubric = options.rubric || DEFAULT_RUBRIC;
+    const rubric = options.rubric || SELECTED_RUBRIC;
     const userQuery = options.userQuery;
 
     const { judgeModels, scoringQueries, evaluatedModels } = this.buildScoringQueries(
@@ -137,12 +140,13 @@ export class PromptBasedEvaluator implements IEvaluationService {
     const meanScores = this.calculateMeanScores(scores, validResponses.map((r) => r.model));
 
     // Find the winner
-    const winner = this.findWinner(validResponses, meanScores);
+    const { winner, tiedModels } = this.findWinner(validResponses, meanScores);
 
     return {
       winner,
       scores,
       meanScores,
+      tiedModels,
     };
   }
 
@@ -284,8 +288,9 @@ export class PromptBasedEvaluator implements IEvaluationService {
   /**
    * Finds the winning response based on mean scores
    * Returns null if there's a tie (multiple models with the same highest score)
+   * Also returns the list of models that are tied for the highest score
    */
-  private findWinner(responses: ModelResponse[], meanScores: Record<string, number>): ModelResponse | null {
+  private findWinner(responses: ModelResponse[], meanScores: Record<string, number>): { winner: ModelResponse | null; tiedModels: string[] } {
     // Create response map for quick lookup
     const responseMap = new Map<string, ModelResponse>();
     responses.forEach((r) => {
@@ -295,7 +300,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
     // Find maximum mean score
     const scores = Object.values(meanScores);
     if (scores.length === 0) {
-      return null;
+      return { winner: null, tiedModels: [] };
     }
     
     const maxScore = Math.max(...scores);
@@ -305,16 +310,22 @@ export class PromptBasedEvaluator implements IEvaluationService {
 
     // If multiple models have the same highest score, it's a tie
     if (modelsWithMaxScore.length > 1) {
-      return null;
+      return { 
+        winner: null, 
+        tiedModels: modelsWithMaxScore.map(([model, _]) => model)
+      };
     }
 
     // Single winner exists
     const winnerModel = modelsWithMaxScore[0][0];
     if (!responseMap.has(winnerModel)) {
-      return null;
+      return { winner: null, tiedModels: [] };
     }
 
-    return responseMap.get(winnerModel)!;
+    return { 
+      winner: responseMap.get(winnerModel)!, 
+      tiedModels: []
+    };
   }
 }
 

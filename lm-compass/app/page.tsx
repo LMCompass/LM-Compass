@@ -40,9 +40,8 @@ export default function Home() {
     "querying"
   );
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [selectedModels, setSelectedModels] = useState<string[]>([
-    "tngtech/deepseek-r1t2-chimera:free",
-  ]);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
   const [chatStarted, setChatStarted] = useState(false);
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
@@ -50,7 +49,12 @@ export default function Home() {
   const [chatId, setChatId] = useState(generateChatId());
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   };
 
   useEffect(() => {
@@ -74,9 +78,7 @@ export default function Home() {
   };
 
   const confirmModelChange = () => {
-    // Reset to only the newly selected models (models that were added, not previously selected)
     if (pendingModels && pendingModels.length > 0) {
-      // Find models that were newly added (in pendingModels but not in current selectedModels)
       const newlySelected = pendingModels.filter(
         (model) => !selectedModels.includes(model)
       );
@@ -85,12 +87,10 @@ export default function Home() {
       if (newlySelected.length > 0) {
         setSelectedModels(newlySelected);
       } else {
-        // If no new models (all were deselected), use pendingModels (which should be empty or minimal)
         setSelectedModels(pendingModels);
       }
     } else {
-      // Fallback to default if no pending models
-      setSelectedModels(["tngtech/deepseek-r1t2-chimera:free"]);
+      setSelectedModels([]);
     }
     setMessages([]);
     setChatStarted(false);
@@ -110,8 +110,8 @@ export default function Home() {
   };
 
   return (
-    <SidebarInset>
-      <div className="h-screen flex flex-col">
+    <SidebarInset className="overflow-hidden">
+      <div className="h-screen flex flex-col overflow-hidden">
         <header className="flex-shrink-0 flex items-center p-4 sm:p-6 border-b">
           <div className="flex items-center gap-4 flex-1">
             {!open && <SidebarTrigger />}
@@ -143,7 +143,7 @@ export default function Home() {
           messages={messages}
           isLoading={isLoading}
           loadingPhase={loadingPhase}
-          messagesEndRef={messagesEndRef}
+          messagesContainerRef={messagesContainerRef}
           setMessages={setMessages}
           selectedModels={selectedModels}
         />
