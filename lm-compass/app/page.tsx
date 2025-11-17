@@ -112,7 +112,7 @@ export default function Home() {
   return (
     <SidebarInset className="overflow-hidden">
       <div className="h-screen flex flex-col overflow-hidden">
-        <header className="flex-shrink-0 flex items-center p-4 sm:p-6 border-b">
+        <header className="flex-shrink-0 flex items-center p-4 sm:p-6 border-b bg-card">
           <div className="flex items-center gap-4 flex-1">
             {!open && <SidebarTrigger />}
             <MultiModelSelector
