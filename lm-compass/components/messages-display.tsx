@@ -162,10 +162,12 @@ export function MessagesDisplay({
                 )}
 
                 {shouldShowWinnerBubble && displayResult && (
-                  <div className="rounded-2xl p-6 shadow-lg bg-card">
-                    <MessageContent markdown={true} className="bg-card">
-                      {displayResult.content}
-                    </MessageContent>
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl p-3 shadow-lg bg-card max-w-2xl">
+                      <MessageContent markdown={true} className="bg-card">
+                        {displayResult.content}
+                      </MessageContent>
+                    </div>
                   </div>
                 )}
 
@@ -173,10 +175,12 @@ export function MessagesDisplay({
                 {message.role === "assistant" &&
                 message.multiResults &&
                 message.multiResults.length === 1 ? (
-                  <div className="rounded-2xl p-6 shadow-lg bg-card">
-                    <MessageContent markdown={true} className="bg-card">
-                      {message.multiResults[0].content}
-                    </MessageContent>
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl p-3 shadow-lg bg-card max-w-2xl">
+                      <MessageContent markdown={true} className="bg-card">
+                        {message.multiResults[0].content}
+                      </MessageContent>
+                    </div>
                   </div>
                 ) : null}
 
@@ -185,7 +189,7 @@ export function MessagesDisplay({
                     <div
                       className={`rounded-2xl px-5 py-3 max-w-2xl shadow-lg ${
                         message.isStopped
-                          ? "opacity-60"
+                          ? "bg-primary/90 opacity-50 text-primary-foreground"
                           : "bg-primary/90 text-primary-foreground backdrop-blur-xl"
                       }`}
                     >
