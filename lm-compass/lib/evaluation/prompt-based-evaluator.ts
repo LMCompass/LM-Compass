@@ -41,11 +41,9 @@ ${rubric}
 
 Instructions:
 
-Evaluate the Candidate Response on all rubric dimensions individually, strictly applying the rubric's defined score ranges and weightings—for example, Correctness & Accuracy is out of 25 points, Completeness 20 points, etc.
+Evaluate the Candidate Response on all rubric dimensions individually, strictly applying the RUBRIC's defined score ranges and weightings.
 
-If the Candidate Response contains any factual inaccuracies, assign the Correctness & Accuracy score corresponding to those errors as explicitly defined in the rubric, which could be as low as 0-4 out of 25 for fundamental factual errors. Do not inflate this score due to other qualities.
-
-Calculate the overall score as the weighted sum of all dimension scores, without subjective adjustment or rounding beyond rubric guidance.
+Calculate the overall score as the weighted sum of all defined scores, without subjective adjustment or rounding beyond rubric guidance.
 
 Your output must be ONLY a JSON object with:
 
