@@ -8,6 +8,7 @@ import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
 import {
   SidebarInset,
   SidebarTrigger,
@@ -112,31 +113,25 @@ export default function Home() {
   return (
     <SidebarInset className="overflow-hidden">
       <div className="h-screen flex flex-col overflow-hidden">
-        <header className="flex-shrink-0 flex items-center p-4 sm:p-6 border-b">
-          <div className="flex items-center gap-4 flex-1">
-            {!open && <SidebarTrigger />}
-            <MultiModelSelector
-              values={selectedModels}
-              onChange={handleMultiModelChange}
-            />
-            <EvaluationMethodSelector
-              value={selectedRubric}
-              onChange={setSelectedRubric}
-            />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            LM Compass
-          </h1>
-          <div className="flex-1 flex justify-end">
-            <Button
-              variant="outline"
-              onClick={handleNewChat}
-              disabled={isLoading}
-            >
-              <Plus className="size-4 text-muted-foreground" />
-              New Chat
-            </Button>
-          </div>
+        <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b">
+          {!open && <CustomSidebarTrigger />}
+          <MultiModelSelector
+            values={selectedModels}
+            onChange={handleMultiModelChange}
+          />
+          <EvaluationMethodSelector
+            value={selectedRubric}
+            onChange={setSelectedRubric}
+          />
+          <div className="flex-1" />
+          <Button
+            variant="outline"
+            onClick={handleNewChat}
+            disabled={isLoading}
+          >
+            <Plus className="size-4 text-muted-foreground" />
+            New Chat
+          </Button>
         </header>
 
         <MessagesDisplay
