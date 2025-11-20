@@ -11,7 +11,6 @@ import { Plus } from "lucide-react";
 import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
 import {
   SidebarInset,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
