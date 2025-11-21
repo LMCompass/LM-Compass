@@ -7,12 +7,10 @@ import { useState, useEffect, useRef } from "react";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Sun, Moon } from "lucide-react";
 import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
-import {
-  SidebarInset,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { SidebarInset, useSidebar } from "@/components/ui/sidebar";
+import { useTheme } from "@/hooks/use-theme";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,12 +32,12 @@ const generateChatId = () => {
 
 export default function Home() {
   const { open } = useSidebar();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">(
     "querying"
   );
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
@@ -112,7 +110,7 @@ export default function Home() {
   return (
     <SidebarInset className="overflow-hidden">
       <div className="h-screen flex flex-col overflow-hidden">
-        <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b">
+        <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
           {!open && <CustomSidebarTrigger />}
           <MultiModelSelector
             values={selectedModels}
@@ -130,6 +128,18 @@ export default function Home() {
           >
             <Plus className="size-4 text-muted-foreground" />
             New Chat
+          </Button>
+          <Button
+            variant="outline"
+            onClick={toggleTheme}
+            disabled={!mounted}
+            size="icon"
+          >
+            {mounted && theme === "dark" ? (
+              <Sun className="size-4" />
+            ) : (
+              <Moon className="size-4" />
+            )}
           </Button>
         </header>
 

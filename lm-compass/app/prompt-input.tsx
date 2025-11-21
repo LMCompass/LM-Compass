@@ -11,6 +11,19 @@ import { Send, Square } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { Message } from "@/lib/types";
 
+import { MessageCircleWarning, ChevronRightIcon } from "lucide-react";
+
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemHeader,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+
 type PromptInputComponentProps = {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -262,16 +275,34 @@ export function PromptInputComponent({
   return (
     <div className="w-full md:w-3/4 lg:w-2/3">
       {needsWinnerSelection && (
-        <div className="mb-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-950/20 border border-blue-200 dark:border-blue-900 rounded-lg text-sm text-black-800 dark:text-black-200">
-          Please select a winning response from the options above before
-          continuing the conversation.
-        </div>
+        <Item variant="banner" size="sm" asChild>
+          <a>
+            <ItemMedia>
+              <MessageCircleWarning className="size-5" />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>
+                Please select a winning response from the options above before
+                continuing the conversation.
+              </ItemTitle>
+            </ItemContent>
+          </a>
+        </Item>
       )}
       {selectedModels.length === 0 && !needsWinnerSelection && (
-        <div className="mb-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-950/20 border border-blue-200 dark:border-blue-900 rounded-lg text-sm text-black-800 dark:text-black-200">
-          Please select at least one model from the dropdown above before
-          sending a message.
-        </div>
+        <Item variant="banner" size="sm" asChild>
+          <a>
+            <ItemMedia>
+              <MessageCircleWarning className="size-5" />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>
+                Please select at least one model from the dropdown above before
+                sending a message.
+              </ItemTitle>
+            </ItemContent>
+          </a>
+        </Item>
       )}
       <PromptInput
         value={input}
