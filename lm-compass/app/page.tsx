@@ -8,7 +8,7 @@ import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
 import { Plus, Sun, Moon } from "lucide-react";
-import { SidebarInset, useSidebar } from "@/components/sidebar/sidebar";
+import { SidebarInset } from "@/components/sidebar/sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import {
   AlertDialog,
