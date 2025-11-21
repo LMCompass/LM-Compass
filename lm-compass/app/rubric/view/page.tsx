@@ -1,7 +1,11 @@
-"use client"
+"use client";
 
 import { useState } from "react";
-import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
@@ -19,7 +23,7 @@ export default function ViewRubricsPage() {
   return (
     <SidebarInset>
       <div className="h-screen flex flex-col">
-        <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b">
+        <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6">
           {!open && <SidebarTrigger />}
           <Link href="/">
             <Button variant="ghost" size="sm">
@@ -30,7 +34,10 @@ export default function ViewRubricsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex-1">
             View Rubrics
           </h1>
-          <Button variant="outline" onClick={() => setShowAddRubricDialog(true)}>
+          <Button
+            variant="outline"
+            onClick={() => setShowAddRubricDialog(true)}
+          >
             <Plus className="size-4 mr-2" />
             Add Rubric
           </Button>
@@ -43,8 +50,8 @@ export default function ViewRubricsPage() {
           </div>
         </div>
 
-        <AddRubricDialog 
-          open={showAddRubricDialog} 
+        <AddRubricDialog
+          open={showAddRubricDialog}
           onOpenChange={setShowAddRubricDialog}
           onSave={handleSaveRubric}
         />
@@ -52,4 +59,3 @@ export default function ViewRubricsPage() {
     </SidebarInset>
   );
 }
-

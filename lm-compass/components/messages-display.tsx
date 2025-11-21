@@ -167,8 +167,11 @@ export function MessagesDisplay({
 
                 {shouldShowWinnerBubble && displayResult && (
                   <div className="flex justify-start">
-                    <div className="rounded-2xl p-3 shadow-lg bg-card max-w-2xl">
-                      <MessageContent markdown={true} className="bg-card">
+                    <div className="rounded-2xl p-2 shadow-lg bg-card max-w-2xl">
+                      <MessageContent
+                        markdown={true}
+                        className="bg-card text-sm"
+                      >
                         {displayResult.content}
                       </MessageContent>
                     </div>
@@ -180,8 +183,11 @@ export function MessagesDisplay({
                 message.multiResults &&
                 message.multiResults.length === 1 ? (
                   <div className="flex justify-start">
-                    <div className="rounded-2xl p-3 shadow-lg bg-card max-w-2xl">
-                      <MessageContent markdown={true} className="bg-card">
+                    <div className="rounded-2xl p-2 shadow-lg bg-card max-w-2xl">
+                      <MessageContent
+                        markdown={true}
+                        className="bg-card text-md"
+                      >
                         {message.multiResults[0].content}
                       </MessageContent>
                     </div>
@@ -197,7 +203,7 @@ export function MessagesDisplay({
                           : "bg-primary/90 text-primary-foreground backdrop-blur-xl"
                       }`}
                     >
-                      <p className="text-sm leading-relaxed">
+                      <p className="leading-relaxed text-md">
                         {message.content}
                       </p>
                     </div>
@@ -220,13 +226,13 @@ export function MessagesDisplay({
             onOpenChange={(open) => !open && closeDetail()}
           >
             <DialogContent
-              className="max-w-4xl backdrop-blur-2xl"
+              className="max-w-4xl backdrop-blur-2xl p-0"
               aria-describedby={undefined}
             >
               <DialogHeader>
                 <DialogTitle className="text-xl">{detail?.label}</DialogTitle>
               </DialogHeader>
-              <div className="max-h-[70vh] overflow-y-auto pr-2 -mr-2">
+              <div className="max-h-[70vh] overflow-y-auto p-0">
                 {detail && (
                   <Markdown className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0">
                     {detail.content}

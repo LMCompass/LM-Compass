@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -22,13 +23,20 @@ export default function RootLayout({
 }>) {
   return (
     <>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <head />
         <body className={`${poppins.variable} antialiased font-sans`}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
             <SidebarProvider>
               <AppSidebar />
-            {children}
+              {children}
             </SidebarProvider>
+          </ThemeProvider>
         </body>
       </html>
     </>

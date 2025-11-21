@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Sidebar,
@@ -8,13 +8,22 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-} from "@/components/ui/sidebar"
-import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import { User2, ChevronUp, FileText, Compass } from "lucide-react"
-import Link from "next/link"
+} from "@/components/ui/sidebar";
+import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { User2, ChevronUp, Compass, BookOpen } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function AppSidebar() {
+  const router = useRouter();
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -27,24 +36,28 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/rubric/view">
-                <FileText className="size-4" />
-                <span>View Rubrics</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <div className="px-4 py-2 mt-4">
-          <h3 className="text-sm font-semibold mb-2">Chat History</h3>
-          <div className="text-sm text-muted-foreground">
-            No chats yet
+        <div className="p-4 space-y-6">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">
+              Chat History
+            </h2>
+            <div className="glass-subtle rounded-lg p-4 text-center">
+              <p className="text-xs text-muted-foreground">No chats yet</p>
+            </div>
           </div>
         </div>
       </SidebarContent>
       <SidebarFooter>
+        <Button
+          variant="ghost"
+          className="w-full justify-start hover:bg-accent/50"
+          onClick={() => router.push("/rubric/view")}
+        >
+          <BookOpen className="h-4 w-4 mr-2" />
+          View Rubrics
+        </Button>
+
+        <Separator className="bg-border/50" />
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -54,10 +67,7 @@ export function AppSidebar() {
                   <ChevronUp className="ml-auto" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="top"
-                className="w-64"
-              >
+              <DropdownMenuContent side="top" className="w-64">
                 <DropdownMenuItem className="py-3 px-4 cursor-pointer">
                   <span>Account</span>
                 </DropdownMenuItem>
@@ -70,6 +80,5 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
-
