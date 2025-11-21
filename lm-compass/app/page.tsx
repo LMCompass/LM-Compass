@@ -8,8 +8,7 @@ import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
 import { Plus, Sun, Moon } from "lucide-react";
-import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
-import { SidebarInset, useSidebar } from "@/components/ui/sidebar";
+import { SidebarInset, useSidebar } from "@/components/sidebar/sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import {
   AlertDialog,
@@ -31,7 +30,6 @@ const generateChatId = () => {
 };
 
 export default function Home() {
-  const { open } = useSidebar();
   const { theme, toggleTheme, mounted } = useTheme();
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -111,7 +109,6 @@ export default function Home() {
     <SidebarInset className="overflow-hidden">
       <div className="h-screen flex flex-col overflow-hidden">
         <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
-          {!open && <CustomSidebarTrigger />}
           <MultiModelSelector
             values={selectedModels}
             onChange={handleMultiModelChange}
