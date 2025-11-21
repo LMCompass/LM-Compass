@@ -5,7 +5,7 @@ import {
   SidebarInset,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@/components/sidebar/sidebar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
