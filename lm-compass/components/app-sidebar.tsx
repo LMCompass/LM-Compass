@@ -10,16 +10,17 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User2, ChevronUp, Compass, BookOpen } from "lucide-react";
+import { Compass, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs";
 
 export function AppSidebar() {
   const router = useRouter();
@@ -60,22 +61,32 @@ export function AppSidebar() {
         <Separator className="bg-border/50" />
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  <User2 /> Username
-                  <ChevronUp className="ml-auto" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" className="w-64">
-                <DropdownMenuItem className="py-3 px-4 cursor-pointer">
-                  <span>Account</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="py-3 px-4 cursor-pointer">
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SignedIn>
+              <SidebarMenuButton className="flex items-center gap-2">
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: "h-8 w-8",
+                    },
+                  }}
+                />
+                <span className="ml-2">Account</span>
+              </SidebarMenuButton>
+            </SignedIn>
+            <SignedOut>
+              <div className="flex flex-col gap-2 p-2">
+                <SignInButton mode="modal">
+                  <Button variant="default" className="w-full">
+                    Sign In
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button variant="outline" className="w-full">
+                    Sign Up
+                  </Button>
+                </SignUpButton>
+              </div>
+            </SignedOut>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
