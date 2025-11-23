@@ -28,8 +28,8 @@ interface EvaluationMethodSelectorProps {
 }
 
 const evaluationMethods = [
-  { value: "prompt-based", label: "Prompt-based" },
-  { value: "multi-agent", label: "Multi-agent" },
+  { value: "prompt-based", label: "Prompt-based scoring" },
+  { value: "n-prompt-based", label: "One-Shot Prompt-based scoring" },
 ]
 
 export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSelectorProps) {

@@ -161,6 +161,7 @@ export default function Home() {
             setIsLoading={setIsLoading}
             setLoadingPhase={setLoadingPhase}
             selectedModels={selectedModels}
+            evaluationMethod={selectedRubric}
           />
         </div>
 

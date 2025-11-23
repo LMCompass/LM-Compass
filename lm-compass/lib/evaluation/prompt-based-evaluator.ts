@@ -1,6 +1,5 @@
 /**
  * Prompt-based evaluator implementation using n² judging approach
- * Ports the Python notebook logic to TypeScript
  */
 
 import type { OpenAI } from 'openai';
@@ -113,7 +112,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
     const scores: EvaluationScore[] = evaluationResults.map((result, index) => {
       if (result.status === 'fulfilled') {
         const { score, reasoning } = this.extractScoreAndReasoning(result.value.response);
-        
+
         return {
           judgeModel: result.value.judgeModel,
           evaluatedModel: result.value.evaluatedModel,
@@ -232,7 +231,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
       const parsed = JSON.parse(jsonStr);
       const score = parsed.score;
       const reasoning = parsed.reasoning;
-      
+
       const extractedScore = typeof score === 'number' && score >= 0 && score <= 100
         ? score
         : null;
@@ -300,7 +299,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
     if (scores.length === 0) {
       return { winner: null, tiedModels: [] };
     }
-    
+
     const maxScore = Math.max(...scores);
 
     // Count how many models have the maximum score
@@ -308,8 +307,8 @@ export class PromptBasedEvaluator implements IEvaluationService {
 
     // If multiple models have the same highest score, it's a tie
     if (modelsWithMaxScore.length > 1) {
-      return { 
-        winner: null, 
+      return {
+        winner: null,
         tiedModels: modelsWithMaxScore.map(([model, _]) => model)
       };
     }
@@ -320,8 +319,8 @@ export class PromptBasedEvaluator implements IEvaluationService {
       return { winner: null, tiedModels: [] };
     }
 
-    return { 
-      winner: responseMap.get(winnerModel)!, 
+    return {
+      winner: responseMap.get(winnerModel)!,
       tiedModels: []
     };
   }
