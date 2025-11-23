@@ -10,19 +10,31 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User2, ChevronUp, Compass, BookOpen } from "lucide-react";
+import { Compass, BookOpen, LogOut, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  SignOutButton,
+  useUser,
+} from "@clerk/nextjs";
 
 export function AppSidebar() {
   const router = useRouter();
+  const { user } = useUser();
 
   return (
     <Sidebar>
@@ -60,22 +72,52 @@ export function AppSidebar() {
         <Separator className="bg-border/50" />
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  <User2 /> Username
-                  <ChevronUp className="ml-auto" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" className="w-64">
-                <DropdownMenuItem className="py-3 px-4 cursor-pointer">
-                  <span>Account</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="py-3 px-4 cursor-pointer">
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SignedIn>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User"} />
+                        <AvatarFallback>
+                          {user?.firstName?.[0]}{user?.lastName?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">
+                        {user?.fullName || user?.firstName || "Account"}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    {user?.fullName || user?.primaryEmailAddress?.emailAddress || "My Account"}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border/50 dark:bg-gray-700" />
+                  <SignOutButton>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign out</span>
+                    </DropdownMenuItem>
+                  </SignOutButton>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SignedIn>
+            <SignedOut>
+              <div className="flex flex-col gap-2 p-2">
+                <SignInButton mode="modal">
+                  <Button variant="default" className="w-full">
+                    Sign In
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button variant="outline" className="w-full">
+                    Sign Up
+                  </Button>
+                </SignUpButton>
+              </div>
+            </SignedOut>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
