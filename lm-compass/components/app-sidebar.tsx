@@ -12,18 +12,29 @@ import {
 import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Compass, BookOpen } from "lucide-react";
+import { Compass, BookOpen, LogOut, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import {
   SignInButton,
   SignUpButton,
   SignedIn,
   SignedOut,
-  UserButton,
+  SignOutButton,
+  useUser,
 } from "@clerk/nextjs";
 
 export function AppSidebar() {
   const router = useRouter();
+  const { user } = useUser();
 
   return (
     <Sidebar>
@@ -62,16 +73,36 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SignedIn>
-              <SidebarMenuButton className="flex items-center gap-2">
-                <UserButton
-                  appearance={{
-                    elements: {
-                      avatarBox: "h-8 w-8",
-                    },
-                  }}
-                />
-                <span className="ml-2">Account</span>
-              </SidebarMenuButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User"} />
+                        <AvatarFallback>
+                          {user?.firstName?.[0]}{user?.lastName?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">
+                        {user?.fullName || user?.firstName || "Account"}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    {user?.fullName || user?.primaryEmailAddress?.emailAddress || "My Account"}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border/50 dark:bg-gray-700" />
+                  <SignOutButton>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign out</span>
+                    </DropdownMenuItem>
+                  </SignOutButton>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </SignedIn>
             <SignedOut>
               <div className="flex flex-col gap-2 p-2">
