@@ -18,8 +18,8 @@ export const createClient = (request: NextRequest) => {
   });
 
   const supabase = createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {
