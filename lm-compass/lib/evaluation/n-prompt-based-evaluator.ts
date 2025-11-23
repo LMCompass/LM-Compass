@@ -193,9 +193,23 @@ export class NPromptBasedEvaluator implements IEvaluationService {
     } else {
       // Fallback: find outer braces
       const firstBrace = responseText.indexOf('{');
-      const lastBrace = responseText.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        jsonStr = responseText.slice(firstBrace, lastBrace + 1);
+      if (firstBrace !== -1) {
+        let braceCount = 0;
+        let end = -1;
+        for (let i = firstBrace; i < responseText.length; i++) {
+          if (responseText[i] === '{') {
+            braceCount++;
+          } else if (responseText[i] === '}') {
+            braceCount--;
+            if (braceCount === 0) {
+              end = i;
+              break;
+            }
+          }
+        }
+        if (end !== -1) {
+          jsonStr = responseText.slice(firstBrace, end + 1);
+        }
       }
     }
 
