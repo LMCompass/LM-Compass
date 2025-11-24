@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai';
 import { NextResponse } from 'next/server';
-import { PromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
+import { PromptBasedEvaluator, NPromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
 
 const llmClient = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
@@ -25,11 +25,11 @@ function extractUserQuery(messages: Array<{ role: string; content: string }>): s
 
 export async function POST(req: Request) {
   try {
-    const { messages, model, models } = await req.json();
+    const { messages, model, models, evaluationMethod } = await req.json();
 
     // Normalize to models array - handle both single model (legacy) and multi-model cases
     let modelsToQuery: string[];
-    
+
     if (Array.isArray(models) && models.length > 0) {
       modelsToQuery = models;
     } else if (model) {
@@ -71,9 +71,9 @@ export async function POST(req: Request) {
             if (res.status === 'fulfilled') {
               return { model: modelId, message: res.value.message };
             }
-            return { 
-              model: modelId, 
-              error: res.reason instanceof Error ? res.reason.message : 'Request failed' 
+            return {
+              model: modelId,
+              error: res.reason instanceof Error ? res.reason.message : 'Request failed'
             };
           });
 
@@ -97,8 +97,14 @@ export async function POST(req: Request) {
             try {
               const userQuery = extractUserQuery(messages);
 
-              // Create evaluator and evaluate responses
-              const evaluator = new PromptBasedEvaluator(llmClient);
+              // Create evaluator based on selected method
+              let evaluator;
+              if (evaluationMethod === 'n-prompt-based') {
+                evaluator = new NPromptBasedEvaluator(llmClient);
+              } else {
+                // Default to n^2 prompt-based
+                evaluator = new PromptBasedEvaluator(llmClient);
+              }
               const evaluationResult = await evaluator.evaluate(successfulResults, {
                 userQuery,
               });
@@ -124,7 +130,7 @@ export async function POST(req: Request) {
               };
 
               // Send final results
-              sendProgress({ 
+              sendProgress({
                 phase: 'complete',
                 results: allResults,
                 evaluationMetadata,

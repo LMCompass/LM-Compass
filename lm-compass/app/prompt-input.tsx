@@ -33,6 +33,7 @@ type PromptInputComponentProps = {
     React.SetStateAction<"querying" | "evaluating">
   >;
   selectedModels: string[];
+  evaluationMethod: string;
 };
 
 export function PromptInputComponent({
@@ -42,6 +43,7 @@ export function PromptInputComponent({
   setIsLoading,
   setLoadingPhase,
   selectedModels,
+  evaluationMethod,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -130,6 +132,7 @@ export function PromptInputComponent({
               content,
             })),
           models: selectedModels.length > 0 ? selectedModels : undefined,
+          evaluationMethod,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -319,8 +322,8 @@ export function PromptInputComponent({
               needsWinnerSelection
                 ? "Please select a winner first..."
                 : selectedModels.length === 0
-                ? "Please select at least one model first..."
-                : "Ask me anything..."
+                  ? "Please select at least one model first..."
+                  : "Ask me anything..."
             }
             className="flex-1"
             disabled={needsWinnerSelection || selectedModels.length === 0}
@@ -331,10 +334,10 @@ export function PromptInputComponent({
                 isLoading
                   ? "Stop generation"
                   : needsWinnerSelection
-                  ? "Select a winner first"
-                  : selectedModels.length === 0
-                  ? "Select at least one model first"
-                  : "Send message"
+                    ? "Select a winner first"
+                    : selectedModels.length === 0
+                      ? "Select at least one model first"
+                      : "Send message"
               }
             >
               <Button

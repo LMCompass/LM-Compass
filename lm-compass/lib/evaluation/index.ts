@@ -10,7 +10,7 @@ export type {
   EvaluationMetadata,
 } from './types';
 
-export type { IEvaluationService } from './interfaces';
-
-export { PromptBasedEvaluator } from './prompt-based-evaluator';
-
+export * from './interfaces';
+export * from './types';
+export * from './prompt-based-evaluator';
+export * from './n-prompt-based-evaluator';
