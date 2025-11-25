@@ -88,7 +88,7 @@ export function AppSidebar() {
                       </span>
                     </div>
                     <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
-                  </SidebarMenuButton>
+              </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
