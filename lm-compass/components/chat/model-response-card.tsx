@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Trophy, Check } from "lucide-react";
+import { Markdown } from "@/components/ui/markdown";
 
 type ModelResponseCardProps = {
   cardKey: string;
@@ -73,9 +74,11 @@ export function ModelResponseCard({
         </div>
       </div>
 
-      <div className="relative flex-1">
-        <div className="text-sm text-foreground/80 leading-relaxed line-clamp-6 whitespace-pre-wrap break-words">
-          {preview}
+      <div className="relative flex-1 overflow-hidden">
+        <div className="text-sm text-foreground/80 leading-relaxed prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 line-clamp-6 [&_.katex]:text-sm">
+          <Markdown className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_.katex]:text-sm">
+            {preview}
+          </Markdown>
         </div>
         {content.length > preview.length && (
           <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none" />

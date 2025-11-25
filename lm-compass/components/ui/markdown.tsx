@@ -4,6 +4,9 @@ import { memo, useId, useMemo } from "react"
 import ReactMarkdown, { Components } from "react-markdown"
 import remarkBreaks from "remark-breaks"
 import remarkGfm from "remark-gfm"
+import remarkMath from "remark-math"
+import rehypeKatex from "rehype-katex"
+import "katex/dist/katex.min.css"
 import { CodeBlock, CodeBlockCode } from "./code-block"
 
 export type MarkdownProps = {
@@ -13,8 +16,28 @@ export type MarkdownProps = {
   components?: Partial<Components>
 }
 
+
+ // Normalizes LaTeX delimiters to be compatible with remark-math
+function normalizeLatexDelimiters(text: string): string {
+  let result = text;
+  
+  // Convert \[...\] to $$...$$ 
+  result = result.replace(/\\\[([\s\S]*?)\\\]/g, (match, content) => {
+    return `$$${content}$$`;
+  });
+  
+  // Convert \(...\) to $...$ 
+  result = result.replace(/\\\(([\s\S]*?)\\\)/g, (match, content) => {
+    return `$${content}$`;
+  });
+  
+  return result;
+}
+
 function parseMarkdownIntoBlocks(markdown: string): string[] {
-  const tokens = marked.lexer(markdown)
+  // Normalize LaTeX delimiters before parsing
+  const normalized = normalizeLatexDelimiters(markdown);
+  const tokens = marked.lexer(normalized)
   return tokens.map((token) => token.raw)
 }
 
@@ -65,12 +88,16 @@ const MemoizedMarkdownBlock = memo(
     content: string
     components?: Partial<Components>
   }) {
+    // Normalize LaTeX delimiters before rendering
+    const normalizedContent = normalizeLatexDelimiters(content);
+    
     return (
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
+        remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
         components={components}
       >
-        {content}
+        {normalizedContent}
       </ReactMarkdown>
     )
   },
