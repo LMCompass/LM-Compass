@@ -77,16 +77,7 @@ export default function Home() {
 
   const confirmModelChange = () => {
     if (pendingModels && pendingModels.length > 0) {
-      const newlySelected = pendingModels.filter(
-        (model) => !selectedModels.includes(model)
-      );
-
-      // If there are newly selected models, use only those. Otherwise use pendingModels as-is
-      if (newlySelected.length > 0) {
-        setSelectedModels(newlySelected);
-      } else {
-        setSelectedModels(pendingModels);
-      }
+      setSelectedModels(pendingModels);
     } else {
       setSelectedModels([]);
     }
