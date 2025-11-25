@@ -1,31 +1,7 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-// Create a Supabase client that uses Clerk session token
-async function createClerkSupabaseClient() {
-  const { getToken } = await auth();
-  
-  return createClient(supabaseUrl, supabaseKey, {
-    global: {
-      fetch: async (url, options = {}) => {
-        const token = await getToken();
-        const headers = new Headers(options.headers);
-        if (token) {
-          headers.set('Authorization', `Bearer ${token}`);
-        }
-        return fetch(url, {
-          ...options,
-          headers,
-        });
-      },
-    },
-  });
-}
+import { createClient } from "@/utils/supabase/server";
 
 export async function createRubric(rubric: { name: string; description: string }) {
   try {
@@ -39,7 +15,7 @@ export async function createRubric(rubric: { name: string; description: string }
       return { error: "Name and description are required", success: false };
     }
 
-    const supabase = await createClerkSupabaseClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('rubrics')
       .insert({
@@ -66,7 +42,7 @@ export async function createRubric(rubric: { name: string; description: string }
 
 export async function getRubrics() {
   try {
-    const supabase = await createClerkSupabaseClient();
+    const supabase = await createClient();
     const { data, error } = await supabase.from('rubrics').select('*');
 
     if (error) {
