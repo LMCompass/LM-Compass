@@ -75,7 +75,7 @@ export function ModelResponseCard({
       </div>
 
       <div className="relative flex-1 overflow-hidden">
-        <div className="text-sm text-foreground/80 leading-relaxed prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 line-clamp-6 [&_.katex]:text-sm">
+        <div className="text-sm text-foreground/80 leading-relaxed line-clamp-6">
           <Markdown className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_.katex]:text-sm">
             {preview}
           </Markdown>
