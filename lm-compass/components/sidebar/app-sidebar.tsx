@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
   BadgeCheck,
-  Bell,
   BookOpen,
   ChevronRight,
   CreditCard,
@@ -13,8 +12,11 @@ import {
   User2,
   History,
   MessageSquarePlus,
+  UserPlus,
+  LogIn,
 } from "lucide-react";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Collapsible,
   CollapsibleContent,
@@ -44,124 +46,149 @@ import {
   SidebarRail,
 } from "./sidebar";
 import { useRouter } from "next/navigation";
+import { useChat } from "@/contexts/chat-context";
 
-// once we have this info, we fetch or provide context
-const data = {
-  user: {
-    name: "username",
-    email: "username@example.com",
-  },
-  navMain: [
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  SignOutButton,
+  useUser,
+} from "@clerk/nextjs";
+
+export function AppSidebar() {
+  const router = useRouter();
+  const { user } = useUser();
+  const { handleNewChat, chatHistory, loadChat } = useChat();
+
+  const previousChats = [
     {
       title: "Previous Chats",
       url: "#",
       icon: History,
-      isActive: true,
-      items: [
-        {
-          title: "Chat #1",
-          url: "#",
-        },
-        {
-          title: "Chat #2",
-          url: "#",
-        },
-        {
-          title: "Chat #3",
-          url: "#",
-        },
-      ],
+      isActive: chatHistory.length > 0,
+      items: chatHistory.map((chat) => ({
+        title: chat.title || `Chat ${chat.chatId.slice(0, 8)}`,
+        url: `#${chat.chatId}`,
+        chatId: chat.chatId,
+      })),
     },
-  ],
-};
-
-export function AppSidebar() {
-  const router = useRouter();
+  ];
 
   return (
-    <>
-      <Sidebar collapsible="icon">
-        <SidebarHeader>
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <Compass className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="text-lg truncate font-bold">LM Compass</span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            <SidebarMenuButton
+              className="hover:bg-sidebar-accent/60"
+              onClick={() => {
+                handleNewChat();
+                router.push("/");
+              }}
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              New Chat
+            </SidebarMenuButton>
+            {previousChats.map((item) => (
+              <Collapsible
+                key={item.title}
+                asChild
+                defaultOpen={item.isActive}
+                className="group/collapsible"
               >
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Compass className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="text-lg truncate font-bold">LM Compass</span>
-                </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarMenu>
-              <SidebarMenuButton
-                className="hover:bg-sidebar-accent/60"
-                onClick={() => router.push("/")}
-              >
-                <MessageSquarePlus className="h-4 w-4" />
-                New Chat
-              </SidebarMenuButton>
-              {data.navMain.map((item) => (
-                <Collapsible
-                  key={item.title}
-                  asChild
-                  defaultOpen={item.isActive}
-                  className="group/collapsible"
-                >
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip={item.title}>
-                        {item.icon && <item.icon />}
-                        <span>{item.title}</span>
-                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {item.items?.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip={item.title}>
+                      {item.icon && <item.icon />}
+                      <span>{item.title}</span>
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {item.items && item.items.length > 0 ? (
+                        item.items.map((subItem) => (
+                          <SidebarMenuSubItem
+                            key={subItem.chatId || subItem.title}
+                          >
                             <SidebarMenuSubButton asChild>
-                              <a href={subItem.url}>
+                              <a
+                                href={subItem.url}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  loadChat(subItem.chatId);
+                                  router.push("/");
+                                }}
+                              >
                                 <span>{subItem.title}</span>
                               </a>
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              ))}
-              <SidebarMenuButton
-                className="hover:bg-sidebar-accent/60"
-                onClick={() => router.push("/rubric/view")}
-              >
-                <BookOpen className="h-4 w-4" />
-                View Rubrics
-              </SidebarMenuButton>
-            </SidebarMenu>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
+                        ))
+                      ) : (
+                        <SidebarMenuSubItem>
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No previous chats
+                          </div>
+                        </SidebarMenuSubItem>
+                      )}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            ))}
+            <SidebarMenuButton
+              className="hover:bg-sidebar-accent/60"
+              onClick={() => router.push("/rubric/view")}
+            >
+              <BookOpen className="h-4 w-4" />
+              View Rubrics
+            </SidebarMenuButton>
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SignedIn>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground py-6">
-                    <User2 className="h-4 w-4" />
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={user?.imageUrl}
+                        alt={user?.fullName || "User"}
+                      />
+                      <AvatarFallback>
+                        {user?.firstName?.[0]}
+                        {user?.lastName?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">
-                        {data.user.name}
+                        {user?.fullName || "My Account"}
                       </span>
                       <span className="truncate text-xs">
-                        {data.user.email}
+                        {user?.primaryEmailAddress?.emailAddress || ""}
                       </span>
                     </div>
                     <ChevronsUpDown className="ml-auto size-4" />
@@ -178,10 +205,10 @@ export function AppSidebar() {
                       <User2 />
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-semibold">
-                          {data.user.name}
+                          {user?.fullName || "My Account"}
                         </span>
                         <span className="truncate text-xs">
-                          {data.user.email}
+                          {user?.primaryEmailAddress?.emailAddress || ""}
                         </span>
                       </div>
                     </div>
@@ -196,24 +223,39 @@ export function AppSidebar() {
                       <CreditCard />
                       Billing
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Bell />
-                      Notifications
-                    </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <LogOut />
-                    Log out
-                  </DropdownMenuItem>
+                  <SignOutButton>
+                    <DropdownMenuItem>
+                      <LogOut />
+                      Log out
+                    </DropdownMenuItem>
+                  </SignOutButton>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-        <SidebarRail />
-      </Sidebar>
-      {children}
-    </>
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <SidebarMenuButton variant="primary">
+                  <>
+                    <LogIn className="h-4 w-4" />
+                    Log In
+                  </>
+                </SidebarMenuButton>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <SidebarMenuButton>
+                  <>
+                    <UserPlus className="h-4 w-4" />
+                    Sign Up
+                  </>
+                </SidebarMenuButton>
+              </SignUpButton>
+            </SignedOut>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 }

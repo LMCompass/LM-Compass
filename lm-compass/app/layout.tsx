@@ -3,9 +3,8 @@ import { Poppins } from "next/font/google";
 import { SidebarProvider } from "@/components/sidebar/sidebar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
-import {
-  ClerkProvider,
-} from "@clerk/nextjs";
+import { ChatProvider } from "@/contexts/chat-context";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -25,11 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-<<<<<<< HEAD
-    <>
-=======
     <ClerkProvider>
->>>>>>> origin/main
       <html lang="en" suppressHydrationWarning>
         <head />
         <body className={`${poppins.variable} antialiased font-sans`}>
@@ -39,10 +34,12 @@ export default function RootLayout({
             enableSystem={false}
             disableTransitionOnChange
           >
-            <SidebarProvider>
-              <AppSidebar />
-              {children}
-            </SidebarProvider>
+            <ChatProvider>
+              <SidebarProvider>
+                <AppSidebar />
+                {children}
+              </SidebarProvider>
+            </ChatProvider>
           </ThemeProvider>
         </body>
       </html>
