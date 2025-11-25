@@ -11,7 +11,7 @@ export async function createRubric(rubric: { name: string; description: string }
       return { error: "Unauthorized", success: false };
     }
 
-    if (!rubric.name || !rubric.description) {
+    if (!rubric.name?.trim() || !rubric.description?.trim()) {
       return { error: "Name and description are required", success: false };
     }
 
