@@ -75,7 +75,7 @@ const data = {
   ],
 };
 
-export function AppSidebar({ children }: { children: React.ReactNode }) {
+export function AppSidebar() {
   const router = useRouter();
 
   return (

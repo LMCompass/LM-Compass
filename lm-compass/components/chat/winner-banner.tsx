@@ -24,7 +24,7 @@ export function WinnerBanner({
   }
 
   return (
-    <div className="bg-card rounded-2xl p-5 flex items-center justify-between gap-4 shadow-lg">
+    <div className="bg-card rounded-2xl p-5 mb-2 flex items-center justify-between gap-4 shadow-lg">
       <div className="flex items-center gap-4 flex-1 min-w-0">
         {hasNoWinner ? (
           <>

@@ -5,19 +5,32 @@ import {
   SidebarInset,
   SidebarTrigger,
   useSidebar,
+<<<<<<< HEAD
 } from "@/components/sidebar/sidebar";
+=======
+} from "@/components/ui/sidebar";
+>>>>>>> origin/main
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { AddRubricDialog } from "@/components/add-rubric-dialog";
+import { createRubric } from "../actions";
 
 export default function ViewRubricsPage() {
   const { open } = useSidebar();
   const [showAddRubricDialog, setShowAddRubricDialog] = useState(false);
 
-  const handleSaveRubric = (rubric: { name: string; description: string }) => {
-    // TODO: Add rubric save logic here (e.g., API call, local storage, etc.)
-    console.log("Saving rubric:", rubric);
+  const handleSaveRubric = async (rubric: { name: string; description: string }) => {
+    const result = await createRubric(rubric);
+    
+    if (result.success) {
+      console.log("Rubric saved successfully:", result.data);
+      setShowAddRubricDialog(false);
+      // TODO: Refresh the rubrics list or show success message
+    } else {
+      console.error("Error saving rubric:", result.error);
+      // TODO: Show error message to user
+    }
   };
 
   return (

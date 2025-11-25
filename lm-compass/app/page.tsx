@@ -8,7 +8,12 @@ import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
 import { Plus, Sun, Moon } from "lucide-react";
+<<<<<<< HEAD
 import { SidebarInset } from "@/components/sidebar/sidebar";
+=======
+import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
+import { SidebarInset, useSidebar } from "@/components/ui/sidebar";
+>>>>>>> origin/main
 import { useTheme } from "@/hooks/use-theme";
 import {
   AlertDialog,
@@ -30,6 +35,10 @@ const generateChatId = () => {
 };
 
 export default function Home() {
+<<<<<<< HEAD
+=======
+  const { open } = useSidebar();
+>>>>>>> origin/main
   const { theme, toggleTheme, mounted } = useTheme();
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -75,16 +84,7 @@ export default function Home() {
 
   const confirmModelChange = () => {
     if (pendingModels && pendingModels.length > 0) {
-      const newlySelected = pendingModels.filter(
-        (model) => !selectedModels.includes(model)
-      );
-
-      // If there are newly selected models, use only those. Otherwise use pendingModels as-is
-      if (newlySelected.length > 0) {
-        setSelectedModels(newlySelected);
-      } else {
-        setSelectedModels(pendingModels);
-      }
+      setSelectedModels(pendingModels);
     } else {
       setSelectedModels([]);
     }
@@ -109,6 +109,10 @@ export default function Home() {
     <SidebarInset className="overflow-hidden">
       <div className="h-screen flex flex-col overflow-hidden">
         <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
+<<<<<<< HEAD
+=======
+          {!open && <CustomSidebarTrigger />}
+>>>>>>> origin/main
           <MultiModelSelector
             values={selectedModels}
             onChange={handleMultiModelChange}
@@ -158,6 +162,7 @@ export default function Home() {
             setIsLoading={setIsLoading}
             setLoadingPhase={setLoadingPhase}
             selectedModels={selectedModels}
+            evaluationMethod={selectedRubric}
           />
         </div>
 

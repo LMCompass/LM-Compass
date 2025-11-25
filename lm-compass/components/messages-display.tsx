@@ -69,10 +69,10 @@ export function MessagesDisplay({
       prev.map((msg) =>
         msg.id === messageId
           ? {
-              ...msg,
-              content: selectedContent,
-              userSelectedWinner: selectedModel,
-            }
+            ...msg,
+            content: selectedContent,
+            userSelectedWinner: selectedModel,
+          }
           : msg
       )
     );
@@ -147,7 +147,7 @@ export function MessagesDisplay({
                 )}
 
                 {hasEvaluation && evaluationMetadata && (
-                  <div className="bg-card">
+                  <div>
                     <WinnerBanner
                       message={message}
                       modelLabelMap={modelLabelMap}
@@ -180,8 +180,8 @@ export function MessagesDisplay({
 
                 {/* Single Result or Regular Messages */}
                 {message.role === "assistant" &&
-                message.multiResults &&
-                message.multiResults.length === 1 ? (
+                  message.multiResults &&
+                  message.multiResults.length === 1 ? (
                   <div className="flex justify-start">
                     <div className="rounded-2xl p-2 shadow-lg bg-card max-w-2xl">
                       <MessageContent
@@ -197,11 +197,10 @@ export function MessagesDisplay({
                 {message.role === "user" && (
                   <div className="flex justify-end">
                     <div
-                      className={`rounded-2xl px-5 py-3 max-w-2xl shadow-lg ${
-                        message.isStopped
-                          ? "bg-primary/90 opacity-50 text-primary-foreground"
-                          : "bg-primary/90 text-primary-foreground backdrop-blur-xl"
-                      }`}
+                      className={`rounded-2xl px-5 py-3 max-w-2xl shadow-lg ${message.isStopped
+                        ? "bg-primary/90 opacity-50 text-primary-foreground"
+                        : "bg-primary/90 text-primary-foreground backdrop-blur-xl"
+                        }`}
                     >
                       <p className="leading-relaxed text-md">
                         {message.content}
