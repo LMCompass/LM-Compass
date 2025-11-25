@@ -35,9 +35,7 @@ function normalizeLatexDelimiters(text: string): string {
 }
 
 function parseMarkdownIntoBlocks(markdown: string): string[] {
-  // Normalize LaTeX delimiters before parsing
-  const normalized = normalizeLatexDelimiters(markdown);
-  const tokens = marked.lexer(normalized)
+  const tokens = marked.lexer(markdown)
   return tokens.map((token) => token.raw)
 }
 
