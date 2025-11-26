@@ -1,5 +1,22 @@
 "use client";
 
+interface SpeechRecognitionEvent {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+      isFinal: boolean;
+    };
+    length: number;
+  };
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+}
+
 import {
   PromptInput,
   PromptInputAction,
@@ -8,10 +25,10 @@ import {
 } from "@/components/ui/prompt-input";
 import { Button } from "@/components/ui/button";
 import { Send, Square } from "lucide-react";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { Message } from "@/lib/types";
 
-import { MessageCircleWarning, ChevronRightIcon } from "lucide-react";
+import { MessageCircleWarning, ChevronRightIcon, Mic, MicOff, X } from "lucide-react";
 
 import {
   Item,
@@ -47,6 +64,60 @@ export function PromptInputComponent({
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Dictation state
+  const [isListening, setIsListening] = useState(false);
+  const [isSupported, setIsSupported] = useState(false);
+  const [dictationError, setDictationError] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleFatalError = (message: string) => {
+    setDictationError(message);
+    setIsSupported(false);
+    localStorage.setItem("dictation-error", message);
+  };
+
+  const cleanupDictation = () => {
+    setIsListening(false);
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+  };
+
+  // Simple punctuatino for dictation
+  const addPunctuation = (text: string): string => {
+    const trimmed = text.trim();
+    if (!trimmed) return "";
+
+    if (/[.?!]$/.test(trimmed)) return trimmed;
+
+    const questionWords = [
+      "who", "what", "where", "when", "why", "how",
+      "do", "does", "did", "can", "could", "should", "would", "will",
+      "is", "are", "am", "was", "were", "have", "has", "had"
+    ];
+    const firstWord = trimmed.split(" ")[0].toLowerCase();
+
+    if (questionWords.includes(firstWord)) {
+      return `${trimmed}?`;
+    }
+
+    return `${trimmed}.`;
+  };
+
+  useEffect(() => {
+    const hasSupport =
+      "SpeechRecognition" in window || "webkitSpeechRecognition" in window;
+    setIsSupported(hasSupport);
+
+    const persistedError = localStorage.getItem("dictation-error");
+    if (persistedError) {
+      setDictationError(persistedError);
+      setIsSupported(false);
+    }
+  }, []);
 
   type MultiResult = {
     model: string;
@@ -275,8 +346,110 @@ export function PromptInputComponent({
     setInput(value);
   };
 
+  // Dictation Logic
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    cleanupDictation();
+  };
+
+  const startListening = () => {
+    if (!isSupported) return;
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setDictationError(null);
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        const punctuatedTranscript = addPunctuation(finalTranscript);
+        setInput((prev) => {
+          const newText = prev + (prev && !prev.endsWith(" ") ? " " : "") + punctuatedTranscript;
+          return newText;
+        });
+      }
+
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+      silenceTimerRef.current = setTimeout(() => {
+        stopListening();
+      }, 1500);
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error === "not-allowed") {
+        handleFatalError("Microphone access denied.");
+      } else if (event.error === "network") {
+        handleFatalError("Dictation disabled due to network or browser error.");
+      } else if (event.error === "no-speech") {
+        return;
+      } else {
+        setDictationError(`Error: ${event.error}`);
+        setIsSupported(false);
+      }
+      stopListening();
+    };
+
+    recognition.onend = () => {
+      cleanupDictation();
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
   return (
     <div className="w-full md:w-3/4 lg:w-2/3">
+      {dictationError && (
+        <Item variant="banner" size="sm" asChild>
+          <a>
+            <ItemMedia>
+              <MessageCircleWarning className="size-5" />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>{dictationError}</ItemTitle>
+            </ItemContent>
+            <ItemActions>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                onClick={() => setDictationError(null)}
+              >
+                <X className="size-4" />
+              </Button>
+            </ItemActions>
+          </a>
+        </Item>
+      )}
       {needsWinnerSelection && (
         <Item variant="banner" size="sm" asChild>
           <a>
@@ -316,52 +489,86 @@ export function PromptInputComponent({
           isLoading || needsWinnerSelection || selectedModels.length === 0
         }
       >
-        <div className="flex items-center gap-2">
-          <PromptInputTextarea
-            placeholder={
-              needsWinnerSelection
-                ? "Please select a winner first..."
-                : selectedModels.length === 0
-                  ? "Please select at least one model first..."
-                  : "Ask me anything..."
-            }
-            className="flex-1"
-            disabled={needsWinnerSelection || selectedModels.length === 0}
-          />
-          <PromptInputActions>
-            <PromptInputAction
-              tooltip={
-                isLoading
-                  ? "Stop generation"
-                  : needsWinnerSelection
-                    ? "Select a winner first"
-                    : selectedModels.length === 0
-                      ? "Select at least one model first"
-                      : "Send message"
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <PromptInputTextarea
+              placeholder={
+                needsWinnerSelection
+                  ? "Please select a winner first..."
+                  : selectedModels.length === 0
+                    ? "Please select at least one model first..."
+                    : "Ask me anything..."
               }
-            >
-              <Button
-                variant="default"
-                size="icon"
-                className="h-10 w-10 rounded-xl bg-primary hover:bg-primary/90"
-                onClick={isLoading ? handleStop : handleSubmit}
-                disabled={
-                  !isLoading &&
-                  (needsWinnerSelection ||
-                    !input.trim() ||
-                    selectedModels.length === 0)
+              className="flex-1"
+              disabled={needsWinnerSelection || selectedModels.length === 0}
+            />
+            <PromptInputActions>
+              <PromptInputAction
+                tooltip={
+                  !isSupported
+                    ? dictationError === "Microphone access denied."
+                      ? "Microphone access denied"
+                      : "Dictation disabled"
+                    : needsWinnerSelection
+                      ? "Select a winner first"
+                      : selectedModels.length === 0
+                        ? "Select at least one model first"
+                        : isListening
+                          ? "Stop dictation"
+                          : "Start dictation"
                 }
               >
-                {isLoading ? (
-                  <Square className="size-5 fill-current" />
-                ) : (
-                  <Send className="size-5" />
-                )}
-              </Button>
-            </PromptInputAction>
-          </PromptInputActions>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-10 w-10 rounded-xl ${isListening
+                    ? "bg-red-100 text-red-600 hover:bg-red-200"
+                    : "hover:bg-muted"
+                    }`}
+                  onClick={toggleListening}
+                  disabled={isLoading || needsWinnerSelection || !isSupported || selectedModels.length === 0}
+                >
+                  {isListening ? (
+                    <MicOff className="size-5" />
+                  ) : (
+                    <Mic className="size-5" />
+                  )}
+                </Button>
+              </PromptInputAction>
+              <PromptInputAction
+                tooltip={
+                  isLoading
+                    ? "Stop generation"
+                    : needsWinnerSelection
+                      ? "Select a winner first"
+                      : selectedModels.length === 0
+                        ? "Select at least one model first"
+                        : "Send message"
+                }
+              >
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="h-10 w-10 rounded-xl bg-primary hover:bg-primary/90"
+                  onClick={isLoading ? handleStop : handleSubmit}
+                  disabled={
+                    !isLoading &&
+                    (needsWinnerSelection ||
+                      !input.trim() ||
+                      selectedModels.length === 0)
+                  }
+                >
+                  {isLoading ? (
+                    <Square className="size-5 fill-current" />
+                  ) : (
+                    <Send className="size-5" />
+                  )}
+                </Button>
+              </PromptInputAction>
+            </PromptInputActions>
+          </div>
         </div>
-      </PromptInput>
-    </div>
+      </PromptInput >
+    </div >
   );
 }
