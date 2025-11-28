@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+
 import {
   BookOpen,
   ChevronRight,
@@ -13,6 +14,7 @@ import {
   UserPlus,
   LogIn,
   PanelLeft,
+  Settings,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,6 +46,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "./sidebar";
+import { SettingsDialog } from "@/components/ui/settings-dialog";
 import { useRouter } from "next/navigation";
 import { useChat } from "@/contexts/chat-context";
 
@@ -61,6 +64,7 @@ export function AppSidebar() {
   const { user } = useUser();
   const { handleNewChat, chatHistory, loadChat } = useChat();
   const { toggleSidebar, state } = useSidebar();
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
 
   const previousChats = [
     {
@@ -236,6 +240,11 @@ export function AppSidebar() {
                       </div>
                     </div>
                   </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border/50 dark:bg-gray-700" />
+                  <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <SignOutButton>
                     <DropdownMenuItem>
@@ -267,6 +276,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       <SidebarRail />
     </Sidebar>
   );
