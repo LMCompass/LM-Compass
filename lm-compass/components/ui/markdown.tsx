@@ -4,6 +4,9 @@ import { memo, useId, useMemo } from "react"
 import ReactMarkdown, { Components } from "react-markdown"
 import remarkBreaks from "remark-breaks"
 import remarkGfm from "remark-gfm"
+import remarkMath from "remark-math"
+import rehypeKatex from "rehype-katex"
+import "katex/dist/katex.min.css"
 import { CodeBlock, CodeBlockCode } from "./code-block"
 
 export type MarkdownProps = {
@@ -11,6 +14,51 @@ export type MarkdownProps = {
   id?: string
   className?: string
   components?: Partial<Components>
+}
+
+
+ // Normalizes LaTeX delimiters to be compatible with remark-math
+// Helper to split markdown into code/non-code segments
+function splitMarkdownByCode(text: string): { segments: string[], isCode: boolean[] } {
+  const segments: string[] = [];
+  const isCode: boolean[] = [];
+  let lastIndex = 0;
+  // Regex to match code blocks (```...```) and inline code (`...`)
+  const codeRegex = /(```[\s\S]*?```|`[^`\n]+`)/g;
+  let match: RegExpExecArray | null;
+  while ((match = codeRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push(text.slice(lastIndex, match.index));
+      isCode.push(false);
+    }
+    segments.push(match[0]);
+    isCode.push(true);
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    segments.push(text.slice(lastIndex));
+    isCode.push(false);
+  }
+  return { segments, isCode };
+}
+
+// Normalizes LaTeX delimiters to be compatible with remark-math, skipping code segments
+function normalizeLatexDelimiters(text: string): string {
+  const { segments, isCode } = splitMarkdownByCode(text);
+  // Only normalize non-code segments
+  const normalizedSegments = segments.map((segment, idx) => {
+    if (isCode[idx]) return segment;
+    // Convert \[...\] to $$...$$, but not if preceded by extra backslash
+    segment = segment.replace(/(?<!\\)\\\[([\s\S]*?)\\\]/g, (match, content) => {
+      return `$$${content}$$`;
+    });
+    // Convert \(...\) to $...$, but not if preceded by extra backslash
+    segment = segment.replace(/(?<!\\)\\\(([\s\S]*?)\\\)/g, (match, content) => {
+      return `$${content}$`;
+    });
+    return segment;
+  });
+  return normalizedSegments.join('');
 }
 
 function parseMarkdownIntoBlocks(markdown: string): string[] {
@@ -65,12 +113,16 @@ const MemoizedMarkdownBlock = memo(
     content: string
     components?: Partial<Components>
   }) {
+    // Normalize LaTeX delimiters before rendering
+    const normalizedContent = normalizeLatexDelimiters(content);
+    
     return (
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
+        remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
         components={components}
       >
-        {content}
+        {normalizedContent}
       </ReactMarkdown>
     )
   },
