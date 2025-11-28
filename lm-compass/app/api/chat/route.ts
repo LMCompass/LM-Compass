@@ -1,15 +1,9 @@
 import { OpenAI } from 'openai';
+import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@/utils/supabase/server";
+import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
 import { PromptBasedEvaluator, NPromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
-
-const llmClient = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-    'X-Title': 'LM Compass',
-  },
-});
 
 /**
  * Extracts the user query from the messages array (last user message)
@@ -25,6 +19,49 @@ function extractUserQuery(messages: Array<{ role: string; content: string }>): s
 
 export async function POST(req: Request) {
   try {
+
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const supabase = await createClient();
+    const { data: userSettings, error: dbError } = await supabase
+      .from('user_settings')
+      .select('openrouter_api_key')
+      .eq('user_id', userId)
+      .single();
+
+    if (dbError || !userSettings?.openrouter_api_key) {
+      return NextResponse.json(
+        { error: 'OpenRouter API key not found. Please add it in the settings.' },
+        { status: 404 }
+      );
+    }
+
+    let apiKey;
+    try {
+      apiKey = decrypt(userSettings.openrouter_api_key);
+    } catch (e) {
+      return NextResponse.json(
+        { error: 'Failed to decrypt API key. Please try again.' },
+        { status: 500 }
+      );
+    }
+
+    const llmClient = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: apiKey,
+      defaultHeaders: {
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+        'X-Title': 'LM Compass',
+      },
+    });
+
     const { messages, model, models, evaluationMethod } = await req.json();
 
     // Normalize to models array - handle both single model (legacy) and multi-model cases
