@@ -12,8 +12,9 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [error, setError] = useState("");
 
   const handleSave = async () => {
-    if (!key.startsWith("sk-or-v1-")) {
-      setError("Invalid API Key format. Must start with 'sk-or-v1-'");
+    const openRouterKeyRegex = /^sk-or-v1-[A-Za-z0-9]{64}$/;
+    if (!openRouterKeyRegex.test(key)) {
+      setError("Invalid API Key format. Must match 'sk-or-v1-' followed by 64 alphanumeric characters.");
       return;
     }
     setLoading(true);
@@ -24,7 +25,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       onOpenChange(false);
       setKey("");
     } else {
-      console.error(result.error);
+      setError(result.error || "Failed to save API key");
     }
   };
 
