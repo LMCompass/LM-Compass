@@ -2,10 +2,8 @@
 
 import * as React from "react";
 import {
-  BadgeCheck,
   BookOpen,
   ChevronRight,
-  CreditCard,
   LogOut,
   ChevronsUpDown,
   Compass,
@@ -26,7 +24,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
