@@ -2,15 +2,14 @@
 
 import { PromptInputComponent } from "./prompt-input";
 import { MessagesDisplay } from "@/components/messages-display";
-import { Message as MessageType } from "@/lib/types";
 import { useState, useEffect, useRef } from "react";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
-import { Plus, Sun, Moon } from "lucide-react";
-import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
-import { SidebarInset, useSidebar } from "@/components/ui/sidebar";
+import { Sun, Moon } from "lucide-react";
+import { SidebarInset } from "@/components/sidebar/sidebar";
 import { useTheme } from "@/hooks/use-theme";
+import { useChat } from "@/contexts/chat-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,18 +21,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Generate a random chat ID
-const generateChatId = () => {
-  return (
-    Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15)
-  );
-};
-
 export default function Home() {
-  const { open } = useSidebar();
   const { theme, toggleTheme, mounted } = useTheme();
-  const [messages, setMessages] = useState<MessageType[]>([]);
+  const { messages, setMessages, chatStarted, setChatStarted, chatId } =
+    useChat();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">(
     "querying"
@@ -41,10 +32,8 @@ export default function Home() {
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
-  const [chatStarted, setChatStarted] = useState(false);
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
   const [pendingModels, setPendingModels] = useState<string[] | null>(null);
-  const [chatId, setChatId] = useState(generateChatId());
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -64,7 +53,7 @@ export default function Home() {
     if (messages.length > 0 && !chatStarted) {
       setChatStarted(true);
     }
-  }, [messages.length, chatStarted]);
+  }, [messages.length, chatStarted, setChatStarted]);
 
   const handleMultiModelChange = (newModels: string[]) => {
     if (chatStarted && messages.length > 0) {
@@ -92,17 +81,10 @@ export default function Home() {
     setPendingModels(null);
   };
 
-  const handleNewChat = () => {
-    setMessages([]);
-    setChatStarted(false);
-    setChatId(generateChatId());
-  };
-
   return (
     <SidebarInset className="overflow-hidden">
       <div className="h-screen flex flex-col overflow-hidden">
         <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
-          {!open && <CustomSidebarTrigger />}
           <MultiModelSelector
             values={selectedModels}
             onChange={handleMultiModelChange}
@@ -112,14 +94,6 @@ export default function Home() {
             onChange={setSelectedRubric}
           />
           <div className="flex-1" />
-          <Button
-            variant="outline"
-            onClick={handleNewChat}
-            disabled={isLoading}
-          >
-            <Plus className="size-4 text-muted-foreground" />
-            New Chat
-          </Button>
           <Button
             variant="outline"
             onClick={toggleTheme}

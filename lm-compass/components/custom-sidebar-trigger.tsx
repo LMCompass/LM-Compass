@@ -1,23 +1,23 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Compass, PanelLeft } from "lucide-react"
-import { useSidebar } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { Compass, PanelLeft } from "lucide-react";
+import { useSidebar } from "@/components/sidebar/sidebar";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 export function CustomSidebarTrigger({
   className,
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, open } = useSidebar()
-  const [isHovered, setIsHovered] = React.useState(false)
+  const { toggleSidebar, open } = useSidebar();
+  const [isHovered, setIsHovered] = React.useState(false);
 
   return (
     <Tooltip>
@@ -28,8 +28,8 @@ export function CustomSidebarTrigger({
           size="icon"
           className={cn("size-7", className)}
           onClick={(event) => {
-            onClick?.(event)
-            toggleSidebar()
+            onClick?.(event);
+            toggleSidebar();
           }}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
@@ -60,5 +60,5 @@ export function CustomSidebarTrigger({
         {open ? "Close Sidebar" : "Open Sidebar"}
       </TooltipContent>
     </Tooltip>
-  )
+  );
 }

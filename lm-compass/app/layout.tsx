@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarProvider } from "@/components/sidebar/sidebar";
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
-import {
-  ClerkProvider,
-} from "@clerk/nextjs";
+import { ChatProvider } from "@/contexts/chat-context";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -35,10 +34,12 @@ export default function RootLayout({
             enableSystem={false}
             disableTransitionOnChange
           >
-            <SidebarProvider>
-              <AppSidebar />
-              {children}
-            </SidebarProvider>
+            <ChatProvider>
+              <SidebarProvider>
+                <AppSidebar />
+                {children}
+              </SidebarProvider>
+            </ChatProvider>
           </ThemeProvider>
         </body>
       </html>
