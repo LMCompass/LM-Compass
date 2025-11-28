@@ -14,6 +14,7 @@ import {
   MessageSquarePlus,
   UserPlus,
   LogIn,
+  PanelLeft,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,6 +45,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarRail,
+  useSidebar,
 } from "./sidebar";
 import { useRouter } from "next/navigation";
 import { useChat } from "@/contexts/chat-context";
@@ -61,6 +63,7 @@ export function AppSidebar() {
   const router = useRouter();
   const { user } = useUser();
   const { handleNewChat, chatHistory, loadChat } = useChat();
+  const { toggleSidebar, state } = useSidebar();
 
   const previousChats = [
     {
@@ -81,17 +84,38 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <Compass className="size-4" />
+            {state === "collapsed" ? (
+              <SidebarMenuButton
+                onClick={toggleSidebar}
+                tooltip="Expand Sidebar"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              >
+                <PanelLeft />
+              </SidebarMenuButton>
+            ) : (
+              <div className="flex items-center gap-1 w-full">
+                <SidebarMenuButton
+                  size="lg"
+                  className="flex-1 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    <Compass className="size-4" />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="text-lg truncate font-bold">
+                      LM Compass
+                    </span>
+                  </div>
+                </SidebarMenuButton>
+                <SidebarMenuButton
+                  onClick={toggleSidebar}
+                  tooltip="Collapse Sidebar"
+                  className="aspect-square w-fit flex-shrink-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <PanelLeft />
+                </SidebarMenuButton>
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="text-lg truncate font-bold">LM Compass</span>
-              </div>
-            </SidebarMenuButton>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -173,7 +197,9 @@ export function AppSidebar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground py-6">
-                    <Avatar className="h-8 w-8">
+                    <Avatar
+                      className={state === "collapsed" ? "size-4" : "size-6"}
+                    >
                       <AvatarImage
                         src={user?.imageUrl}
                         alt={user?.fullName || "User"}
@@ -213,17 +239,6 @@ export function AppSidebar() {
                       </div>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem>
-                      <BadgeCheck />
-                      Account
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <CreditCard />
-                      Billing
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <SignOutButton>
                     <DropdownMenuItem>
