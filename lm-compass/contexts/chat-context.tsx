@@ -8,6 +8,13 @@ import React, {
   useEffect,
 } from "react";
 import { Message } from "@/lib/types";
+import { useUser } from "@clerk/nextjs";
+import { useSupabaseClient } from "@/utils/supabase/client";
+import {
+  listChats,
+  loadChat as loadChatFromStorage,
+  type ChatHistoryItem,
+} from "@/lib/chat-storage";
 
 // Generate a random chat ID
 const generateChatId = () => {
@@ -17,12 +24,8 @@ const generateChatId = () => {
   );
 };
 
-export type ChatHistoryItem = {
-  chatId: string;
-  title: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-};
+// Re-export ChatHistoryItem from storage
+export type { ChatHistoryItem } from "@/lib/chat-storage";
 
 type ChatContextType = {
   messages: Message[];
@@ -51,6 +54,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [chatStarted, setChatStarted] = useState(false);
   const [chatId, setChatId] = useState(generateChatId());
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
+  const { user } = useUser();
+  const supabase = useSupabaseClient();
 
   const handleNewChat = useCallback(() => {
     setMessages([]);
@@ -58,18 +63,55 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setChatId(generateChatId());
   }, []);
 
-  // TODO: Implement chat history retrieval from database
   const retrieveChatHistory = useCallback(async () => {
-    setChatHistory([]);
-  }, []);
+    if (!user?.id) {
+      setChatHistory([]);
+      return;
+    }
 
-  // TODO: Implement load chat functionality
-  const loadChat = useCallback(async (chatId: string) => {
-    setChatId(chatId);
-    setChatStarted(true);
-  }, []);
+    try {
+      const { chats, error } = await listChats(supabase, user.id);
+      if (error) {
+        console.error("Error retrieving chat history:", error);
+        return;
+      }
+      setChatHistory(chats);
+    } catch (error) {
+      console.error("Error retrieving chat history:", error);
+    }
+  }, [user?.id, supabase]);
 
-  // Fetch chat history on mount
+  const loadChat = useCallback(
+    async (chatIdToLoad: string) => {
+      if (!user?.id) {
+        return;
+      }
+
+      try {
+        const { messages: loadedMessages, error } = await loadChatFromStorage(
+          supabase,
+          chatIdToLoad,
+          user.id
+        );
+
+        if (error) {
+          console.error("Error loading chat:", error);
+          return;
+        }
+
+        if (loadedMessages) {
+          setMessages(loadedMessages);
+          setChatId(chatIdToLoad);
+          setChatStarted(true);
+        }
+      } catch (error) {
+        console.error("Error loading chat:", error);
+      }
+    },
+    [user?.id, supabase]
+  );
+
+  // Fetch chat history on mount and when user changes
   useEffect(() => {
     retrieveChatHistory();
   }, [retrieveChatHistory]);
