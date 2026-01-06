@@ -5,7 +5,7 @@ import {
   SidebarInset,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@/components/sidebar/sidebar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
@@ -16,9 +16,12 @@ export default function ViewRubricsPage() {
   const { open } = useSidebar();
   const [showAddRubricDialog, setShowAddRubricDialog] = useState(false);
 
-  const handleSaveRubric = async (rubric: { name: string; description: string }) => {
+  const handleSaveRubric = async (rubric: {
+    name: string;
+    description: string;
+  }) => {
     const result = await createRubric(rubric);
-    
+
     if (result.success) {
       console.log("Rubric saved successfully:", result.data);
       setShowAddRubricDialog(false);
