@@ -277,22 +277,7 @@ export function PromptInputComponent({
 
   return (
     <div className="w-full md:w-3/4 lg:w-2/3">
-      {needsWinnerSelection && (
-        <Item variant="banner" size="sm" asChild>
-          <a>
-            <ItemMedia>
-              <MessageCircleWarning className="size-5" />
-            </ItemMedia>
-            <ItemContent>
-              <ItemTitle>
-                Please select a winning response from the options above before
-                continuing the conversation.
-              </ItemTitle>
-            </ItemContent>
-          </a>
-        </Item>
-      )}
-      {selectedModels.length === 0 && !needsWinnerSelection && (
+      {selectedModels.length === 0 && (
         <Item variant="banner" size="sm" asChild>
           <a>
             <ItemMedia>
