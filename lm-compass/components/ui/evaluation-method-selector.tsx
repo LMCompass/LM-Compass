@@ -46,11 +46,11 @@ export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSe
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-[200px] justify-between"
+              className="min-w-[200px] max-w-fit justify-between"
             >
               <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <span>{selectedMethod?.label || "Select method"}</span>
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="truncate">{selectedMethod?.label || "Select method"}</span>
               </div>
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
@@ -60,7 +60,7 @@ export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSe
           <p>Select an evaluation method</p>
         </TooltipContent>
       </Tooltip>
-      <PopoverContent className="w-[200px] p-0">
+      <PopoverContent className="w-auto min-w-[200px] p-0">
         <Command>
           <CommandList>
             <CommandEmpty>No evaluation method found.</CommandEmpty>
