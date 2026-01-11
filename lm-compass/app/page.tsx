@@ -245,6 +245,7 @@ export default function Home() {
                 setLoadingPhase={setLoadingPhase}
                 selectedModels={selectedModels}
                 evaluationMethod={selectedRubric}
+                chatId={chatId}
               />
             )}
           </SignedIn>
