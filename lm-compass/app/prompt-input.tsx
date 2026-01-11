@@ -34,6 +34,7 @@ type PromptInputComponentProps = {
   >;
   selectedModels: string[];
   evaluationMethod: string;
+  chatId: string;
 };
 
 export function PromptInputComponent({
@@ -44,6 +45,7 @@ export function PromptInputComponent({
   setLoadingPhase,
   selectedModels,
   evaluationMethod,
+  chatId,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -133,6 +135,7 @@ export function PromptInputComponent({
             })),
           models: selectedModels.length > 0 ? selectedModels : undefined,
           evaluationMethod,
+          chatId,
         }),
         signal: abortControllerRef.current.signal,
       });
