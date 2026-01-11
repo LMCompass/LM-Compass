@@ -4,6 +4,9 @@ import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
 import { PromptBasedEvaluator, NPromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
+import { saveChat, loadChat as loadChatFromStorage } from '@/lib/chat-storage';
+import type { Message } from '@/lib/types';
+import { randomUUID } from 'crypto';
 
 /**
  * Extracts the user query from the messages array (last user message)
@@ -62,7 +65,8 @@ export async function POST(req: Request) {
       },
     });
 
-    const { messages, model, models, evaluationMethod } = await req.json();
+    const { messages, model, models, evaluationMethod, chatId } = await req.json();
+    console.log('API request received - chatId:', chatId, 'userId:', userId, 'messages count:', messages?.length);
 
     // Normalize to models array - handle both single model (legacy) and multi-model cases
     let modelsToQuery: string[];
@@ -87,6 +91,10 @@ export async function POST(req: Request) {
         const sendProgress = (data: any) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         };
+
+        // Track the final assistant message for saving
+        let finalAssistantMessage: Message | null = null;
+        let allMessagesForSaving: Message[] = [];
 
         try {
           // Always use multi-model logic for consistent return format
@@ -183,6 +191,32 @@ export async function POST(req: Request) {
                 tiedModels: evaluationResult.tiedModels,
               };
 
+              // Create assistant message for saving
+              const multiResults = allResults.map((r) => ({
+                model: r.model,
+                content: r.error
+                  ? `Error: ${r.error}`
+                  : r.message?.content || '',
+              }));
+
+              let content = '';
+              if (evaluationMetadata?.winnerModel) {
+                const winnerResult = multiResults.find(
+                  (r) => r.model === evaluationMetadata.winnerModel
+                );
+                if (winnerResult) {
+                  content = winnerResult.content;
+                }
+              }
+
+              finalAssistantMessage = {
+                id: randomUUID(),
+                role: 'assistant',
+                content,
+                multiResults,
+                evaluationMetadata,
+              };
+
               // Send final results
               sendProgress({
                 phase: 'complete',
@@ -192,6 +226,24 @@ export async function POST(req: Request) {
             } catch (evaluationError) {
               // If evaluation fails, log error and return all results with evaluationError
               console.error('Evaluation failed:', evaluationError);
+              
+              // Still create assistant message even if evaluation failed
+              const multiResults = allResults.map((r) => ({
+                model: r.model,
+                content: r.error
+                  ? `Error: ${r.error}`
+                  : r.message?.content || '',
+              }));
+
+              const content = multiResults[0]?.content || '';
+
+              finalAssistantMessage = {
+                id: randomUUID(),
+                role: 'assistant',
+                content,
+                multiResults: multiResults.length > 1 ? multiResults : undefined,
+              };
+
               sendProgress({
                 phase: 'complete',
                 results: allResults,
@@ -203,6 +255,22 @@ export async function POST(req: Request) {
             }
           } else {
             // (0-1 responses, no evaluation needed)
+            const multiResults = allResults.map((r) => ({
+              model: r.model,
+              content: r.error
+                ? `Error: ${r.error}`
+                : r.message?.content || '',
+            }));
+
+            const content = multiResults[0]?.content || '';
+
+            finalAssistantMessage = {
+              id: randomUUID(),
+              role: 'assistant',
+              content,
+              multiResults: multiResults.length > 1 ? multiResults : undefined,
+            };
+
             sendProgress({
               phase: 'complete',
               results: allResults,
@@ -214,6 +282,71 @@ export async function POST(req: Request) {
             error: error instanceof Error ? error.message : 'Failed to get response from AI',
           });
         } finally {
+          // Save messages to database after streaming completes
+          if (chatId && userId && finalAssistantMessage) {
+            try {
+              // Load existing messages from database to preserve full conversation
+              const { messages: existingMessages } = await loadChatFromStorage(supabase, chatId, userId);
+              
+              console.log('Existing messages in DB:', existingMessages?.length || 0);
+              console.log('Messages from request:', messages.length);
+              
+              // Convert API messages format to Message format
+              // The messages from request are { role, content } only
+              const requestMessages: Message[] = messages.map((msg: { role: string; content: string }) => ({
+                id: randomUUID(),
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content,
+              }));
+
+              // Determine which messages to save
+              let messagesToSave: Message[];
+              
+              if (existingMessages && existingMessages.length > 0) {
+                // We have existing messages - check if request messages are a subset or new
+                // The request should include all previous messages + the new user message
+                // If request has fewer messages, it means client state wasn't fully loaded
+                // In that case, use existing messages + new assistant
+                
+                // Check if the last request message matches the last existing message
+                const lastRequest = requestMessages[requestMessages.length - 1];
+                const lastExisting = existingMessages[existingMessages.length - 1];
+                
+                if (requestMessages.length >= existingMessages.length && 
+                    lastRequest.role === lastExisting.role && 
+                    lastRequest.content === lastExisting.content) {
+                  // Request has all existing + new user message - use request + new assistant
+                  messagesToSave = [...requestMessages, finalAssistantMessage];
+                } else {
+                  // Request is incomplete - use existing + new assistant (new user message is already in existing)
+                  // Actually, if request is shorter, it means the new user message might not be in existing yet
+                  // So we should append the new messages from request
+                  const newFromRequest = requestMessages.slice(existingMessages.length);
+                  messagesToSave = [...existingMessages, ...newFromRequest, finalAssistantMessage];
+                }
+              } else {
+                // No existing messages - this is a new chat, use request + new assistant
+                messagesToSave = [...requestMessages, finalAssistantMessage];
+              }
+
+              console.log('Total messages to save:', messagesToSave.length, 'Order:', messagesToSave.map(m => m.role).join(','));
+              
+              // Save to database (non-blocking, don't wait for it)
+              saveChat(supabase, chatId, userId, messagesToSave).then((result) => {
+                if (result.success) {
+                  console.log('Chat saved successfully');
+                } else {
+                  console.error('Error saving chat:', result.error);
+                }
+              }).catch((err) => {
+                console.error('Error saving chat to database:', err);
+              });
+            } catch (saveError) {
+              console.error('Error preparing chat save:', saveError);
+            }
+          } else {
+            console.log('Not saving chat - missing:', { chatId: !!chatId, userId: !!userId, finalAssistantMessage: !!finalAssistantMessage });
+          }
           controller.close();
         }
       },

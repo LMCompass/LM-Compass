@@ -42,7 +42,9 @@ export async function saveChat(
   title?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log('saveChat called:', { chatId, userId, messagesCount: messages.length });
     if (messages.length === 0) {
+      console.log('No messages to save, returning early');
       return { success: true };
     }
 
@@ -57,7 +59,8 @@ export async function saveChat(
     }
 
     // Upsert chat record
-    const { error: chatError } = await supabase
+    console.log('Upserting chat:', { id: chatId, user_id: userId, title: chatTitle });
+    const { error: chatError, data: chatData } = await supabase
       .from("chats")
       .upsert(
         {
@@ -70,8 +73,10 @@ export async function saveChat(
       );
 
     if (chatError) {
+      console.error('Error upserting chat:', chatError);
       return { success: false, error: chatError.message };
     }
+    console.log('Chat upserted successfully');
 
     // Delete existing messages for this chat
     const { error: deleteError } = await supabase
@@ -111,14 +116,17 @@ export async function saveChat(
     });
 
     // Insert all messages
+    console.log('Inserting', messagesToInsert.length, 'messages');
     const { error: messagesError } = await supabase
       .from("messages")
       .insert(messagesToInsert);
 
     if (messagesError) {
+      console.error('Error inserting messages:', messagesError);
       return { success: false, error: messagesError.message };
     }
 
+    console.log('Chat saved successfully!');
     return { success: true };
   } catch (error) {
     return {
@@ -165,8 +173,10 @@ export async function loadChat(
     }
 
     // Convert database messages to app Message format
+    console.log('Loading messages from DB, order:', dbMessages.map((m: DatabaseMessage) => `${m.sequence_order}:${m.role}`).join(', '));
     const messages: Message[] = dbMessages.map((dbMsg: DatabaseMessage) => {
-      const { id, role, content, metadata } = dbMsg;
+      const { id, role, content, metadata, sequence_order } = dbMsg;
+      console.log(`Loading message ${sequence_order}: ${role} - ${content.substring(0, 30)}...`);
       const message: Message = {
         id,
         role: role as "user" | "assistant",
@@ -222,7 +232,7 @@ export async function listChats(
       return { chats: [] };
     }
 
-    const chats: ChatHistoryItem[] = dbChats.map((chat: DatabaseChat) => ({
+    const chats: ChatHistoryItem[] = dbChats.map((chat: any) => ({
       chatId: chat.id,
       title: chat.title || "Untitled Chat",
       createdAt: chat.created_at ? new Date(chat.created_at) : undefined,
