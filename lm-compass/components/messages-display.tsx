@@ -194,6 +194,45 @@ export function MessagesDisplay({
                   </div>
                 ) : null}
 
+                {/* Error Messages - Assistant messages without multiResults */}
+                {message.role === "assistant" &&
+                  !message.multiResults &&
+                  message.content &&
+                  (message.content.toLowerCase().includes("error") ||
+                    message.content.toLowerCase().includes("unauthorized") ||
+                    message.content.toLowerCase().includes("not found") ||
+                    message.content.toLowerCase().includes("failed")) ? (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl px-5 py-3 max-w-2xl shadow-lg bg-destructive/10 border border-destructive/20">
+                      <p className="text-destructive leading-relaxed text-md">
+                        {message.content}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Regular Assistant Messages (without multiResults) */}
+                {message.role === "assistant" &&
+                  !message.multiResults &&
+                  message.content &&
+                  !(
+                    message.content.toLowerCase().includes("error") ||
+                    message.content.toLowerCase().includes("unauthorized") ||
+                    message.content.toLowerCase().includes("not found") ||
+                    message.content.toLowerCase().includes("failed")
+                  ) ? (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl p-2 shadow-lg bg-card max-w-2xl">
+                      <MessageContent
+                        markdown={true}
+                        className="bg-card text-md"
+                      >
+                        {message.content}
+                      </MessageContent>
+                    </div>
+                  </div>
+                ) : null}
+
                 {message.role === "user" && (
                   <div className="flex justify-end">
                     <div

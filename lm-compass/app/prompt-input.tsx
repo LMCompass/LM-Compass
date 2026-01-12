@@ -138,7 +138,26 @@ export function PromptInputComponent({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to get response");
+        // Try to parse error response
+        let errorMessage = "Failed to get response";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If JSON parsing fails, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        
+        // Provide more specific error messages based on status code
+        if (response.status === 401) {
+          errorMessage = "Unauthorized: Please sign in and try again.";
+        } else if (response.status === 404) {
+          errorMessage = "API key not found. Please add your OpenRouter API key in settings.";
+        } else if (response.status === 500) {
+          errorMessage = errorMessage || "Server error. Please try again later.";
+        }
+        
+        throw new Error(errorMessage);
       }
 
       // Handle streaming response
@@ -240,10 +259,19 @@ export function PromptInputComponent({
       }
 
       console.error("Error:", error);
+      
+      // Get error message - show the actual error message if available
+      let errorContent = "Sorry, I encountered an error. Please try again.";
+      if (error instanceof Error) {
+        errorContent = error.message;
+      } else if (typeof error === "string") {
+        errorContent = error;
+      }
+      
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "Sorry, I encountered an error. Please try again.",
+        content: errorContent,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
