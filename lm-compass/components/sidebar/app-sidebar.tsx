@@ -5,10 +5,7 @@ import * as React from "react";
 import {
   BookOpen,
   ChevronRight,
-  LogOut,
-  ChevronsUpDown,
   Compass,
-  User2,
   History,
   MessageSquarePlus,
   UserPlus,
@@ -17,20 +14,11 @@ import {
   Settings,
 } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -55,7 +43,7 @@ import {
   SignUpButton,
   SignedIn,
   SignedOut,
-  SignOutButton,
+  UserButton,
   useUser,
 } from "@clerk/nextjs";
 
@@ -65,6 +53,7 @@ export function AppSidebar() {
   const { handleNewChat, chatHistory, loadChat } = useChat();
   const { toggleSidebar, state } = useSidebar();
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  const userButtonRef = React.useRef<HTMLDivElement>(null);
 
   const previousChats = [
     {
@@ -195,65 +184,44 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SignedIn>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground py-6">
-                    <Avatar
-                      className={state === "collapsed" ? "size-4" : "size-6"}
-                    >
-                      <AvatarImage
-                        src={user?.imageUrl}
-                        alt={user?.fullName || "User"}
-                      />
-                      <AvatarFallback>
-                        {user?.firstName?.[0]}
-                        {user?.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">
-                        {user?.fullName || "My Account"}
-                      </span>
-                      <span className="truncate text-xs">
-                        {user?.primaryEmailAddress?.emailAddress || ""}
-                      </span>
-                    </div>
-                    <ChevronsUpDown className="ml-auto size-4" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-                  side="bottom"
-                  align="end"
-                  sideOffset={4}
+              <div
+                ref={userButtonRef}
+                className="flex items-center gap-2 px-2 py-2 cursor-pointer hover:bg-sidebar-accent rounded-md transition-colors"
+                onClick={(e) => {
+                  // Find the UserButton trigger and click it
+                  const button = userButtonRef.current?.querySelector('button');
+                  if (button && e.target !== button && !button.contains(e.target as Node)) {
+                    button.click();
+                  }
+                }}
+              >
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: state === "collapsed" ? "w-8 h-8" : "w-10 h-10",
+                      userButtonPopoverCard: "shadow-lg",
+                    },
+                  }}
                 >
-                  <DropdownMenuLabel className="p-0 font-normal">
-                    <div className="flex items-center gap-2 px-1 py-1.5 text-sm">
-                      <User2 />
-                      <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-semibold">
-                          {user?.fullName || "My Account"}
-                        </span>
-                        <span className="truncate text-xs">
-                          {user?.primaryEmailAddress?.emailAddress || ""}
-                        </span>
-                      </div>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-border/50 dark:bg-gray-700" />
-                  <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="cursor-pointer">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <SignOutButton>
-                    <DropdownMenuItem>
-                      <LogOut />
-                      Log out
-                    </DropdownMenuItem>
-                  </SignOutButton>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <UserButton.MenuItems>
+                    <UserButton.Action
+                      label="OpenRouter Key"
+                      labelIcon={<Settings className="w-4 h-4" />}
+                      onClick={() => setIsSettingsOpen(true)}
+                    />
+                  </UserButton.MenuItems>
+                </UserButton>
+                {state !== "collapsed" && (
+                  <div className="grid flex-1 text-left text-sm leading-tight pointer-events-none">
+                    <span className="truncate font-semibold">
+                      {user?.fullName || "My Account"}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {user?.primaryEmailAddress?.emailAddress || ""}
+                    </span>
+                  </div>
+                )}
+              </div>
             </SignedIn>
             <SignedOut>
               <SignInButton mode="modal">
