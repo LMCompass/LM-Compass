@@ -37,3 +37,30 @@ export async function saveOpenRouterKey(apiKey: string) {
     };
   }
 }
+
+export async function hasApiKey() {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { hasKey: false, error: "Unauthorized" };
+    }
+
+    const supabase = await createClient();
+
+    const { data: userSettings, error: dbError } = await supabase
+      .from('user_settings')
+      .select('openrouter_api_key')
+      .eq('user_id', userId)
+      .single();
+
+    if (dbError || !userSettings?.openrouter_api_key) {
+      return { hasKey: false };
+    }
+
+    return { hasKey: true };
+  } catch (error) {
+    console.error("Failed to check API key:", error);
+    return { hasKey: false, error: "Failed to check API key" };
+  }
+}

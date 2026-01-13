@@ -108,9 +108,26 @@ export async function POST(req: Request) {
             if (res.status === 'fulfilled') {
               return { model: modelId, message: res.value.message };
             }
+            
+            // Extract error message
+            let errorMessage = res.reason instanceof Error ? res.reason.message : 'Request failed';
+            
+            // Check if error is related to invalid API key
+            // OpenRouter returns "401 User not found" or similar messages for invalid API keys
+            const errorMessageLower = errorMessage.toLowerCase();
+            if (
+              errorMessageLower.includes('401') ||
+              errorMessageLower.includes('user not found') ||
+              errorMessageLower.includes('invalid api key') ||
+              errorMessageLower.includes('authentication failed') ||
+              (res.reason instanceof Error && 'status' in res.reason && (res.reason as any).status === 401)
+            ) {
+              errorMessage = 'The OpenRouter API key is invalid. Please update with a valid key in settings.';
+            }
+            
             return {
               model: modelId,
-              error: res.reason instanceof Error ? res.reason.message : 'Request failed'
+              error: errorMessage
             };
           });
 

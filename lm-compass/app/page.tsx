@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, KeyRound, LogIn } from "lucide-react";
 import { SidebarInset } from "@/components/sidebar/sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import { useChat } from "@/contexts/chat-context";
@@ -20,11 +20,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SignedIn, SignedOut, SignInButton, useUser } from "@clerk/nextjs";
+import { SettingsDialog } from "@/components/ui/settings-dialog";
+import { hasApiKey } from "@/app/settings/actions";
+import {
+  Item,
+  ItemMedia,
+  ItemContent,
+  ItemTitle,
+  ItemDescription,
+  ItemActions,
+} from "@/components/ui/item";
 
 export default function Home() {
   const { theme, toggleTheme, mounted } = useTheme();
   const { messages, setMessages, chatStarted, setChatStarted, chatId } =
     useChat();
+  const { user, isLoaded: userLoaded } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">(
     "querying"
@@ -34,6 +46,9 @@ export default function Home() {
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
   const [pendingModels, setPendingModels] = useState<string[] | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [checkingKey, setCheckingKey] = useState(true);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -54,6 +69,49 @@ export default function Home() {
       setChatStarted(true);
     }
   }, [messages.length, chatStarted, setChatStarted]);
+
+  // Check if user has API key when signed in
+  useEffect(() => {
+    const checkApiKey = async () => {
+      if (!userLoaded) {
+        return;
+      }
+      
+      if (!user) {
+        setHasKey(false);
+        setCheckingKey(false);
+        return;
+      }
+
+      setCheckingKey(true);
+      try {
+        const result = await hasApiKey();
+        setHasKey(result.hasKey);
+        
+        // If user is signed in but doesn't have a key, show settings dialog
+        if (!result.hasKey) {
+          setIsSettingsOpen(true);
+        }
+      } catch (error) {
+        console.error("Failed to check API key:", error);
+        setHasKey(false);
+      } finally {
+        setCheckingKey(false);
+      }
+    };
+
+    checkApiKey();
+  }, [user, userLoaded]);
+
+  // Refresh API key status when settings dialog closes
+  const handleSettingsClose = async (open: boolean) => {
+    setIsSettingsOpen(open);
+    if (!open && user) {
+      // Check again when dialog closes
+      const result = await hasApiKey();
+      setHasKey(result.hasKey);
+    }
+  };
 
   const handleMultiModelChange = (newModels: string[]) => {
     if (chatStarted && messages.length > 0) {
@@ -118,17 +176,79 @@ export default function Home() {
         />
 
         <div className="flex-shrink-0 flex justify-center p-4 bg-background">
-          <PromptInputComponent
-            key={chatId}
-            messages={messages}
-            setMessages={setMessages}
-            isLoading={isLoading}
-            setIsLoading={setIsLoading}
-            setLoadingPhase={setLoadingPhase}
-            selectedModels={selectedModels}
-            evaluationMethod={selectedRubric}
-          />
+          <SignedOut>
+            <div className="w-full md:w-3/4 lg:w-2/3">
+              <Item variant="banner" size="sm">
+                <ItemMedia>
+                  <LogIn className="size-5" />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>Sign in required</ItemTitle>
+                  <ItemDescription>
+                    You must be signed in to use this application. Please sign in to continue.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <SignInButton mode="modal">
+                    <Button variant="default" size="sm">
+                      Sign In
+                    </Button>
+                  </SignInButton>
+                </ItemActions>
+              </Item>
+            </div>
+          </SignedOut>
+          <SignedIn>
+            {checkingKey ? (
+              <div className="w-full md:w-3/4 lg:w-2/3">
+                <Item variant="banner" size="sm">
+                  <ItemMedia>
+                    <KeyRound className="size-5" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>Checking API key...</ItemTitle>
+                  </ItemContent>
+                </Item>
+              </div>
+            ) : !hasKey ? (
+              <div className="w-full md:w-3/4 lg:w-2/3">
+                <Item variant="banner" size="sm">
+                  <ItemMedia>
+                    <KeyRound className="size-5" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>API key required</ItemTitle>
+                    <ItemDescription>
+                      You need to add your OpenRouter API key to use this application. Please add your key in settings.
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setIsSettingsOpen(true)}
+                    >
+                      Add API Key
+                    </Button>
+                  </ItemActions>
+                </Item>
+              </div>
+            ) : (
+              <PromptInputComponent
+                key={chatId}
+                messages={messages}
+                setMessages={setMessages}
+                isLoading={isLoading}
+                setIsLoading={setIsLoading}
+                setLoadingPhase={setLoadingPhase}
+                selectedModels={selectedModels}
+                evaluationMethod={selectedRubric}
+              />
+            )}
+          </SignedIn>
         </div>
+
+        <SettingsDialog open={isSettingsOpen} onOpenChange={handleSettingsClose} />
 
         <AlertDialog
           open={showModelChangeDialog}
