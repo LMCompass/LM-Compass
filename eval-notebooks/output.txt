@@ -1,0 +1,32 @@
+[
+    {
+        "model": "TNG: DeepSeek R1T2 Chimera (free)",
+        "response": "\n\n```json\n{\n  \"reasoning\": \"Response earns high Correctness & Accuracy (20/25) for minor VRAM underestimation in current-gen games but is otherwise factual; Completeness (20/20) for addressing all aspects; Clarity (18/18), Relevance (18/18), Conciseness (10/10), and Appropriateness (9/9) for excellent organization and focus on technical guidance. Fundamental correctness impacts weighted scoring most.\",\n  \"score\": 95\n}\n```"
+    },
+    {
+        "model": "TNG: DeepSeek R1T2 Chimera (free)",
+        "response": "\n\n```json\n{\n  \"reasoning\": \"Scoring full in Correctness & Accuracy (25) as the response contains no factual errors, with accurate VRAM recommendations matching industry standards and verifiable sources (e.g., current GPU benchmarks). Completeness (20) awarded as it addresses both baseline use and future-proofing. Clarity (18), Relevance (18), and Conciseness (10) are maxed due to structured formatting and omission of fluff. Appropriateness (9) aligns with the query's technical context.\",\n  \"score\": 100\n}\n```"
+    },
+    {
+        "model": "Meta: Llama 3.3 70B Instruct (free)",
+        "response": "```json\n{\n  \"reasoning\": \"The candidate response is evaluated based on the rubric, with high scores in Correctness & Accuracy, Completeness, Clarity & Coherence, Relevance, and Appropriateness for Context, considering the importance of factual accuracy and the weighted sum of all dimensions, where Correctness & Accuracy is weighted the highest at 25 points, followed by Completeness at 20 points, and so on, to calculate the overall score.\",\n  \"score\": 95\n}\n```"
+    },
+    {
+        "model": "Meta: Llama 3.3 70B Instruct (free)",
+        "response": "```json\n{\n  \"reasoning\": \"The candidate response is evaluated based on the rubric, with Correctness & Accuracy being the highest weighted criteria at 25 points, followed by Completeness at 20 points, and considering the response's factual accuracy, comprehensive coverage, clarity, relevance, conciseness, and appropriateness for context, which collectively contribute to the overall score.\",\n  \"score\": 87\n}\n```"
+    },
+    {
+        "model": "AllenAI: Molmo2 8B (free)",
+        "response": "{\n  \"reasoning\": \"The response is highly accurate (mostly correct VRAM recommendations for 1080p, with realistic mentions of ray tracing andODY), well-organized and directly addresses the query. While some details may be speculative with examples (e.g., # of actual games reached #GB), there are no fundamental factual errors in the guidance on VRAM minimum/ideal amounts or how settings affect requirements. The presentation is logical, clear, and most of the information is strictly relevant (minor possible redundant examples are acceptable at 10)) and concise for a technical question. The tone is appropriately technical and contextually fitting.\",\n  \"score\": 92\n}"
+    },
+    {
+        "model": "AllenAI: Molmo2 8B (free)",
+        "response": "{\n  \"reasoning\": \"The response accurately addresses key VRAM requirements for 1080p gaming and provides relevant, up-to-date recommendations, fulfills the query completely, is clear, relevant, concise enough without unnecessary repetition, and is appropriately technical\u2014prioritizing Correctness & Accuracy at over half the score weight, yielding a high overall score.\",\n  \"score\": 92\n}"
+    }
+]
+
+Evaluated Model (Column)             TNG: DeepSeek R1T2 Chimera (free)  Meta: Llama 3.3 70B Instruct (free)  AllenAI: Molmo2 8B (free)
+Judge Model (Row)                                                                                                                     
+TNG: DeepSeek R1T2 Chimera (free)                                  NaN                                 95.0                      100.0
+Meta: Llama 3.3 70B Instruct (free)                               95.0                                  NaN                       87.0
+AllenAI: Molmo2 8B (free)                                         92.0                                 92.0                        NaN
