@@ -66,7 +66,6 @@ export async function POST(req: Request) {
     });
 
     const { messages, model, models, evaluationMethod, chatId } = await req.json();
-    console.log('API request received - chatId:', chatId, 'userId:', userId, 'messages count:', messages?.length);
 
     // Normalize to models array - handle both single model (legacy) and multi-model cases
     let modelsToQuery: string[];
@@ -288,9 +287,6 @@ export async function POST(req: Request) {
               // Load existing messages from database to preserve full conversation
               const { messages: existingMessages } = await loadChatFromStorage(supabase, chatId, userId);
               
-              console.log('Existing messages in DB:', existingMessages?.length || 0);
-              console.log('Messages from request:', messages.length);
-              
               // Convert API messages format to Message format
               // The messages from request are { role, content } only
               const requestMessages: Message[] = messages.map((msg: { role: string; content: string }) => ({
@@ -328,8 +324,6 @@ export async function POST(req: Request) {
                 // No existing messages - this is a new chat, use request + new assistant
                 messagesToSave = [...requestMessages, finalAssistantMessage];
               }
-
-              console.log('Total messages to save:', messagesToSave.length, 'Order:', messagesToSave.map(m => m.role).join(','));
               
               // Save to database (non-blocking, don't wait for it)
               saveChat(supabase, chatId, userId, messagesToSave).then((result) => {
