@@ -6,7 +6,7 @@ import type { Message as MessageType } from "@/lib/types";
 import { MessageContent } from "@/components/ui/message";
 import { Markdown } from "@/components/ui/markdown";
 import { models } from "@/components/ui/model-selector";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,9 @@ import { EmptyChatHeader } from "@/components/chat/empty-chat-header";
 import { ModelResponseCard } from "@/components/chat/model-response-card";
 import { WinnerBanner } from "@/components/chat/winner-banner";
 import { ComparisonPanel } from "@/components/chat/comparison-panel";
+import { useChat } from "@/contexts/chat-context";
+import { Button } from "@/components/ui/button";
+import { ChevronUp } from "lucide-react";
 
 type MessagesDisplayProps = {
   messages: MessageType[];
@@ -42,6 +45,10 @@ export function MessagesDisplay({
     content: string;
   }>(null);
   const [showComparison, setShowComparison] = useState<string | null>(null);
+  const { loadMoreMessages, hasMoreMessages, isLoadingMore } = useChat();
+  const prevMessageCountRef = useRef(messages.length);
+  const scrollHeightBeforeRef = useRef(0);
+  const scrollTopBeforeRef = useRef(0);
 
   const modelLabelMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -78,6 +85,37 @@ export function MessagesDisplay({
     );
   };
 
+  // Store scroll height and position before loading more messages starts
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    if (isLoadingMore) {
+      scrollHeightBeforeRef.current = container.scrollHeight;
+      scrollTopBeforeRef.current = container.scrollTop;
+    }
+  }, [isLoadingMore, messagesContainerRef]);
+
+  // Preserve scroll position after loading more messages - use useLayoutEffect for immediate execution
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    // If messages were added (count increased) and we just finished loading
+    if (messages.length > prevMessageCountRef.current && prevMessageCountRef.current > 0) {
+      const scrollHeightAfter = container.scrollHeight;
+      const scrollDiff = scrollHeightAfter - scrollHeightBeforeRef.current;
+      
+      if (scrollDiff > 0) {
+        // Maintain the same visual position by adding the height difference to the previous scroll position
+        const newScrollTop = scrollTopBeforeRef.current + scrollDiff;
+        container.scrollTop = newScrollTop;
+      }
+    }
+    
+    prevMessageCountRef.current = messages.length;
+  }, [messages, messagesContainerRef]);
+
   return (
     <div
       ref={messagesContainerRef}
@@ -87,6 +125,19 @@ export function MessagesDisplay({
         <EmptyChatHeader />
       ) : (
         <>
+          {hasMoreMessages && (
+            <div className="flex justify-center py-4">
+              <Button
+                onClick={loadMoreMessages}
+                disabled={isLoadingMore}
+                variant="outline"
+                className="gap-2"
+              >
+                <ChevronUp className="h-4 w-4" />
+                {isLoadingMore ? "Loading..." : "Load Previous Messages"}
+              </Button>
+            </div>
+          )}
           {messages.map((message) => {
             const hasMultipleResults =
               message.role === "assistant" &&

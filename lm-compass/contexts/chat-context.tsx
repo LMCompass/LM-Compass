@@ -14,6 +14,7 @@ import { useSupabaseClient } from "@/utils/supabase/client";
 import {
   listChats,
   loadChat as loadChatFromStorage,
+  loadMoreMessages as loadMoreMessagesFromStorage,
   type ChatHistoryItem,
 } from "@/lib/chat-storage";
 
@@ -43,6 +44,9 @@ type ChatContextType = {
   handleNewChat: () => void;
   retrieveChatHistory: () => Promise<void>;
   loadChat: (chatId: string) => Promise<void>;
+  loadMoreMessages: () => Promise<void>;
+  hasMoreMessages: boolean;
+  isLoadingMore: boolean;
 };
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -67,6 +71,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return generateChatId();
   });
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { user } = useUser();
   const supabase = useSupabaseClient();
   const hasLoadedInitialChat = useRef(false);
@@ -74,13 +80,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const loadChat = useCallback(
     async (chatIdToLoad: string) => {
       if (!user?.id) {
-        console.log("Cannot load chat: user not loaded");
+
         return;
       }
 
       try {
-        console.log("Loading chat:", chatIdToLoad, "for user:", user.id);
-        const { messages: loadedMessages, error } = await loadChatFromStorage(
+
+        const { messages: loadedMessages, hasMore, error } = await loadChatFromStorage(
           supabase,
           chatIdToLoad,
           user.id
@@ -94,6 +100,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         console.log("Loaded messages:", loadedMessages?.length || 0);
         if (loadedMessages) {
           setMessages(loadedMessages);
+          setHasMoreMessages(hasMore);
           setChatId(chatIdToLoad);
           setChatStarted(true);
           // Save chatId to localStorage
@@ -113,6 +120,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setChatStarted(false);
+    setHasMoreMessages(false);
     const newChatId = generateChatId();
     setChatId(newChatId);
     // Save new chatId to localStorage
@@ -122,6 +130,47 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     // Prevent auto-loading after new chat
     hasLoadedInitialChat.current = true;
   }, []);
+
+  const loadMoreMessages = useCallback(async () => {
+
+    if (!user?.id || !chatId || isLoadingMore || !hasMoreMessages) {
+      return;
+    }
+
+    // Get the sequence order of the first (oldest) message currently loaded
+    const oldestMessage = messages[0];
+    if (!oldestMessage?.sequenceOrder) {
+      return;
+    }
+
+    setIsLoadingMore(true);
+    try {
+      const { messages: olderMessages, hasMore, error } = await loadMoreMessagesFromStorage(
+        supabase,
+        chatId,
+        user.id,
+        oldestMessage.sequenceOrder,
+        5
+      );
+
+      if (error) {
+        console.error("Error loading more messages:", error);
+        return;
+      }
+
+      if (olderMessages && olderMessages.length > 0) {
+        console.log("Loaded", olderMessages.length, "more messages");
+        setMessages(prev => [...olderMessages, ...prev]);
+        setHasMoreMessages(hasMore);
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [user?.id, chatId, messages, isLoadingMore, hasMoreMessages, supabase]);
 
   const retrieveChatHistory = useCallback(async () => {
     if (!user?.id) {
@@ -167,6 +216,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         handleNewChat,
         retrieveChatHistory,
         loadChat,
+        loadMoreMessages,
+        hasMoreMessages,
+        isLoadingMore,
       }}
     >
       {children}
