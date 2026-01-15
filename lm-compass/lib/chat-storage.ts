@@ -143,9 +143,10 @@ export async function loadChat(
   supabase: SupabaseClient,
   chatId: string,
   userId: string
-): Promise<{ messages: Message[] | null; error?: string }> {
+): Promise<{ messages: Message[] | null; hasMore: boolean; error?: string }> {
   try {
     // Verify chat belongs to user
+    console.log('loadChat: Attempting to load chat', { chatId, userId });
     const { data: chat, error: chatError } = await supabase
       .from("chats")
       .select("id, user_id")
@@ -154,33 +155,42 @@ export async function loadChat(
       .single();
 
     if (chatError || !chat) {
-      return { messages: null, error: "Chat not found" };
+      return { messages: null, hasMore: false, error: "Chat not found" };
     }
 
-    // Load messages
+    // First, get the total count of messages
+    const { count } = await supabase
+      .from("messages")
+      .select("*", { count: 'exact', head: true })
+      .eq("chat_id", chatId);
+
+    // Load messages - get only the last 5 messages
     const { data: dbMessages, error: messagesError } = await supabase
       .from("messages")
       .select("*")
       .eq("chat_id", chatId)
-      .order("sequence_order", { ascending: true });
+      .order("sequence_order", { ascending: false })
+      .limit(5);
 
     if (messagesError) {
-      return { messages: null, error: messagesError.message };
+      return { messages: null, hasMore: false, error: messagesError.message };
     }
 
     if (!dbMessages || dbMessages.length === 0) {
-      return { messages: [] };
+      return { messages: [], hasMore: false };
     }
 
+    // Reverse the messages to get them in correct chronological order
+    const orderedMessages = dbMessages.reverse();
+
     // Convert database messages to app Message format
-    console.log('Loading messages from DB, order:', dbMessages.map((m: DatabaseMessage) => `${m.sequence_order}:${m.role}`).join(', '));
-    const messages: Message[] = dbMessages.map((dbMsg: DatabaseMessage) => {
+    const messages: Message[] = orderedMessages.map((dbMsg: DatabaseMessage) => {
       const { id, role, content, metadata, sequence_order } = dbMsg;
-      console.log(`Loading message ${sequence_order}: ${role} - ${content.substring(0, 30)}...`);
       const message: Message = {
         id,
         role: role as "user" | "assistant",
         content,
+        sequenceOrder: sequence_order,
       };
 
       if (metadata) {
@@ -201,10 +211,97 @@ export async function loadChat(
       return message;
     });
 
-    return { messages };
+    const hasMore = (count || 0) > dbMessages.length;
+
+    return { messages, hasMore };
   } catch (error) {
     return {
       messages: null,
+      hasMore: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Loads more messages from a chat (for infinite scroll).
+ */
+export async function loadMoreMessages(
+  supabase: SupabaseClient,
+  chatId: string,
+  userId: string,
+  beforeSequence: number,
+  limit: number = 5
+): Promise<{ messages: Message[] | null; hasMore: boolean; error?: string }> {
+  try {
+    // Verify chat belongs to user
+    const { data: chat, error: chatError } = await supabase
+      .from("chats")
+      .select("id, user_id")
+      .eq("id", chatId)
+      .eq("user_id", userId)
+      .single();
+
+    if (chatError || !chat) {
+      return { messages: null, hasMore: false, error: "Chat not found" };
+    }
+
+    // Load messages before the given sequence
+    const { data: dbMessages, error: messagesError } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("chat_id", chatId)
+      .lt("sequence_order", beforeSequence)
+      .order("sequence_order", { ascending: false })
+      .limit(limit);
+
+    if (messagesError) {
+      return { messages: null, hasMore: false, error: messagesError.message };
+    }
+
+    if (!dbMessages || dbMessages.length === 0) {
+      return { messages: [], hasMore: false };
+    }
+
+    // Reverse to get chronological order
+    const orderedMessages = dbMessages.reverse();
+
+    // Convert database messages to app Message format
+    const messages: Message[] = orderedMessages.map((dbMsg: DatabaseMessage) => {
+      const { id, role, content, metadata, sequence_order } = dbMsg;
+      const message: Message = {
+        id,
+        role: role as "user" | "assistant",
+        content,
+        sequenceOrder: sequence_order,
+      };
+
+      if (metadata) {
+        if (metadata.isStopped !== undefined) {
+          message.isStopped = metadata.isStopped;
+        }
+        if (metadata.multiResults) {
+          message.multiResults = metadata.multiResults;
+        }
+        if (metadata.evaluationMetadata) {
+          message.evaluationMetadata = metadata.evaluationMetadata as Message["evaluationMetadata"];
+        }
+        if (metadata.userSelectedWinner) {
+          message.userSelectedWinner = metadata.userSelectedWinner;
+        }
+      }
+
+      return message;
+    });
+
+    // Check if there are more messages before this batch
+    const hasMore = dbMessages.length === limit;
+
+    return { messages, hasMore };
+  } catch (error) {
+    return {
+      messages: null,
+      hasMore: false,
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
