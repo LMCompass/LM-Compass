@@ -97,7 +97,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        console.log("Loaded messages:", loadedMessages?.length || 0);
         if (loadedMessages) {
           setMessages(loadedMessages);
           setHasMoreMessages(hasMore);
@@ -159,7 +158,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (olderMessages && olderMessages.length > 0) {
-        console.log("Loaded", olderMessages.length, "more messages");
         setMessages(prev => [...olderMessages, ...prev]);
         setHasMoreMessages(hasMore);
       } else {
@@ -179,13 +177,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log("Retrieving chat history for user:", user.id);
       const { chats, error } = await listChats(supabase, user.id);
       if (error) {
         console.error("Error retrieving chat history:", error);
         return;
       }
-      console.log("Found chats:", chats.length);
       setChatHistory(chats);
       
       // Don't auto-load on initial mount - start with a new chat
