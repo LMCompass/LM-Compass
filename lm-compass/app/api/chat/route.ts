@@ -282,7 +282,11 @@ export async function POST(req: Request) {
           });
         } finally {
           // Save messages to database after streaming completes
-          if (chatId && userId && finalAssistantMessage) {
+          // Skip saving if there's a tie (no winner) - wait for user to select a winner
+          const hasTie = finalAssistantMessage?.evaluationMetadata?.winnerModel === null;
+          const shouldSkipSave = hasTie && !finalAssistantMessage?.userSelectedWinner;
+          
+          if (chatId && userId && finalAssistantMessage && !shouldSkipSave) {
             try {
               // Load existing messages from database to preserve full conversation
               const { messages: existingMessages } = await loadChatFromStorage(supabase, chatId, userId);
@@ -339,7 +343,11 @@ export async function POST(req: Request) {
               console.error('Error preparing chat save:', saveError);
             }
           } else {
-            console.log('Not saving chat - missing:', { chatId: !!chatId, userId: !!userId, finalAssistantMessage: !!finalAssistantMessage });
+            if (shouldSkipSave) {
+              console.log('Skipping save - waiting for user to select winner for tie');
+            } else {
+              console.log('Not saving chat - missing:', { chatId: !!chatId, userId: !!userId, finalAssistantMessage: !!finalAssistantMessage });
+            }
           }
           controller.close();
         }

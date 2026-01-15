@@ -21,6 +21,9 @@ import { ComparisonPanel } from "@/components/chat/comparison-panel";
 import { useChat } from "@/contexts/chat-context";
 import { Button } from "@/components/ui/button";
 import { ChevronUp } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { useSupabaseClient } from "@/utils/supabase/client";
+import { saveChat } from "@/lib/chat-storage";
 
 type MessagesDisplayProps = {
   messages: MessageType[];
@@ -45,7 +48,9 @@ export function MessagesDisplay({
     content: string;
   }>(null);
   const [showComparison, setShowComparison] = useState<string | null>(null);
-  const { loadMoreMessages, hasMoreMessages, isLoadingMore } = useChat();
+  const { loadMoreMessages, hasMoreMessages, isLoadingMore, chatId } = useChat();
+  const { user } = useUser();
+  const supabase = useSupabaseClient();
   const prevMessageCountRef = useRef(messages.length);
   const scrollHeightBeforeRef = useRef(0);
   const scrollTopBeforeRef = useRef(0);
@@ -67,22 +72,37 @@ export function MessagesDisplay({
     setShowComparison(showComparison === messageId ? null : messageId);
   };
 
-  const handleSelectWinner = (
+  const handleSelectWinner = async (
     messageId: string,
     selectedModel: string,
     selectedContent: string
   ) => {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId
-          ? {
+    // Update local state
+    const updatedMessages = messages.map((msg) =>
+      msg.id === messageId
+        ? {
             ...msg,
             content: selectedContent,
             userSelectedWinner: selectedModel,
           }
-          : msg
-      )
+        : msg
     );
+    
+    setMessages(updatedMessages);
+
+    // Save to database after user selects a winner
+    if (chatId && user?.id) {
+      try {
+        const result = await saveChat(supabase, chatId, user.id, updatedMessages);
+        if (result.success) {
+          console.log('Chat saved successfully after winner selection');
+        } else {
+          console.error('Error saving chat after winner selection:', result.error);
+        }
+      } catch (error) {
+        console.error('Error saving chat to database after winner selection:', error);
+      }
+    }
   };
 
   // Store scroll height and position before loading more messages starts
