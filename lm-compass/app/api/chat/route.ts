@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
 import { PromptBasedEvaluator, NPromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
-import { saveChat, loadChat as loadChatFromStorage } from '@/lib/chat-storage';
+import { saveChat, loadChat as loadChatFromStorage, loadAllMessages } from '@/lib/chat-storage';
 import type { Message } from '@/lib/types';
 import { randomUUID } from 'crypto';
 
@@ -288,8 +288,9 @@ export async function POST(req: Request) {
           
           if (chatId && userId && finalAssistantMessage && !shouldSkipSave) {
             try {
-              // Load existing messages from database to preserve full conversation
-              const { messages: existingMessages } = await loadChatFromStorage(supabase, chatId, userId);
+              // Load ALL existing messages from database to preserve full conversation
+              // Use loadAllMessages instead of loadChat to get all messages, not just last 5
+              const { messages: existingMessages } = await loadAllMessages(supabase, chatId, userId);
               
               // Convert API messages format to Message format
               // The messages from request are { role, content } only
