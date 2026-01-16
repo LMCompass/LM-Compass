@@ -139,6 +139,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     // Get the sequence order of the first (oldest) message currently loaded
     const oldestMessage = messages[0];
     if (!oldestMessage?.sequenceOrder) {
+      // If oldest message doesn't have sequenceOrder, we're at the beginning or messages are new
+      setHasMoreMessages(false);
+      return;
+    }
+
+    // If the oldest message has sequenceOrder 0, we're at the beginning
+    if (oldestMessage.sequenceOrder === 0) {
+      setHasMoreMessages(false);
       return;
     }
 
@@ -154,6 +162,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Error loading more messages:", error);
+        setHasMoreMessages(false);
         return;
       }
 
@@ -165,10 +174,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Error loading more messages:", error);
+      setHasMoreMessages(false);
     } finally {
       setIsLoadingMore(false);
     }
   }, [user?.id, chatId, messages, isLoadingMore, hasMoreMessages, supabase]);
+
+  // Update hasMoreMessages based on current messages state
+  useEffect(() => {
+    if (messages.length === 0) {
+      setHasMoreMessages(false);
+      return;
+    }
+
+    // Check if any messages don't have sequenceOrder (newly created, not from storage)
+    const hasNewMessages = messages.some(msg => msg.sequenceOrder === undefined);
+    if (hasNewMessages) {
+      // If there are new messages without sequenceOrder, we can't load more from storage
+      setHasMoreMessages(false);
+      return;
+    }
+
+    // Check if the oldest message is at the beginning (sequenceOrder 0)
+    const oldestMessage = messages[0];
+    if (oldestMessage?.sequenceOrder !== undefined && oldestMessage.sequenceOrder === 0) {
+      setHasMoreMessages(false);
+      return;
+    }
+  }, [messages]);
 
   const retrieveChatHistory = useCallback(async () => {
     if (!user?.id) {
