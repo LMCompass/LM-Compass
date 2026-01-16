@@ -224,6 +224,79 @@ export async function loadChat(
 }
 
 /**
+ * Loads ALL messages from a chat (used when saving to preserve all messages).
+ */
+export async function loadAllMessages(
+  supabase: SupabaseClient,
+  chatId: string,
+  userId: string
+): Promise<{ messages: Message[] | null; error?: string }> {
+  try {
+    // Verify chat belongs to user
+    const { data: chat, error: chatError } = await supabase
+      .from("chats")
+      .select("id, user_id")
+      .eq("id", chatId)
+      .eq("user_id", userId)
+      .single();
+
+    if (chatError || !chat) {
+      return { messages: null, error: "Chat not found" };
+    }
+
+    // Load ALL messages (no limit)
+    const { data: dbMessages, error: messagesError } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("chat_id", chatId)
+      .order("sequence_order", { ascending: true });
+
+    if (messagesError) {
+      return { messages: null, error: messagesError.message };
+    }
+
+    if (!dbMessages || dbMessages.length === 0) {
+      return { messages: [] };
+    }
+
+    // Convert database messages to app Message format
+    const messages: Message[] = dbMessages.map((dbMsg: DatabaseMessage) => {
+      const { id, role, content, metadata, sequence_order } = dbMsg;
+      const message: Message = {
+        id,
+        role: role as "user" | "assistant",
+        content,
+        sequenceOrder: sequence_order,
+      };
+
+      if (metadata) {
+        if (metadata.isStopped !== undefined) {
+          message.isStopped = metadata.isStopped;
+        }
+        if (metadata.multiResults) {
+          message.multiResults = metadata.multiResults;
+        }
+        if (metadata.evaluationMetadata) {
+          message.evaluationMetadata = metadata.evaluationMetadata as Message["evaluationMetadata"];
+        }
+        if (metadata.userSelectedWinner) {
+          message.userSelectedWinner = metadata.userSelectedWinner;
+        }
+      }
+
+      return message;
+    });
+
+    return { messages };
+  } catch (error) {
+    return {
+      messages: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
  * Loads more messages from a chat (for infinite scroll).
  */
 export async function loadMoreMessages(
