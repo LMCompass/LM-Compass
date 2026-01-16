@@ -237,6 +237,23 @@ export function MessagesDisplay({
     prevMessageCountRef.current = messages.length;
   }, [messages, messagesContainerRef]);
 
+  // Determine if we should show the "Load Previous Messages" button
+  const shouldShowLoadMoreButton = useMemo(() => {
+    if (!hasMoreMessages || messages.length === 0) {
+      return false;
+    }
+    // Don't show button if oldest message doesn't have sequenceOrder
+    // or is at the beginning (sequenceOrder 0)
+    const oldestMessage = messages[0];
+    if (!oldestMessage?.sequenceOrder) {
+      return false;
+    }
+    if (oldestMessage.sequenceOrder === 0) {
+      return false;
+    }
+    return true;
+  }, [hasMoreMessages, messages]);
+
   return (
     <div
       ref={messagesContainerRef}
@@ -246,7 +263,7 @@ export function MessagesDisplay({
         <EmptyChatHeader />
       ) : (
         <>
-          {hasMoreMessages && (
+          {shouldShowLoadMoreButton && (
             <div className="flex justify-center py-4">
               <Button
                 onClick={loadMoreMessages}
