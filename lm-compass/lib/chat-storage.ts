@@ -60,7 +60,7 @@ export async function saveChat(
 
     // Upsert chat record
     console.log('Upserting chat:', { id: chatId, user_id: userId, title: chatTitle });
-    const { error: chatError, data: chatData } = await supabase
+    const { error: chatError } = await supabase
       .from("chats")
       .upsert(
         {
@@ -109,7 +109,7 @@ export async function saveChat(
           ...(isStopped !== undefined && { isStopped }),
           ...(multiResults && { multiResults }),
           ...(evaluationMetadata && { evaluationMetadata }),
-          ...(userSelectedWinner && { userSelectedWinner }),
+          ...(userSelectedWinner !== undefined && { userSelectedWinner }),
         },
         sequence_order: index,
       };
@@ -320,13 +320,14 @@ export async function loadMoreMessages(
     }
 
     // Load messages before the given sequence
+    // Query for limit + 1 to determine if there are more messages
     const { data: dbMessages, error: messagesError } = await supabase
       .from("messages")
       .select("*")
       .eq("chat_id", chatId)
       .lt("sequence_order", beforeSequence)
       .order("sequence_order", { ascending: false })
-      .limit(limit);
+      .limit(limit + 1);
 
     if (messagesError) {
       return { messages: null, hasMore: false, error: messagesError.message };
@@ -336,8 +337,15 @@ export async function loadMoreMessages(
       return { messages: [], hasMore: false };
     }
 
+    // Check if there are more messages before this batch
+    // If we got limit + 1 messages, there are more; otherwise, we have all remaining messages
+    const hasMore = dbMessages.length > limit;
+    
+    // If we got more than limit, only take the first limit messages
+    const messagesToProcess = hasMore ? dbMessages.slice(0, limit) : dbMessages;
+
     // Reverse to get chronological order
-    const orderedMessages = dbMessages.reverse();
+    const orderedMessages = messagesToProcess.reverse();
 
     // Convert database messages to app Message format
     const messages: Message[] = orderedMessages.map((dbMsg: DatabaseMessage) => {
@@ -366,9 +374,6 @@ export async function loadMoreMessages(
 
       return message;
     });
-
-    // Check if there are more messages before this batch
-    const hasMore = dbMessages.length === limit;
 
     return { messages, hasMore };
   } catch (error) {

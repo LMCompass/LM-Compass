@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
 import { PromptBasedEvaluator, NPromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
-import { saveChat, loadChat as loadChatFromStorage, loadAllMessages } from '@/lib/chat-storage';
+import { saveChat, loadAllMessages } from '@/lib/chat-storage';
 import type { Message } from '@/lib/types';
 import { randomUUID } from 'crypto';
 
@@ -18,6 +18,37 @@ function extractUserQuery(messages: Array<{ role: string; content: string }>): s
   }
   // Fallback: return empty string if no user message found
   return '';
+}
+
+/**
+ * Creates an assistant message from model results and optional evaluation metadata.
+ */
+function createAssistantMessage(
+  allResults: Array<{ model: string; message?: any; error?: string }>,
+  evaluationMetadata?: EvaluationMetadata
+): Message {
+  const multiResults = allResults.map((r) => ({
+    model: r.model,
+    content: r.error ? `Error: ${r.error}` : r.message?.content || '',
+  }));
+
+  let content = '';
+  if (evaluationMetadata?.winnerModel) {
+    const winnerResult = multiResults.find(
+      (r) => r.model === evaluationMetadata.winnerModel
+    );
+    content = winnerResult?.content || '';
+  } else {
+    content = multiResults[0]?.content || '';
+  }
+
+  return {
+    id: randomUUID(),
+    role: 'assistant',
+    content,
+    multiResults: multiResults.length > 1 ? multiResults : undefined,
+    ...(evaluationMetadata && { evaluationMetadata }),
+  };
 }
 
 export async function POST(req: Request) {
@@ -93,7 +124,6 @@ export async function POST(req: Request) {
 
         // Track the final assistant message for saving
         let finalAssistantMessage: Message | null = null;
-        let allMessagesForSaving: Message[] = [];
 
         try {
           // Always use multi-model logic for consistent return format
@@ -191,30 +221,7 @@ export async function POST(req: Request) {
               };
 
               // Create assistant message for saving
-              const multiResults = allResults.map((r) => ({
-                model: r.model,
-                content: r.error
-                  ? `Error: ${r.error}`
-                  : r.message?.content || '',
-              }));
-
-              let content = '';
-              if (evaluationMetadata?.winnerModel) {
-                const winnerResult = multiResults.find(
-                  (r) => r.model === evaluationMetadata.winnerModel
-                );
-                if (winnerResult) {
-                  content = winnerResult.content;
-                }
-              }
-
-              finalAssistantMessage = {
-                id: randomUUID(),
-                role: 'assistant',
-                content,
-                multiResults,
-                evaluationMetadata,
-              };
+              finalAssistantMessage = createAssistantMessage(allResults, evaluationMetadata);
 
               // Send final results
               sendProgress({
@@ -227,21 +234,7 @@ export async function POST(req: Request) {
               console.error('Evaluation failed:', evaluationError);
               
               // Still create assistant message even if evaluation failed
-              const multiResults = allResults.map((r) => ({
-                model: r.model,
-                content: r.error
-                  ? `Error: ${r.error}`
-                  : r.message?.content || '',
-              }));
-
-              const content = multiResults[0]?.content || '';
-
-              finalAssistantMessage = {
-                id: randomUUID(),
-                role: 'assistant',
-                content,
-                multiResults: multiResults.length > 1 ? multiResults : undefined,
-              };
+              finalAssistantMessage = createAssistantMessage(allResults);
 
               sendProgress({
                 phase: 'complete',
@@ -254,21 +247,7 @@ export async function POST(req: Request) {
             }
           } else {
             // (0-1 responses, no evaluation needed)
-            const multiResults = allResults.map((r) => ({
-              model: r.model,
-              content: r.error
-                ? `Error: ${r.error}`
-                : r.message?.content || '',
-            }));
-
-            const content = multiResults[0]?.content || '';
-
-            finalAssistantMessage = {
-              id: randomUUID(),
-              role: 'assistant',
-              content,
-              multiResults: multiResults.length > 1 ? multiResults : undefined,
-            };
+            finalAssistantMessage = createAssistantMessage(allResults);
 
             sendProgress({
               phase: 'complete',
@@ -283,7 +262,12 @@ export async function POST(req: Request) {
         } finally {
           // Save messages to database after streaming completes
           // Skip saving if there's a tie (no winner) - wait for user to select a winner
-          const hasTie = finalAssistantMessage?.evaluationMetadata?.winnerModel === null;
+          const metadata = finalAssistantMessage?.evaluationMetadata;
+          const hasTie =
+            !!metadata &&
+            metadata.winnerModel === null &&
+            Array.isArray(metadata.tiedModels) &&
+            metadata.tiedModels.length > 0;
           const shouldSkipSave = hasTie && !finalAssistantMessage?.userSelectedWinner;
           
           if (chatId && userId && finalAssistantMessage && !shouldSkipSave) {
@@ -293,9 +277,9 @@ export async function POST(req: Request) {
               const { messages: existingMessages } = await loadAllMessages(supabase, chatId, userId);
               
               // Convert API messages format to Message format
-              // The messages from request are { role, content } only
-              const requestMessages: Message[] = messages.map((msg: { role: string; content: string }) => ({
-                id: randomUUID(),
+              // The messages from request are { role, content } only, but may optionally include an id
+              const requestMessages: Message[] = messages.map((msg: { role: string; content: string } & { id?: string }) => ({
+                id: msg.id ?? randomUUID(),
                 role: msg.role as 'user' | 'assistant',
                 content: msg.content,
               }));
@@ -304,29 +288,26 @@ export async function POST(req: Request) {
               let messagesToSave: Message[];
               
               if (existingMessages && existingMessages.length > 0) {
-                // We have existing messages - check if request messages are a subset or new
-                // The request should include all previous messages + the new user message
-                // If request has fewer messages, it means client state wasn't fully loaded
-                // In that case, use existing messages + new assistant
+                // Determine overlap by comparing from the start until messages diverge,
+                // then append only the new messages from the request.
+                let firstNewIndex = 0;
+                const maxComparable = Math.min(existingMessages.length, requestMessages.length);
                 
-                // Check if the last request message matches the last existing message
-                const lastRequest = requestMessages[requestMessages.length - 1];
-                const lastExisting = existingMessages[existingMessages.length - 1];
-                
-                if (requestMessages.length >= existingMessages.length && 
-                    lastRequest.role === lastExisting.role && 
-                    lastRequest.content === lastExisting.content) {
-                  // Request has all existing + new user message - use request + new assistant
-                  messagesToSave = [...requestMessages, finalAssistantMessage];
-                } else {
-                  // Request is incomplete - use existing + new assistant (new user message is already in existing)
-                  // Actually, if request is shorter, it means the new user message might not be in existing yet
-                  // So we should append the new messages from request
-                  const newFromRequest = requestMessages.slice(existingMessages.length);
-                  messagesToSave = [...existingMessages, ...newFromRequest, finalAssistantMessage];
+                while (firstNewIndex < maxComparable) {
+                  const existing = existingMessages[firstNewIndex];
+                  const incoming = requestMessages[firstNewIndex];
+                  
+                  if (existing.role !== incoming.role || existing.content !== incoming.content) {
+                    break;
+                  }
+                  firstNewIndex++;
                 }
+                
+                // Append only the new messages from the request
+                const newFromRequest = requestMessages.slice(firstNewIndex);
+                messagesToSave = [...existingMessages, ...newFromRequest, finalAssistantMessage];
               } else {
-                // No existing messages - this is a new chat, use request + new assistant
+                // No existing messages - this is a new chat
                 messagesToSave = [...requestMessages, finalAssistantMessage];
               }
               

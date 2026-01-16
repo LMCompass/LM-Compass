@@ -223,7 +223,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error retrieving chat history:", error);
     }
-  }, [user?.id, supabase, loadChat, messages.length]);
+  }, [user?.id, supabase]);
 
   // Fetch chat history on mount and when user changes
   useEffect(() => {

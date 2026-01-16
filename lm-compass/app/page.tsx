@@ -2,7 +2,7 @@
 
 import { PromptInputComponent } from "./prompt-input";
 import { MessagesDisplay } from "@/components/messages-display";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
