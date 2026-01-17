@@ -76,7 +76,7 @@ export default function Home() {
       if (!userLoaded) {
         return;
       }
-      
+
       if (!user) {
         setHasKey(false);
         setCheckingKey(false);
@@ -87,7 +87,7 @@ export default function Home() {
       try {
         const result = await hasApiKey();
         setHasKey(result.hasKey);
-        
+
         // If user is signed in but doesn't have a key, show settings dialog
         if (!result.hasKey) {
           setIsSettingsOpen(true);
@@ -184,8 +184,9 @@ export default function Home() {
                 </ItemMedia>
                 <ItemContent>
                   <ItemTitle>Sign in required</ItemTitle>
-                  <ItemDescription>
-                    You must be signed in to use this application. Please sign in to continue.
+                  <ItemDescription className="text-accent-foreground">
+                    You must be signed in to use this application. Please sign
+                    in to continue.
                   </ItemDescription>
                 </ItemContent>
                 <ItemActions>
@@ -219,7 +220,8 @@ export default function Home() {
                   <ItemContent>
                     <ItemTitle>API key required</ItemTitle>
                     <ItemDescription>
-                      You need to add your OpenRouter API key to use this application. Please add your key in settings.
+                      You need to add your OpenRouter API key to use this
+                      application. Please add your key in settings.
                     </ItemDescription>
                   </ItemContent>
                   <ItemActions>
@@ -248,7 +250,10 @@ export default function Home() {
           </SignedIn>
         </div>
 
-        <SettingsDialog open={isSettingsOpen} onOpenChange={handleSettingsClose} />
+        <SettingsDialog
+          open={isSettingsOpen}
+          onOpenChange={handleSettingsClose}
+        />
 
         <AlertDialog
           open={showModelChangeDialog}

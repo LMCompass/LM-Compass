@@ -17,7 +17,7 @@ export type MarkdownProps = {
 }
 
 
- // Normalizes LaTeX delimiters to be compatible with remark-math
+// Normalizes LaTeX delimiters to be compatible with remark-math
 // Helper to split markdown into code/non-code segments
 function splitMarkdownByCode(text: string): { segments: string[], isCode: boolean[] } {
   const segments: string[] = [];
@@ -73,6 +73,65 @@ function extractLanguage(className?: string): string {
 }
 
 const INITIAL_COMPONENTS: Partial<Components> = {
+  p: function ParagraphComponent({ children, ...props }) {
+    return (
+      <p className="mb-4 last:mb-0" {...props}>
+        {children}
+      </p>
+    );
+  },
+  h1: function H1Component({ children, ...props }) {
+    return (
+      <h1 className="mb-4 mt-6 text-2xl font-bold first:mt-0" {...props}>
+        {children}
+      </h1>
+    );
+  },
+  h2: function H2Component({ children, ...props }) {
+    return (
+      <h2 className="mb-3 mt-5 text-xl font-semibold first:mt-0" {...props}>
+        {children}
+      </h2>
+    );
+  },
+  h3: function H3Component({ children, ...props }) {
+    return (
+      <h3 className="mb-2 mt-4 text-lg font-semibold first:mt-0" {...props}>
+        {children}
+      </h3>
+    );
+  },
+  ul: function UlComponent({ children, ...props }) {
+    return (
+      <ul className="mb-4 ml-6 list-disc last:mb-0" {...props}>
+        {children}
+      </ul>
+    );
+  },
+  ol: function OlComponent({ children, ...props }) {
+    return (
+      <ol className="mb-4 ml-6 list-decimal last:mb-0" {...props}>
+        {children}
+      </ol>
+    );
+  },
+  li: function LiComponent({ children, ...props }) {
+    return (
+      <li className="mb-1" {...props}>
+        {children}
+      </li>
+    );
+  },
+  blockquote: function BlockquoteComponent({ children, ...props }) {
+    return (
+      <blockquote
+        className="mb-4 border-l-4 border-border pl-4 italic last:mb-0"
+        {...props}
+      >
+        {children}
+      </blockquote>
+    );
+  },
   code: function CodeComponent({ className, children, ...props }) {
     const isInline =
       !props.node?.position?.start.line ||
