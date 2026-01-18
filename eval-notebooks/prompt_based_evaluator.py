@@ -14,7 +14,7 @@ class PromptBasedEvaluator(Evaluator):
 
 
 
-    def n_scoring_query(self, user_query, rubric, answer):
+    def n_sq_scoring_query(self, user_query, rubric, answer):
         return textwrap.dedent(f"""\
         You are an expert evaluator for a large language model comparison tool. Your role is to provide an objective, rubric-based score for the candidate's response to a user's query.
 
@@ -72,9 +72,9 @@ class PromptBasedEvaluator(Evaluator):
 
 
 
-    def n_evaluate(self, user_query, rubric):
+    def n_sq_evaluate(self, user_query, rubric):
         '''
-        Does the n method of prompt based evaluation and stores the results user_query_answers and evaluation_query_answers
+        Does the n^2 method of prompt based evaluation and stores the results user_query_answers and evaluation_query_answers
         
         :param user_query: What the user is asking the models
         :param rubric: What the models should grade the responses to the user_query based on
@@ -90,7 +90,7 @@ class PromptBasedEvaluator(Evaluator):
                 model2, answer = item["model"], item["response"]
                 if model1 != model2:
                     new_models_to_use.append(model1)
-                    new_queries_to_use.append(self.n_scoring_query(user_query, rubric, answer))
+                    new_queries_to_use.append(self.n_sq_scoring_query(user_query, rubric, answer))
                     models_being_evaluated.append(model2)
 
         self.evaluation_query_answers = asyncio.run(self.query_models(new_models_to_use, new_queries_to_use))
