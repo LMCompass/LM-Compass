@@ -1,8 +1,6 @@
 from prompt_based_evaluator import PromptBasedEvaluator
 import json
 
-# FEEL FREE TO IGNORE THIS FILE. ITS JUST FOR TESTING
-
 user_query = "How many gigabytes of VRAM should I have for 1080p gaming?"
 
 rubric = """Correctness & Accuracy (25 points) — Ensures claims are factually accurate and verifiable, addressing the most critical concern of hallucination-free responses. This is weighted highest because inaccurate information undermines all other qualities.
@@ -23,8 +21,9 @@ a = PromptBasedEvaluator(
     "AllenAI: Molmo2 8B (free)"
 )
 
-raw = a.n_evaluate(user_query, rubric)
-table = a.score_table(raw)
+a.n_evaluate(user_query, rubric)
+table = a.score_table(a.evaluation_query_answers)
 with open("output.txt", "w") as fh:
-    fh.write(str(json.dumps(raw, indent=4)))
+    fh.write(str(json.dumps(a.user_query_answers, indent=4)))
+    fh.write("\n\n" + str(json.dumps(a.evaluation_query_answers, indent=4)))
     fh.write("\n\n" + str(table))

@@ -1,10 +1,7 @@
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-import pandas as pd
-import numpy as np
 import os
 import asyncio
-import re
 import json
 
 
