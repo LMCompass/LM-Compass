@@ -1,59 +1,65 @@
-[
-    {
-        "model": "TNG: DeepSeek R1T2 Chimera (free)",
-        "response": "\n\nThe amount of VRAM needed for **1080p gaming** depends on the **games you play**, **graphics settings**, and **future-proofing requirements**. Here's a general breakdown:\n\n### 1. **Minimum (Low Settings, Older Games): 4\u20136 GB**\n   - **Suitable for**: Esports titles (e.g., *Valorant*, *LoL*, *CS2*), indie games, or older AAA titles at low-to-medium settings.\n   - **Limitations**: Newer AAA games (2023+) may struggle or require heavy compromises (e.g., textures, shadows) at 1080p.\n\n### 2. **Recommended (High/Ultra Settings, Modern AAA Games): 8\u201312 GB**\n   - **8 GB**: The **sweet spot** for most current AAA games at **High/Ultra 1080p** (e.g., *Cyberpunk 2077*, *Elden Ring*, *Hogwarts Legacy*). You might need to reduce ray tracing or texture quality in some titles.\n   - **12 GB**: Ideal for **future-proofing** and handling **ray tracing**, **ultra textures**, or poorly optimized games (e.g., *The Last of Us Part I*, *Hogwarts Legacy* with RT enabled).\n\n### 3. **Future-Proofing/Enthusiast: 12\u201316 GB**\n   - **Worth considering** if you plan to keep your GPU for **3+ years** or play **demanding mods/RT-heavy games** at max settings. Titles like *Alan Wake 2* already push 8 GB to its limits.\n\n---\n\n### **Key Considerations**:\n- **Texture Quality**: Ultra textures in modern games can use **6\u20138 GB VRAM alone**.\n- **Ray Tracing**: Adds **~1\u20132 GB VRAM overhead**.\n- **Game Optimization**: Poorly optimized ports (e.g., *Resident Evil 4 Remake*) may require **10+ GB** even at 1080p.\n- **Multi-Tasking**: Recording/streaming, multi-monitor setups, or background apps benefit from extra VRAM.\n\n---\n\n### **GPU Recommendations for 1080p in 2024**:\n- **Budget (Low Settings)**: RTX 3050 (8 GB), RX 6600 (8 GB).\n- **Mainstream (60+ FPS Ultra)**: RTX 4060 (8 GB) or RX 7600 (8 GB).\n- **Future-Proof/High Refresh Rate**: RTX 4070 (12 GB), RX 7700 XT (12 GB).\n\n---\n\n### **TL;DR**:\n- **Minimum**: 6 GB (budget GPUs, older games).  \n- **Recommended**: **8 GB** (most 2023\u20132024 AAA games at High/Ultra).  \n- **Ideal/Future-Proof**: **12 GB+** (ray tracing, ultra textures, upcoming titles).  \n\nFor smooth 1080p gaming today with room to grow, **8 GB is practical**, but **12 GB ensures longevity**. Always check game-specific benchmarks for your GPU!"
-    },
-    {
-        "model": "Meta: Llama 3.3 70B Instruct (free)",
-        "response": "For 1080p gaming, the amount of VRAM (Video Random Access Memory) you need depends on several factors, including the type of games you play, the graphics settings you use, and the performance level you're aiming for. Here are some general guidelines:\n\n* For casual 1080p gaming (medium to low graphics settings): 2-4 GB of VRAM is sufficient.\n* For mainstream 1080p gaming (medium to high graphics settings): 4-6 GB of VRAM is recommended.\n* For high-performance 1080p gaming (high to ultra graphics settings): 6-8 GB of VRAM or more is ideal.\n\nKeep in mind that these are general guidelines, and the actual VRAM requirements can vary depending on the specific games you play. Some games may require more VRAM due to their graphics-intensive nature, while others may be more forgiving.\n\nIt's also important to note that the amount of VRAM is not the only factor that determines gaming performance. The GPU's (Graphics Processing Unit) processing power, memory bandwidth, and other factors also play a significant role.\n\nTo give you a better idea, here are some popular GPUs and their VRAM configurations:\n\n* NVIDIA GeForce GTX 1660: 6 GB GDDR6\n* NVIDIA GeForce GTX 1660 Super: 6 GB GDDR6\n* AMD Radeon RX 5600 XT: 6 GB GDDR6\n* NVIDIA GeForce RTX 2060: 6 GB GDDR6\n\nIn general, if you're looking to play modern games at 1080p with medium to high graphics settings, a GPU with 6 GB of VRAM or more should be sufficient. However, if you're looking to play at higher resolutions (1440p or 4K) or with more demanding graphics settings, you may need more VRAM."
-    },
-    {
-        "model": "AllenAI: Molmo2 8B (free)",
-        "response": "For 1080p gaming, you generally need between **6GB and 8GB of VRAM**. Most modern games run well at this level of VRAM for 1080p resolution.\n\n- **6GB VRAM:** Suitable for most games at low to medium settings.\n- **8GB VRAM:** Offers better performance with higher settings, especially for modern titles.\n\nIf you plan to play demanding AAA games, or run multiple apps/games at once, **16GB VRAM** is gravy but can help futureproof your setup.\n\n**In summary:**  \n- **1080p gaming:** 6GB\u20138GB VRAM is typical and sufficient.\n- **More than 1080p or demanding games:** 16GB or more.\n\nLet me know if you have a specific game or usage in mind!"
-    }
-]
+-------------------------------- USER QUERY ANSWERS --------------------------------
 
 [
     {
         "model": "TNG: DeepSeek R1T2 Chimera (free)",
-        "response": "\n\n```json\n{\n  \"reasoning\": \"The response scores high on Correctness & Accuracy (25/25) with factually accurate VRAM ranges and GPU examples. Completeness (20/20) covers query aspects thoroughly with guidelines, influencing factors, and examples. Clarity & Coherence (18/18) uses structured formatting effectively. Relevance (18/18) stays strictly on-topic. Conciseness (9/10) loses minimal points due to bordering minor redundancy in GPU list explanations. Appropriateness for Context (9/9) matches the technical depth and tone required for a hardware query. Weighted by the rubric, no factual errors prioritize Correctness impact.\",\n  \"score\": 99\n}\n```",
-        "evaluated_model": "Meta: Llama 3.3 70B Instruct (free)",
-        "score": 99
-    },
-    {
-        "model": "TNG: DeepSeek R1T2 Chimera (free)",
-        "response": "\n```json\n{\n  \"reasoning\": \"The response is generally accurate on VRAM recommendations (6-8GB sufficient, 16GB future-proofing) but slightly overstates importance of 16GB VRAM as 'gravy', resulting in a minor correctness deduction. It addresses all query aspects, maintains relevance and structure while being appropriately technical, with small completeness omission regarding texture settings/RTX impact.\",\n  \"score\": 91\n}\n```",
-        "evaluated_model": "AllenAI: Molmo2 8B (free)",
-        "score": 91
+        "response": "For smooth **1080p gaming in 2024 and beyond**, here's a concise breakdown of VRAM recommendations:\n\n### **Ideal VRAM for 1080p Gaming**\n1. **8GB VRAM**:  \n   - **Recommended** for modern AAA games at **High/Ultra settings** (e.g., *Cyberpunk 2077*, *Elden Ring*, *Hogwarts Legacy*).  \n   - Ensures future-proofing for upcoming titles.  \n   - Essential for **ray tracing** or high-resolution textures.  \n   - *Examples*: NVIDIA RTX 3050, RX 7600, RTX 3060 (12GB).\n\n2. **6GB VRAM**:  \n   - **Minimum** for newer games at **Medium settings**.  \n   - May struggle with texture-heavy games or max settings (e.g., *Forza Horizon 5* can exceed 6GB).  \n   - Best for **eSports titles** (Valorant, Fortnite, CS2) or older games.  \n   - *Examples*: GTX 1660 Super, RTX 2060.\n\n3. **4GB VRAM**:  \n   - **Outdated** for modern games. Only suitable for low settings in older or lightweight titles.  \n   - Avoid if buying a new GPU.\n\n---\n\n### **Key Considerations**\n- **Game Requirements**: AAA titles increasingly use **8GB+** (e.g., *Resident Evil 4 Remake* requires 8GB for Ultra).  \n- **Ray Tracing**: Adds 1\u20132GB VRAM overhead.  \n- **Future-Proofing**: Games will demand more VRAM\u2014**8GB ensures longevity**.  \n- **GPU Power**: Pair VRAM with a capable GPU (e.g., an RTX 3050 8GB is weaker than an RTX 3060 12GB).  \n\n---\n\n### **Final Recommendation**\n\u2705 **Aim for 8GB VRAM** for a seamless 1080p experience today and for the next 2\u20133 years. If budget-constrained, **6GB** works for medium settings, but avoid 4GB."
     },
     {
         "model": "Meta: Llama 3.3 70B Instruct (free)",
-        "response": "```json\n{\n  \"reasoning\": \"The response is evaluated based on the rubric, with high scores in Correctness & Accuracy, Completeness, Clarity & Coherence, and Relevance, due to its detailed and accurate breakdown of VRAM requirements for 1080p gaming, addressing all aspects of the query with logical flow and pertinent information, thus justifying a high overall score weighted heavily by correctness and completeness criteria.\",\n  \"score\": 95\n}\n```",
-        "evaluated_model": "TNG: DeepSeek R1T2 Chimera (free)",
-        "score": 95
-    },
-    {
-        "model": "Meta: Llama 3.3 70B Instruct (free)",
-        "response": "```json\n{\n  \"reasoning\": \"The candidate response is evaluated based on the rubric, with Correctness & Accuracy being the most critical factor, and considering the response's factual accuracy, completeness, clarity, relevance, conciseness, and appropriateness for context, with a score calculated as the weighted sum of these dimensions.\",\n  \"score\": 92\n}\n```",
-        "evaluated_model": "AllenAI: Molmo2 8B (free)",
-        "score": 92
+        "response": "For 1080p gaming, the amount of VRAM (Video Random Access Memory) you need depends on several factors, including the type of games you play, the graphics settings you use, and the performance level you're aiming for.\n\nHere are some general guidelines:\n\n* For casual 1080p gaming (low to medium graphics settings): 2-4 GB of VRAM is sufficient for most modern games.\n* For medium to high 1080p gaming (medium to high graphics settings): 4-6 GB of VRAM is recommended for smoother performance and more detailed graphics.\n* For high-end 1080p gaming (very high graphics settings, high frame rates): 6-8 GB of VRAM or more is ideal for the best possible performance and graphics quality.\n\nKeep in mind that these are general guidelines, and specific games may have different VRAM requirements. Some games may be more VRAM-intensive than others, so it's always a good idea to check the system requirements for the specific games you want to play.\n\nIt's also worth noting that other factors like the graphics card's GPU (Graphics Processing Unit) performance, CPU, and system RAM also play a significant role in determining gaming performance.\n\nTo give you a better idea, here are some examples of popular graphics cards and their VRAM:\n\n* NVIDIA GeForce GTX 1660: 6 GB GDDR6\n* AMD Radeon RX 5600 XT: 6 GB GDDR6\n* NVIDIA GeForce RTX 2060: 6 GB GDDR6\n* AMD Radeon RX 6700 XT: 12 GB GDDR6\n\nIn summary, for 1080p gaming, 4-6 GB of VRAM is a good starting point, but 6-8 GB or more is recommended for high-end gaming. However, the specific VRAM requirements will depend on the games you play and the performance level you're aiming for."
     },
     {
         "model": "AllenAI: Molmo2 8B (free)",
-        "response": "{\n  \"reasoning\": \"The candidate\u2019s response is accurate with respect to current VRAM requirements for 1080p gaming, provides detailed breakdowns, comparative factors, and practical.gpu recommendations, all of which demonstrate high correctness, completeness, clarity, relevance, and contextual appropriateness. It is thorough and well organized without unnecessary verbosity.\",\n  \"score\": 97\n}",
-        "evaluated_model": "TNG: DeepSeek R1T2 Chimera (free)",
-        "score": 97
-    },
-    {
-        "model": "AllenAI: Molmo2 8B (free)",
-        "response": "{\n  \"reasoning\": \"The response is mostly factually accurate and relevant, provides organized and complete guidelines for VRAM requirements at 1080p, with concise and appropriate explanations. There are no major factual errors; minor details align well with industry guidance. Correctness & Accuracy is weighted heavily and is satisfied here.\",\n  \"score\": 93\n}",
-        "evaluated_model": "Meta: Llama 3.3 70B Instruct (free)",
-        "score": 93
+        "response": "For 1080p gaming, especially with modern titles, **8 GB of VRAM is the minimum recommended**. However, **16 GB of VRAM will give you a smoother, more future-proof experience**, particularly if you play at high settings on relatively demanding games or enjoy higher resolutions than 1080p.\n\n**Summary:**\n- **8 GB:** Adequate for most 1080p games, but may be tight if you use high resolution displays or very demanding titles.\n- **16 GB:** Sufficient for 1080p gaming with higher settings, and more flexible as games become more graphics-intensive in the future.\n\n**Pro Tip:** If you plan to game at 4K or use VR, 16 GB VRAM is even more beneficial."
     }
 ]
+
+-------------------------------- SCORING RESULTS --------------------------------
+
+[
+    {
+        "evaluating_model": "TNG: DeepSeek R1T2 Chimera (free)",
+        "evaluated_model": "Meta: Llama 3.3 70B Instruct (free)",
+        "score": 100,
+        "reasoning": "Highest correctness (25/25), complete coverage of factors (20/20), clear structure (18/18), fully relevant (18/18), concise (10/10), and appropriately technical (9/9)"
+    },
+    {
+        "evaluating_model": "TNG: DeepSeek R1T2 Chimera (free)",
+        "evaluated_model": "AllenAI: Molmo2 8B (free)",
+        "score": 77,
+        "reasoning": "Reduced correctness (12/25) for overstating VRAM minimums, incomplete current-gaming context (16/20), minor relevance loss for 4K digression (15/18)"
+    },
+    {
+        "evaluating_model": "Meta: Llama 3.3 70B Instruct (free)",
+        "evaluated_model": "TNG: DeepSeek R1T2 Chimera (free)",
+        "score": 94,
+        "reasoning": "The response is highly accurate, complete, clear, and relevant, with a concise and appropriate structure, earning high scores across all dimensions, particularly in Correctness & Accuracy, which is weighted the highest at 25 points, thus significantly contributing to the overall score."
+    },
+    {
+        "evaluating_model": "Meta: Llama 3.3 70B Instruct (free)",
+        "evaluated_model": "AllenAI: Molmo2 8B (free)",
+        "score": 82,
+        "reasoning": "While the response is mostly accurate and relevant, it lacks the depth and completeness of the other, particularly in providing detailed recommendations for different VRAM sizes and future-proofing considerations, resulting in lower scores for Completeness and Clarity & Coherence, which, when combined with the high importance of Correctness & Accuracy, affects the overall score."
+    },
+    {
+        "evaluating_model": "AllenAI: Molmo2 8B (free)",
+        "evaluated_model": "TNG: DeepSeek R1T2 Chimera (free)",
+        "score": 94,
+        "reasoning": "DeepSeek's response is accurate and thorough: it correctly states that 8GB is ideal for 1080p at High/Ultra with modern games and ray tracing, 6GB is minimum for Medium with newer games, and 4GB is outdated. It covers future-proofing, ray tracing impact, and includes appropriate GPU examples, thus achieving high Correctness. It's also complete, clear, relevant, and concise. Appropriateness is slightly less than most technical QAs, as it may over-explain for casual readers, but still highly suitable."
+    },
+    {
+        "evaluating_model": "AllenAI: Molmo2 8B (free)",
+        "evaluated_model": "Meta: Llama 3.3 70B Instruct (free)",
+        "score": 83,
+        "reasoning": "Llama's answer is factually correct but presents some uncertainty (e.g., says 'most modern games' at 4GB for casual, even though some would need 6GB), and it's less explicit about 8GB being the best/ideal tier. The 'minimum 4GB' is not true \u2014 6GB is the minimum, 4GB is obsolete. The explanation is clear, complete, and relevant, but doesn't reach the same depth as DeepSeek in terms of accuracy, recommendation, and clarity about 8GB's importance, so Correctness drops this section below DeepSeek with no offsetting strengths. Completeness and clarity are good, only slightly inflated for conciseness."
+    }
+]
+
+-------------------------------- SCORE TABLE --------------------------------
 
 Evaluated Model (Column)             TNG: DeepSeek R1T2 Chimera (free)  Meta: Llama 3.3 70B Instruct (free)  AllenAI: Molmo2 8B (free)
 Judge Model (Row)                                                                                                                     
-TNG: DeepSeek R1T2 Chimera (free)                                  NaN                                 99.0                       91.0
-Meta: Llama 3.3 70B Instruct (free)                               95.0                                  NaN                       92.0
-AllenAI: Molmo2 8B (free)                                         97.0                                 93.0                        NaN
+TNG: DeepSeek R1T2 Chimera (free)                                  NaN                                100.0                       77.0
+Meta: Llama 3.3 70B Instruct (free)                               94.0                                  NaN                       82.0
+AllenAI: Molmo2 8B (free)                                         94.0                                 83.0                        NaN

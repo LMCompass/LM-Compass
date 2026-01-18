@@ -32,16 +32,15 @@ class Evaluator:
         ]
 
         self.model_names = model_names
-    
+
 
 
     async def query_model(self, model_name: str, query: str, role="user"):
-        """
+        '''
         Queries a single model using the models in 'candidate_models'
-        Args:
-            model_name: The name of the model (from candidate_models "name" field)
-        Returns: dict with keys 'model' and 'response'
-        """
+
+        :param model_name: The name of the model (from candidate_models "name" field)
+        '''
         model_dict = next((m for m in self.candidate_models if m["name"] == model_name), None)
         if model_dict is None:
             return {"model": model_name, "response": f"Error: Model '{model_name}' not found in candidate_models"}
@@ -58,29 +57,40 @@ class Evaluator:
             return {"model": model_name, "response": str(e)}
     
     async def query_models(self, model_names: list[str], queries: list[str], role="user"):
-        """
+        '''
         Queries multiple models asynchronously
-        Args:
-            model_names: List of model names (from candidate_models "name" field)
-        """
+
+        :param model_names: List of model names (from candidate_models "name" field)
+        '''
         coroutines = [self.query_model(model_names[i], queries[i], role=role) for i in range(len(model_names))]
         results = await asyncio.gather(*coroutines)
         return results
-    
 
 
-    def extract_outermost_json(self, text):
-        """
-        Extracts the outermost JSON object from arbitrary text.
-        Returns the parsed JSON (dict/list) or raises ValueError if no valid JSON found.
-        """
+
+    def extract_outermost_json(self, text: str):
+        '''
+        Extracts the first outermost JSON value (object or array) from arbitrary text.
+        
+        :param text: The text to extract JSON from
+        '''
+        if not text:
+            return None
+
+        # Strip markdown code fences (``` or ```json)
+        s = text.strip()
+        if s.startswith("```"):
+            lines = s.splitlines()
+            s = "\n".join(line for line in lines if not line.strip().startswith("```")).strip()
 
         start = None
-        depth = 0
+        stack = []  # holds '{' or '['
         in_string = False
         escape = False
 
-        for i, ch in enumerate(text):
+        pairs = {"{": "}", "[": "]"}
+
+        for i, ch in enumerate(s):
             if escape:
                 escape = False
                 continue
@@ -93,19 +103,31 @@ class Evaluator:
                 in_string = not in_string
                 continue
 
-            if not in_string:
-                if ch == "{":
-                    if depth == 0:
-                        start = i
-                    depth += 1
-                elif ch == "}":
-                    depth -= 1
-                    if depth == 0 and start is not None:
-                        candidate = text[start:i+1]
+            if in_string:
+                continue
+
+            if ch in "{[":
+                if not stack:
+                    start = i
+                stack.append(ch)
+
+            elif ch in "}]":
+                if not stack:
+                    continue
+                opener = stack[-1]
+                if pairs[opener] == ch:
+                    stack.pop()
+                    if not stack and start is not None:
+                        candidate = s[start:i + 1]
                         try:
                             return json.loads(candidate)
-                        except Exception:
-                            # continue scanning if not valid
-                            pass
+                        except json.JSONDecodeError:
+                            # if this block isn't valid JSON, keep scanning
+                            start = None
+                            continue
+                else:
+                    # mismatched bracket; reset search
+                    stack.clear()
+                    start = None
 
         return None

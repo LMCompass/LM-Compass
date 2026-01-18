@@ -15,15 +15,24 @@ Conciseness (10 points) - Rewards efficiency by penalizing unnecessary verbosity
 
 Appropriateness for Context (9 points) — Checks whether tone, depth, and format match what the questioner likely needs. Technical questions require different treatment than conversational ones."""
 
-n_sq = PromptBasedEvaluator(
+
+
+
+
+eval = PromptBasedEvaluator(
     "TNG: DeepSeek R1T2 Chimera (free)",
     "Meta: Llama 3.3 70B Instruct (free)",
     "AllenAI: Molmo2 8B (free)"
 )
 
-n_sq.n_sq_evaluate(user_query, rubric)
-table = n_sq.score_table()
+#eval.n_sq_evaluate(user_query, rubric)
+eval.n_evaluate(user_query, rubric)
+
+table = eval.score_table()
 with open("output.txt", "w") as fh:
-    fh.write(str(json.dumps(n_sq.user_query_answers, indent=4)))
-    fh.write("\n\n" + str(json.dumps(n_sq.evaluation_query_answers, indent=4)))
-    fh.write("\n\n" + str(table))
+    fh.write("-------------------------------- USER QUERY ANSWERS --------------------------------\n\n")
+    fh.write(str(json.dumps(eval.user_query_answers, indent=4)))
+    fh.write("\n\n-------------------------------- SCORING RESULTS --------------------------------\n\n")
+    fh.write(str(json.dumps(eval.evaluation_query_answers, indent=4)))
+    fh.write("\n\n-------------------------------- SCORE TABLE --------------------------------\n\n")
+    fh.write(str(table))
