@@ -50,18 +50,7 @@ export default function Home() {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [checkingKey, setCheckingKey] = useState(true);
 
-  const scrollToBottom = () => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTo({
-        top: messagesContainerRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
-  };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   // Track when chat has started
   useEffect(() => {
