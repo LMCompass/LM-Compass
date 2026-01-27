@@ -1,5 +1,6 @@
 from prompt_based_evaluator import PromptBasedEvaluator
 import json
+import asyncio
 
 user_query = "How many gigabytes of VRAM should I have for 1080p gaming?"
 
@@ -25,8 +26,8 @@ eval = PromptBasedEvaluator(
     "AllenAI: Molmo2 8B (free)"
 )
 
-#eval.n_sq_evaluate(user_query, rubric)
-eval.n_evaluate(user_query, rubric)
+asyncio.run(eval.n_sq_evaluate(user_query, rubric))
+#asyncio.run(eval.n_evaluate(user_query, rubric))
 
 table = eval.score_table()
 with open("output.txt", "w") as fh:
