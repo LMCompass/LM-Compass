@@ -270,9 +270,9 @@ export function MessagesDisplay({
               <DialogHeader>
                 <DialogTitle className="text-xl">{detail?.label}</DialogTitle>
               </DialogHeader>
-              <div className="max-h-[70vh] overflow-y-auto p-0">
+              <div className="max-h-[70vh] overflow-y-auto px-6 pb-6">
                 {detail && (
-                  <Markdown className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0">
+                  <Markdown className="prose prose-sm dark:prose-invert max-w-none">
                     {detail.content}
                   </Markdown>
                 )}
