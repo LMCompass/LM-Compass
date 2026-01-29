@@ -118,7 +118,7 @@ class PromptBasedEvaluator(Evaluator):
         :param rubric: The users rubric for evaluating the answer
         :param model: The model doing the evaluating
         '''
-        if model not in self.candidate_models:
+        if model not in self.model_names:
             raise ValueError(f"Model {model} is not in the candidate models list.")
         answers = ""
         for other_model in self.user_query_answers:
