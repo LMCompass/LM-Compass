@@ -6,7 +6,7 @@ import type { Message as MessageType } from "@/lib/types";
 import { MessageContent } from "@/components/ui/message";
 import { Markdown } from "@/components/ui/markdown";
 import { models } from "@/components/ui/model-selector";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,12 @@ import { EmptyChatHeader } from "@/components/chat/empty-chat-header";
 import { ModelResponseCard } from "@/components/chat/model-response-card";
 import { WinnerBanner } from "@/components/chat/winner-banner";
 import { ComparisonPanel } from "@/components/chat/comparison-panel";
+import { useChat } from "@/contexts/chat-context";
+import { Button } from "@/components/ui/button";
+import { ChevronUp } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { useSupabaseClient } from "@/utils/supabase/client";
+import { saveChat, loadAllMessages } from "@/lib/chat-storage";
 
 type MessagesDisplayProps = {
   messages: MessageType[];
@@ -42,6 +48,14 @@ export function MessagesDisplay({
     content: string;
   }>(null);
   const [showComparison, setShowComparison] = useState<string | null>(null);
+  const { loadMoreMessages, hasMoreMessages, isLoadingMore, chatId } = useChat();
+  const { user } = useUser();
+  const supabase = useSupabaseClient();
+  const prevMessageCountRef = useRef(messages.length);
+  const scrollHeightBeforeRef = useRef(0);
+  const scrollTopBeforeRef = useRef(0);
+  const isChatLoadedFromStorageRef = useRef(false);
+  const lastChatIdRef = useRef<string | null>(null);
 
   const modelLabelMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -50,6 +64,81 @@ export function MessagesDisplay({
     });
     return map;
   }, []);
+
+  // Track when chatId changes - if it changes, messages were likely loaded from storage
+  useEffect(() => {
+    if (chatId !== lastChatIdRef.current && lastChatIdRef.current !== null) {
+      // Chat ID changed, so messages were loaded from storage
+      isChatLoadedFromStorageRef.current = true;
+    } else if (chatId !== lastChatIdRef.current && lastChatIdRef.current === null) {
+      // First time setting chatId, check if messages have sequenceOrder (loaded from storage)
+      const allHaveSequenceOrder = messages.length > 0 && messages.every(
+        (msg) => msg.sequenceOrder !== undefined
+      );
+      isChatLoadedFromStorageRef.current = allHaveSequenceOrder;
+    }
+    lastChatIdRef.current = chatId;
+  }, [chatId, messages]);
+
+  // When new messages are added in the current session (not loading from history),
+  // mark chat as active (not loaded from storage)
+  useEffect(() => {
+    // If messages increased and we're not loading more (which means loading from history),
+    // then new messages were added in the current session
+    if (messages.length > prevMessageCountRef.current && !isLoadingMore) {
+      // Check if new messages don't have sequenceOrder (they're newly created)
+      const hasNewMessages = messages.some(
+        (msg) => msg.sequenceOrder === undefined
+      );
+      if (hasNewMessages) {
+        isChatLoadedFromStorageRef.current = false;
+      }
+    }
+  }, [messages.length, isLoadingMore, messages]);
+
+  /**
+   * Determines if a message is "active" (currently being worked on) vs "previous" (from a completed chat).
+   * A message is active if:
+   * - It's the last assistant message with multiple results AND
+   *   (the chat was not loaded from storage OR the message itself doesn't have sequenceOrder)
+   * - All other messages with multiple results are considered "previous"
+   */
+  const isMessageActive = useMemo(() => {
+    return (message: MessageType, messageIndex: number): boolean => {
+      // Only assistant messages with multiple results can be active
+      if (
+        message.role !== "assistant" ||
+        !message.multiResults ||
+        message.multiResults.length <= 1
+      ) {
+        return false;
+      }
+
+      // Find the last assistant message with multiple results
+      let lastAssistantMessageIndex = -1;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        if (
+          msg.role === "assistant" &&
+          msg.multiResults &&
+          msg.multiResults.length > 1
+        ) {
+          lastAssistantMessageIndex = i;
+          break;
+        }
+      }
+
+      // If this is not the last assistant message with multiple results, it's previous
+      if (messageIndex !== lastAssistantMessageIndex) {
+        return false;
+      }
+
+      if (isChatLoadedFromStorageRef.current && message.sequenceOrder !== undefined) {
+        return false;
+      }
+      return true;
+    };
+  }, [messages]);
 
   const openDetail = (model: string, label: string, content: string) => {
     setDetail({ model, label, content });
@@ -60,23 +149,110 @@ export function MessagesDisplay({
     setShowComparison(showComparison === messageId ? null : messageId);
   };
 
-  const handleSelectWinner = (
+  const handleSelectWinner = async (
     messageId: string,
     selectedModel: string,
     selectedContent: string
   ) => {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId
-          ? {
+    // Update local state
+    const updatedMessages = messages.map((msg) =>
+      msg.id === messageId
+        ? {
             ...msg,
             content: selectedContent,
             userSelectedWinner: selectedModel,
           }
-          : msg
-      )
+        : msg
     );
+    
+    setMessages(updatedMessages);
+
+    // Save to database after user selects a winner
+    if (chatId && user?.id) {
+      try {
+        // Load ALL existing messages from database to preserve full conversation
+        // This ensures we don't lose older messages that weren't loaded in the UI
+        const { messages: allExistingMessages } = await loadAllMessages(supabase, chatId, user.id);
+        
+        if (allExistingMessages) {
+          const allMessagesToSave = allExistingMessages.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  content: selectedContent,
+                  userSelectedWinner: selectedModel,
+                }
+              : msg
+          );
+          
+          const result = await saveChat(supabase, chatId, user.id, allMessagesToSave);
+          if (result.success) {
+            console.log('Chat saved successfully after winner selection');
+          } else {
+            console.error('Error saving chat after winner selection:', result.error);
+          }
+        } else {
+          // Fallback: if we can't load all messages, save what we have
+          const result = await saveChat(supabase, chatId, user.id, updatedMessages);
+          if (result.success) {
+            console.log('Chat saved successfully after winner selection (fallback)');
+          } else {
+            console.error('Error saving chat after winner selection:', result.error);
+          }
+        }
+      } catch (error) {
+        console.error('Error saving chat to database after winner selection:', error);
+      }
+    }
   };
+
+  // Store scroll height and position before loading more messages starts
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    if (isLoadingMore) {
+      scrollHeightBeforeRef.current = container.scrollHeight;
+      scrollTopBeforeRef.current = container.scrollTop;
+    }
+  }, [isLoadingMore, messagesContainerRef]);
+
+  // Preserve scroll position after loading more messages - use useLayoutEffect for immediate execution
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    // If messages were added (count increased) and we just finished loading
+    if (messages.length > prevMessageCountRef.current && prevMessageCountRef.current > 0) {
+      const scrollHeightAfter = container.scrollHeight;
+      const scrollDiff = scrollHeightAfter - scrollHeightBeforeRef.current;
+      
+      if (scrollDiff > 0) {
+        // Maintain the same visual position by adding the height difference to the previous scroll position
+        const newScrollTop = scrollTopBeforeRef.current + scrollDiff;
+        container.scrollTop = newScrollTop;
+      }
+    }
+    
+    prevMessageCountRef.current = messages.length;
+  }, [messages, messagesContainerRef]);
+
+  // Determine if we should show the "Load Previous Messages" button
+  const shouldShowLoadMoreButton = useMemo(() => {
+    if (!hasMoreMessages || messages.length === 0) {
+      return false;
+    }
+    // Don't show button if oldest message doesn't have sequenceOrder
+    // or is at the beginning (sequenceOrder 0)
+    const oldestMessage = messages[0];
+    if (!oldestMessage?.sequenceOrder) {
+      return false;
+    }
+    if (oldestMessage.sequenceOrder === 0) {
+      return false;
+    }
+    return true;
+  }, [hasMoreMessages, messages]);
 
   return (
     <div
@@ -87,7 +263,20 @@ export function MessagesDisplay({
         <EmptyChatHeader />
       ) : (
         <>
-          {messages.map((message) => {
+          {shouldShowLoadMoreButton && (
+            <div className="flex justify-center py-4">
+              <Button
+                onClick={loadMoreMessages}
+                disabled={isLoadingMore}
+                variant="outline"
+                className="gap-2"
+              >
+                <ChevronUp className="h-4 w-4" />
+                {isLoadingMore ? "Loading..." : "Load Previous Messages"}
+              </Button>
+            </div>
+          )}
+          {messages.map((message, messageIndex) => {
             const hasMultipleResults =
               message.role === "assistant" &&
               message.multiResults &&
@@ -110,9 +299,12 @@ export function MessagesDisplay({
             const shouldShowSelectionButtons =
               hasNoWinner && !userSelectedWinner;
 
+            const isActive = isMessageActive(message, messageIndex);
+
             return (
               <div key={message.id} className="max-w-5xl mx-auto space-y-4">
-                {hasMultipleResults && message.multiResults && (
+                {/* Only show model response cards for active messages */}
+                {hasMultipleResults && message.multiResults && isActive && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {message.multiResults.map((r) => {
                       const cardKey = `${message.id}-${r.model}`;
@@ -146,7 +338,8 @@ export function MessagesDisplay({
                   </div>
                 )}
 
-                {hasEvaluation && evaluationMetadata && (
+                {/* Only show WinnerBanner for active messages (last message) */}
+                {hasEvaluation && evaluationMetadata && isActive && (
                   <div>
                     <WinnerBanner
                       message={message}

@@ -34,7 +34,7 @@ import {
 
 export default function Home() {
   const { theme, toggleTheme, mounted } = useTheme();
-  const { messages, setMessages, chatStarted, setChatStarted, chatId } =
+  const { messages, setMessages, chatStarted, setChatStarted, chatId, isLoadingMore } =
     useChat();
   const { user, isLoaded: userLoaded } = useUser();
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +42,8 @@ export default function Home() {
     "querying"
   );
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const prevMessageCountRef = useRef(messages.length);
+  const lastMessageIdRef = useRef<string | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
@@ -60,8 +62,21 @@ export default function Home() {
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only scroll to bottom when new messages are APPENDED at the end
+    // Don't scroll when messages are PREPENDED (loading previous messages)
+    const lastMessageId = messages[messages.length - 1]?.id;
+    const isNewMessageAppended = 
+      messages.length > prevMessageCountRef.current && 
+      lastMessageId !== lastMessageIdRef.current &&
+      !isLoadingMore;
+    
+    if (isNewMessageAppended) {
+      scrollToBottom();
+    }
+    
+    prevMessageCountRef.current = messages.length;
+    lastMessageIdRef.current = lastMessageId || null;
+  }, [messages, isLoadingMore]);
 
   // Track when chat has started
   useEffect(() => {
@@ -245,6 +260,7 @@ export default function Home() {
                 setLoadingPhase={setLoadingPhase}
                 selectedModels={selectedModels}
                 evaluationMethod={selectedRubric}
+                chatId={chatId}
               />
             )}
           </SignedIn>
