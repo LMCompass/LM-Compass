@@ -28,7 +28,8 @@ class Evaluator:
             {"name": "TNG: DeepSeek R1T2 Chimera (free)", "openrouter": "tngtech/deepseek-r1t2-chimera:free"},
             {"name": "Meta: Llama 3.3 70B Instruct (free)", "openrouter": "meta-llama/llama-3.3-70b-instruct:free"},
             {"name": "OpenAI: gpt-oss-20b (free)", "openrouter": "openai/gpt-oss-20b:free"},
-            {"name": "AllenAI: Molmo2 8B (free)", "openrouter": "allenai/molmo-2-8b:free"}
+            {"name": "AllenAI: Molmo2 8B (free)", "openrouter": "allenai/molmo-2-8b:free"},
+            {"name": "StepFun: Step 3.5 Flash (free)", "openrouter": "stepfun/step-3.5-flash:free"}
         ]
 
         self.model_names = model_names
