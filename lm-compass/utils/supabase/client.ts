@@ -8,7 +8,8 @@ import { useMemo } from "react";
  * Hook to create a Supabase client for client-side use with Clerk authentication.
  * This client automatically injects the Clerk session token into all requests.
  * 
- * @returns A Supabase client configured with Clerk JWT tokens
+ * @returns A Supabase client configured with Clerk JWT token
+ * 
  */
 export function useSupabaseClient() {
   const { session } = useSession();
