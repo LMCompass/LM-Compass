@@ -1,23 +1,6 @@
 import { clerkMiddleware } from '@clerk/nextjs/server'
-import { NextResponse, NextFetchEvent } from 'next/server'
-import type { NextRequest } from 'next/server'
 
-const clerk = clerkMiddleware()
-
-export default async function middleware(request: NextRequest, event: NextFetchEvent) {
-  try {
-    return await clerk(request, event)
-  } catch (error) {
-    console.error('[Middleware Error]', error)
-    return NextResponse.json(
-      {
-        error: 'Middleware error',
-        message: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    )
-  }
-}
+export default clerkMiddleware()
 
 export const config = {
   matcher: [
