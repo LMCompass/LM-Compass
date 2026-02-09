@@ -118,7 +118,7 @@ export async function POST(req: Request) {
       async start(controller) {
         const encoder = new TextEncoder();
 
-        const sendProgress = (data: any) => {
+        const sendProgress = (data: Record<string, unknown>) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         };
 
@@ -157,7 +157,7 @@ export async function POST(req: Request) {
               errorMessageLower.includes('user not found') ||
               errorMessageLower.includes('invalid api key') ||
               errorMessageLower.includes('authentication failed') ||
-              (res.reason instanceof Error && 'status' in res.reason && (res.reason as any).status === 401)
+              (res.reason instanceof Error && 'status' in res.reason && (res.reason as Error & { status: number }).status === 401)
             ) {
               errorMessage = 'The OpenRouter API key is invalid. Please update with a valid key in settings.';
             }
