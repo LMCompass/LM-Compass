@@ -10,19 +10,29 @@ import { Button } from "@/components/ui/button";
 import { Send, Square } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { Message } from "@/lib/types";
+import type { EvaluationMetadata } from "@/lib/evaluation/types";
 
-import { MessageCircleWarning, ChevronRightIcon } from "lucide-react";
+import { MessageCircleWarning } from "lucide-react";
 
 import {
   Item,
-  ItemActions,
   ItemContent,
-  ItemDescription,
-  ItemFooter,
-  ItemHeader,
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
+
+type MultiResult = {
+  model: string;
+  message?: { role: string; content: string };
+  error?: string;
+};
+
+type StreamResponse = {
+  phase: string;
+  results?: MultiResult[];
+  evaluationMetadata?: EvaluationMetadata;
+  error?: string;
+};
 
 type PromptInputComponentProps = {
   messages: Message[];
@@ -47,12 +57,6 @@ export function PromptInputComponent({
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  type MultiResult = {
-    model: string;
-    message?: { role: string; content: string };
-    error?: string;
-  };
 
   // Check if user needs to select a winner before sending another message
   const needsWinnerSelection = useMemo(() => {
@@ -169,7 +173,7 @@ export function PromptInputComponent({
         throw new Error("No response body");
       }
 
-      let finalData: any = null;
+      let finalData: StreamResponse | null = null;
 
       try {
         while (true) {
@@ -238,7 +242,7 @@ export function PromptInputComponent({
       let content = "";
       if (finalData.evaluationMetadata?.winnerModel) {
         const winnerResult = multiResults.find(
-          (r) => r.model === finalData.evaluationMetadata.winnerModel
+          (r) => r.model === finalData?.evaluationMetadata?.winnerModel
         );
         if (winnerResult) {
           content = winnerResult.content;
