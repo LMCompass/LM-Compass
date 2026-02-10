@@ -1,4 +1,4 @@
-from prompt_based_evaluator import PromptBasedEvaluator
+from rl4f_evaluator import RL4FEvaluator
 import json
 import asyncio
 
@@ -20,14 +20,13 @@ Appropriateness for Context (9 points) — Checks whether tone, depth, and forma
 
 
 
-eval = PromptBasedEvaluator(
-    "TNG: DeepSeek R1T2 Chimera (free)",
-    "Meta: Llama 3.3 70B Instruct (free)",
-    "AllenAI: Molmo2 8B (free)"
+eval = RL4FEvaluator(
+    "Anthropic: Claude Sonnet 4.5",
+    "OpenAI: GPT-4o",
+    "OpenAI: GPT-4o Mini"
 )
 
-asyncio.run(eval.n_sq_evaluate(user_query, rubric))
-#asyncio.run(eval.n_evaluate(user_query, rubric))
+asyncio.run(eval.rl4f_evaluate(user_query, rubric))
 
 table = eval.score_table()
 with open("output.txt", "w") as fh:
@@ -37,3 +36,9 @@ with open("output.txt", "w") as fh:
     fh.write(str(json.dumps(eval.evaluation_query_answers, indent=4)))
     fh.write("\n\n-------------------------------- SCORE TABLE --------------------------------\n\n")
     fh.write(str(table))
+    fh.write("\n\n-------------------------------- CRITIQUE HISTORY --------------------------------\n\n")
+    for round_idx, round_data in enumerate(eval.critique_history):
+        fh.write(f"=== Refinement round {round_idx + 1} ===")
+        for item in round_data:
+            fh.write(eval.format_critique_entry(item))
+            fh.write("---")

@@ -90,7 +90,7 @@ class PromptBasedEvaluator(Evaluator):
         :param rubric: What the models should grade the responses to the user_query based on
         '''
         self.user_query_answers = await self.query_models(self.model_names, [user_query]*len(self.model_names))
-        print("Got user query answers.")
+        print("Got user query answers")
 
         new_models_to_use = []
         new_queries_to_use = []
@@ -103,7 +103,7 @@ class PromptBasedEvaluator(Evaluator):
 
         self.evaluation_query_answers = await self.query_models(new_models_to_use, new_queries_to_use)
         self.evaluation_query_answers = self._n_sq_format_json(self.evaluation_query_answers)
-        print("Got scoring results.")
+        print("Got scoring results")
 
 
 
@@ -198,14 +198,14 @@ class PromptBasedEvaluator(Evaluator):
         :param rubric: What the models should grade the responses to the user_query based on
         '''
         self.user_query_answers = await self.query_models(self.model_names, [user_query]*len(self.model_names))
-        print("Got user query answers.")
+        print("Got user query answers")
 
         new_queries_to_use = []
         for model in self.model_names:
             new_queries_to_use.append(self._n_scoring_query(user_query, rubric, model))
         self.evaluation_query_answers = await self.query_models(self.model_names, new_queries_to_use)
         self.evaluation_query_answers = self._n_format_json(self.evaluation_query_answers)
-        print("Got scoring results.")
+        print("Got scoring results")
 
 
 
