@@ -24,7 +24,7 @@ function extractUserQuery(messages: Array<{ role: string; content: string }>): s
  * Creates an assistant message from model results and optional evaluation metadata.
  */
 function createAssistantMessage(
-  allResults: Array<{ model: string; message?: any; error?: string }>,
+  allResults: Array<{ model: string; message?: {content: string | null}; error?: string }>,
   evaluationMetadata?: EvaluationMetadata
 ): Message {
   const multiResults = allResults.map((r) => ({
