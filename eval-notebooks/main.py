@@ -26,7 +26,7 @@ eval = RL4FEvaluator(
     "OpenAI: GPT-4o Mini"
 )
 
-asyncio.run(eval.rl4f_evaluate(user_query, rubric))
+asyncio.run(eval.rl4f_evaluate(user_query, rubric, iterations=2))
 
 table = eval.score_table()
 with open("output.txt", "w") as fh:

@@ -20,6 +20,7 @@ class PromptBasedEvaluator(Evaluator):
         :param user_query: The original user query
         :param rubric: The users rubric for evaluating the answer
         :param answer: The answer given by the model being evaluated
+        :returns: The formatted prompt string
         '''
         return textwrap.dedent(f"""\
         You are an expert evaluator for a large language model comparison tool. Your role is to provide an objective, rubric-based score for the candidate's response to a user's query.
@@ -61,6 +62,7 @@ class PromptBasedEvaluator(Evaluator):
         If the response does not contain all of these keys, it is skipped
         
         :param raw_data: The raw list of responses from querying OpenRouter
+        :returns: A list of formatted json objects
         '''
         formatted_json = []
         i = 0
@@ -117,6 +119,7 @@ class PromptBasedEvaluator(Evaluator):
         :param user_query: The original user query
         :param rubric: The users rubric for evaluating the answer
         :param model: The model doing the evaluating
+        :returns: The formatted prompt string
         '''
         if model not in self.model_names:
             raise ValueError(f"Model {model} is not in the candidate models list.")
@@ -170,6 +173,7 @@ class PromptBasedEvaluator(Evaluator):
         If the response does not contain all of these keys, it is skipped
         
         :param raw_data: The raw list of responses from querying OpenRouter
+        :returns: A list of formatted json objects
         '''
         formatted_json = []
         for item1 in raw_data:
@@ -214,6 +218,8 @@ class PromptBasedEvaluator(Evaluator):
     def score_table(self):
         '''
         Generates a pandas dataframe from the stored evaluation_query_answers data (which must exist for method to work)
+
+        :returns: A pandas dataframe with models as both rows and columns and scores as values
         '''
         scores_table = pd.DataFrame(
             np.nan,

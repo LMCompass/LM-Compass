@@ -4,12 +4,18 @@ import textwrap
 class RL4FEvaluator(PromptBasedEvaluator):
     def __init__(self,*model_names):
         super().__init__(*model_names)
-        # critique_history: list of "rounds". Each round is a list of dicts, one per
-        # (evaluating_model, evaluated_model), with before_*, raw_response, after_*.
         self.critique_history = []
 
     def format_critique_entry(self, item):
-        """Format one critique-history entry for readable before/after display."""
+        '''
+        Format one critique-history entry for readable before/after display.
+
+        :param item: A single critique-history dict with keys like
+                     `evaluating_model`, `evaluated_model`, `before_score`,
+                     `before_reasoning`, `raw_response`, `after_score`,
+                     and `after_reasoning`.
+        :returns: Formatted multi-line string for display
+        '''
         lines = [
             f"Judge: {item['evaluating_model']}  ->  Candidate: {item['evaluated_model']}",
             "  Before:",
@@ -24,10 +30,17 @@ class RL4FEvaluator(PromptBasedEvaluator):
         return "\n".join(lines)
 
     def _self_critique_and_revision_prompt(self, user_query, rubric, response, reasoning, score):
-        """
+        '''
         Combined prompt: critique your previous evaluation, then output revised
         reasoning and score as JSON. Saves one API call per pair per iteration.
-        """
+
+        :param user_query: The original user query
+        :param rubric: The rubric text guiding evaluation
+        :param response: The candidate response being evaluated
+        :param reasoning: The previous reasoning provided by the judge model
+        :param score: The previous numeric score (0-100)
+        :returns: A formatted prompt string for the model
+        '''
         return textwrap.dedent(f"""\
         You previously evaluated a candidate's response and gave a score with a rationale. Now critique your evaluation and then provide a revised score and rationale.
 
@@ -53,11 +66,14 @@ class RL4FEvaluator(PromptBasedEvaluator):
         """)
 
     async def _critique_rationale(self, user_query, rubric):
-        """
+        '''
         For each (evaluating_model, evaluated_model) entry, ask the evaluating
         model to critique and revise its rationale/score; update entries in place.
-        Uses batched query_models for one API call per pair.
-        """
+        Uses batched `query_models` for one API call per pair.
+
+        :param user_query: The original user query
+        :param rubric: The rubric text guiding evaluation
+        '''
         if not self.evaluation_query_answers or not self.user_query_answers:
             return
         response_by_model = {item["model"]: item["response"] for item in self.user_query_answers}
@@ -95,10 +111,19 @@ class RL4FEvaluator(PromptBasedEvaluator):
                 entry["reasoning"] = round_data[i]["after_reasoning"]
 
     async def rl4f_evaluate(self, user_query, rubric, iterations=1):
+        '''
+        Run RL-based refine-for-feedback evaluation.
+
+        Performs an initial n^2 evaluation (via `n_sq_evaluate`) and then runs
+        a number of self-critique refinement rounds where each evaluating model
+        critiques and possibly revises its own scores.
+
+        :param user_query: The original user query
+        :param rubric: The rubric text guiding evaluation
+        :param iterations: Number of refinement iterations to perform
+        '''
         self.critique_history = []
-        # Step 1: Initial evaluation (populates user_query_answers and evaluation_query_answers)
         await self.n_sq_evaluate(user_query, rubric)
-        # Step 2: Refine via critique-and-revision (iterations - 1 rounds)
         for i in range(iterations):
             await self._critique_rationale(user_query, rubric)
             print(f"Completed refinement round {i + 1}/{iterations}")
