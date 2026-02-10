@@ -32,7 +32,6 @@ export interface ExperimentItem {
     [modelName: string]: {
       output: string;
       score?: number;
-      evaluation?: any;
     };
   } | null;
 }
