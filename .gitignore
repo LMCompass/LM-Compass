@@ -1,6 +1,9 @@
 .env*
 !.env-example
+
+# python stuff
 venv
+__pycache__
 
 # clerk configuration (can include secrets)
 /.clerk/
