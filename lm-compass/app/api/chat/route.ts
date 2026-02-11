@@ -4,6 +4,9 @@ import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
 import { PromptBasedEvaluator, NPromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
+import { saveChat, loadAllMessages } from '@/lib/chat-storage';
+import type { Message } from '@/lib/types';
+import { randomUUID } from 'crypto';
 
 /**
  * Extracts the user query from the messages array (last user message)
@@ -15,6 +18,37 @@ function extractUserQuery(messages: Array<{ role: string; content: string }>): s
   }
   // Fallback: return empty string if no user message found
   return '';
+}
+
+/**
+ * Creates an assistant message from model results and optional evaluation metadata.
+ */
+function createAssistantMessage(
+  allResults: Array<{ model: string; message?: {content: string | null}; error?: string }>,
+  evaluationMetadata?: EvaluationMetadata
+): Message {
+  const multiResults = allResults.map((r) => ({
+    model: r.model,
+    content: r.error ? `Error: ${r.error}` : r.message?.content || '',
+  }));
+
+  let content = '';
+  if (evaluationMetadata?.winnerModel) {
+    const winnerResult = multiResults.find(
+      (r) => r.model === evaluationMetadata.winnerModel
+    );
+    content = winnerResult?.content || '';
+  } else {
+    content = multiResults[0]?.content || '';
+  }
+
+  return {
+    id: randomUUID(),
+    role: 'assistant',
+    content,
+    multiResults: multiResults.length > 1 ? multiResults : undefined,
+    ...(evaluationMetadata && { evaluationMetadata }),
+  };
 }
 
 export async function POST(req: Request) {
@@ -62,7 +96,7 @@ export async function POST(req: Request) {
       },
     });
 
-    const { messages, model, models, evaluationMethod } = await req.json();
+    const { messages, model, models, evaluationMethod, chatId } = await req.json();
 
     // Normalize to models array - handle both single model (legacy) and multi-model cases
     let modelsToQuery: string[];
@@ -87,6 +121,9 @@ export async function POST(req: Request) {
         const sendProgress = (data: Record<string, unknown>) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         };
+
+        // Track the final assistant message for saving
+        let finalAssistantMessage: Message | null = null;
 
         try {
           // Always use multi-model logic for consistent return format
@@ -183,6 +220,9 @@ export async function POST(req: Request) {
                 tiedModels: evaluationResult.tiedModels,
               };
 
+              // Create assistant message for saving
+              finalAssistantMessage = createAssistantMessage(allResults, evaluationMetadata);
+
               // Send final results
               sendProgress({
                 phase: 'complete',
@@ -192,6 +232,10 @@ export async function POST(req: Request) {
             } catch (evaluationError) {
               // If evaluation fails, log error and return all results with evaluationError
               console.error('Evaluation failed:', evaluationError);
+              
+              // Still create assistant message even if evaluation failed
+              finalAssistantMessage = createAssistantMessage(allResults);
+
               sendProgress({
                 phase: 'complete',
                 results: allResults,
@@ -203,6 +247,8 @@ export async function POST(req: Request) {
             }
           } else {
             // (0-1 responses, no evaluation needed)
+            finalAssistantMessage = createAssistantMessage(allResults);
+
             sendProgress({
               phase: 'complete',
               results: allResults,
@@ -214,6 +260,77 @@ export async function POST(req: Request) {
             error: error instanceof Error ? error.message : 'Failed to get response from AI',
           });
         } finally {
+          // Save messages to database after streaming completes
+          // Skip saving if there's a tie (no winner) - wait for user to select a winner
+          const metadata = finalAssistantMessage?.evaluationMetadata;
+          const hasTie =
+            !!metadata &&
+            metadata.winnerModel === null &&
+            Array.isArray(metadata.tiedModels) &&
+            metadata.tiedModels.length > 0;
+          const shouldSkipSave = hasTie && !finalAssistantMessage?.userSelectedWinner;
+          
+          if (chatId && userId && finalAssistantMessage && !shouldSkipSave) {
+            try {
+              // Load ALL existing messages from database to preserve full conversation
+              // Use loadAllMessages instead of loadChat to get all messages, not just last 5
+              const { messages: existingMessages } = await loadAllMessages(supabase, chatId, userId);
+              
+              // Convert API messages format to Message format
+              // The messages from request are { role, content } only, but may optionally include an id
+              const requestMessages: Message[] = messages.map((msg: { role: string; content: string } & { id?: string }) => ({
+                id: msg.id ?? randomUUID(),
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content,
+              }));
+
+              // Determine which messages to save
+              let messagesToSave: Message[];
+              
+              if (existingMessages && existingMessages.length > 0) {
+                // Determine overlap by comparing from the start until messages diverge,
+                // then append only the new messages from the request.
+                let firstNewIndex = 0;
+                const maxComparable = Math.min(existingMessages.length, requestMessages.length);
+                
+                while (firstNewIndex < maxComparable) {
+                  const existing = existingMessages[firstNewIndex];
+                  const incoming = requestMessages[firstNewIndex];
+                  
+                  if (existing.role !== incoming.role || existing.content !== incoming.content) {
+                    break;
+                  }
+                  firstNewIndex++;
+                }
+                
+                // Append only the new messages from the request
+                const newFromRequest = requestMessages.slice(firstNewIndex);
+                messagesToSave = [...existingMessages, ...newFromRequest, finalAssistantMessage];
+              } else {
+                // No existing messages - this is a new chat
+                messagesToSave = [...requestMessages, finalAssistantMessage];
+              }
+              
+              // Save to database (non-blocking, don't wait for it)
+              saveChat(supabase, chatId, userId, messagesToSave).then((result) => {
+                if (result.success) {
+                  console.log('Chat saved successfully');
+                } else {
+                  console.error('Error saving chat:', result.error);
+                }
+              }).catch((err) => {
+                console.error('Error saving chat to database:', err);
+              });
+            } catch (saveError) {
+              console.error('Error preparing chat save:', saveError);
+            }
+          } else {
+            if (shouldSkipSave) {
+              console.log('Skipping save - waiting for user to select winner for tie');
+            } else {
+              console.log('Not saving chat - missing:', { chatId: !!chatId, userId: !!userId, finalAssistantMessage: !!finalAssistantMessage });
+            }
+          }
           controller.close();
         }
       },

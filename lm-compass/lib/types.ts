@@ -8,6 +8,7 @@ export type Message = {
   multiResults?: { model: string; content: string }[];
   evaluationMetadata?: EvaluationMetadata;
   userSelectedWinner?: string;
+  sequenceOrder?: number;
 };
 
 export interface Experiment {
