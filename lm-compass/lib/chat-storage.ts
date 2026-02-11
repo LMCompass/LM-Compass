@@ -407,7 +407,7 @@ export async function listChats(
       return { chats: [] };
     }
 
-    const chats: ChatHistoryItem[] = dbChats.map((chat: any) => ({
+    const chats: ChatHistoryItem[] = dbChats.map((chat: Pick<DatabaseChat, 'id' | 'title' | 'created_at' | 'updated_at'>) => ({
       chatId: chat.id,
       title: chat.title || "Untitled Chat",
       createdAt: chat.created_at ? new Date(chat.created_at) : undefined,
