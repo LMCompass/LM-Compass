@@ -122,7 +122,7 @@ class PromptBasedEvaluator(Evaluator):
         :returns: The formatted prompt string
         '''
         if model not in self.model_names:
-            raise ValueError(f"Model {model} is not in the candidate models list.")
+            raise ValueError(f"Model {model} is not in the configured model names: {self.model_names}")
         answers = ""
         for other_model in self.user_query_answers:
             if model != other_model["model"]:
