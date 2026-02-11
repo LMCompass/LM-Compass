@@ -93,8 +93,16 @@ class RL4FEvaluator(PromptBasedEvaluator):
             before_score = entry.get("score", 0)
             raw = results[i]["response"]
             revised = self.extract_outermost_json(raw)
-            after_reasoning = revised.get("reasoning") if revised else None
-            after_score = int(revised["score"]) if revised and "score" in revised else None
+            after_reasoning = None
+            after_score = None
+            if isinstance(revised, dict):
+                after_reasoning = revised.get("reasoning")
+                score_value = revised.get("score")
+                if score_value is not None:
+                    try:
+                        after_score = int(score_value)
+                    except (TypeError, ValueError):
+                        after_score = None
             round_data.append({
                 "evaluating_model": entry["evaluating_model"],
                 "evaluated_model": entry["evaluated_model"],
