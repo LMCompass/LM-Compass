@@ -25,10 +25,9 @@ class Evaluator:
             {"name": "OpenAI: GPT-4o", "openrouter": "openai/gpt-4o"},
             {"name": "OpenAI: GPT-4o Mini", "openrouter": "openai/gpt-4o-mini"},
             # FREE
+            {"name": "StepFun: Step 3.5 Flash (free)", "openrouter": "stepfun/step-3.5-flash:free"},
             {"name": "TNG: DeepSeek R1T2 Chimera (free)", "openrouter": "tngtech/deepseek-r1t2-chimera:free"},
-            {"name": "Meta: Llama 3.3 70B Instruct (free)", "openrouter": "meta-llama/llama-3.3-70b-instruct:free"},
-            {"name": "OpenAI: gpt-oss-20b (free)", "openrouter": "openai/gpt-oss-20b:free"},
-            {"name": "AllenAI: Molmo2 8B (free)", "openrouter": "allenai/molmo-2-8b:free"}
+            {"name": "LiquidAI: LFM2.5-1.2B-Thinking (free)", "openrouter": "liquid/lfm-2.5-1.2b-thinking:free"},
         ]
 
         self.model_names = model_names
