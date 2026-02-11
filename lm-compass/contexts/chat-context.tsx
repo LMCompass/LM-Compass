@@ -62,14 +62,7 @@ export function useChat() {
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatStarted, setChatStarted] = useState(false);
-  const [chatId, setChatId] = useState(() => {
-    // Try to load chatId from localStorage on initial render
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("currentChatId");
-      if (saved) return saved;
-    }
-    return generateChatId();
-  });
+  const [chatId, setChatId] = useState(() => generateChatId());
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -102,10 +95,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           setHasMoreMessages(hasMore);
           setChatId(chatIdToLoad);
           setChatStarted(true);
-          // Save chatId to localStorage
-          if (typeof window !== "undefined") {
-            localStorage.setItem("currentChatId", chatIdToLoad);
-          }
           // Mark that we've loaded a chat (prevents auto-loading on new chat)
           hasLoadedInitialChat.current = true;
         }
@@ -122,10 +111,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setHasMoreMessages(false);
     const newChatId = generateChatId();
     setChatId(newChatId);
-    // Save new chatId to localStorage
-    if (typeof window !== "undefined") {
-      localStorage.setItem("currentChatId", newChatId);
-    }
     // Prevent auto-loading after new chat
     hasLoadedInitialChat.current = true;
   }, []);
