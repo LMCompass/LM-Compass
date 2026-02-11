@@ -38,7 +38,7 @@ with open("output.txt", "w") as fh:
     fh.write(str(table))
     fh.write("\n\n-------------------------------- CRITIQUE HISTORY --------------------------------\n\n")
     for round_idx, round_data in enumerate(eval.critique_history):
-        fh.write(f"=== Refinement round {round_idx + 1} ===")
+        fh.write(f"=== Refinement round {round_idx + 1} ===\n\n")
         for item in round_data:
             fh.write(eval.format_critique_entry(item))
-            fh.write("---")
+            fh.write("\n---\n\n")
