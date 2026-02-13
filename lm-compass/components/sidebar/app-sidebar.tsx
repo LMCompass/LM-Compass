@@ -6,6 +6,7 @@ import {
   BookOpen,
   ChevronRight,
   Compass,
+  FlaskConical,
   History,
   MessageSquarePlus,
   UserPlus,
@@ -176,6 +177,13 @@ export function AppSidebar() {
             >
               <BookOpen className="h-4 w-4" />
               View Rubrics
+            </SidebarMenuButton>
+            <SidebarMenuButton
+              className="hover:bg-sidebar-accent/60"
+              onClick={() => router.push("/experiments/upload")}
+            >
+              <FlaskConical className="h-4 w-4" />
+              Experiments
             </SidebarMenuButton>
           </SidebarMenu>
         </SidebarGroup>
