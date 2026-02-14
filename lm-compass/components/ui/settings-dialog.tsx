@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { saveOpenRouterKey } from "@/app/settings/actions";
+import { saveOpenRouterKey } from "@/app/(app)/settings/actions";
 import { KeyRound, Lock, AlertCircle } from "lucide-react";
 
 export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {

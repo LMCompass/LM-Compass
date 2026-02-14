@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
-import { SidebarProvider } from "@/components/sidebar/sidebar";
-import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ChatProvider } from "@/contexts/chat-context";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
@@ -30,16 +27,11 @@ export default function RootLayout({
         <body className={`${poppins.variable} antialiased font-sans`}>
           <ThemeProvider
             attribute="class"
-            defaultTheme="light"
-            enableSystem={false}
+            defaultTheme="system"
+            enableSystem
             disableTransitionOnChange
           >
-            <ChatProvider>
-              <SidebarProvider>
-                <AppSidebar />
-                {children}
-              </SidebarProvider>
-            </ChatProvider>
+            {children}
           </ThemeProvider>
         </body>
       </html>

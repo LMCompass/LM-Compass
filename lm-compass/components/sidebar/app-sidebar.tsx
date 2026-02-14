@@ -117,7 +117,7 @@ export function AppSidebar() {
               className="hover:bg-sidebar-accent/60"
               onClick={() => {
                 handleNewChat();
-                router.push("/");
+                router.push("/chat");
               }}
             >
               <MessageSquarePlus className="h-4 w-4" />
@@ -151,7 +151,7 @@ export function AppSidebar() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   loadChat(subItem.chatId);
-                                  router.push("/");
+                                  router.push("/chat");
                                 }}
                               >
                                 <span>{subItem.title}</span>

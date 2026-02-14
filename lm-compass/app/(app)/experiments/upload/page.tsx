@@ -171,7 +171,7 @@ export default function NewExperimentPage() {
         {/* ===== Header ===== */}
         <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
           {!open && <SidebarTrigger />}
-          <Link href="/">
+          <Link href="/chat">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="size-4 mr-2" />
               Back to Chat
