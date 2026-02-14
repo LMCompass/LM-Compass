@@ -37,7 +37,7 @@ export default function ViewRubricsPage() {
       <div className="h-screen flex flex-col">
         <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6">
           {!open && <SidebarTrigger />}
-          <Link href="/">
+          <Link href="/chat">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="size-4 mr-2" />
               Back to Chat

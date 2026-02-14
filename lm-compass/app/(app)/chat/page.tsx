@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SignedIn, SignedOut, SignInButton, useUser } from "@clerk/nextjs";
 import { SettingsDialog } from "@/components/ui/settings-dialog";
-import { hasApiKey } from "@/app/settings/actions";
+import { hasApiKey } from "@/app/(app)/settings/actions";
 import {
   Item,
   ItemMedia,
