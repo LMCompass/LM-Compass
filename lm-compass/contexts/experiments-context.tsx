@@ -35,19 +35,8 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
     return data as ExperimentItem[];
   }, [supabase]);
 
-  const processItem = useCallback(async (item: ExperimentItem, experimentId: string) => {
+  const processItem = useCallback(async (item: ExperimentItem, experiment: Experiment) => {
     try {
-      // Fetch experiment details for configuration (models, rubric, etc.)
-      const { data: experiment, error: expError } = await supabase
-        .from('experiments')
-        .select('*')
-        .eq('id', experimentId)
-        .single();
-
-      if (expError || !experiment) {
-        throw new Error('Experiment not found');
-      }
-
       const response = await fetch('/api/experiments/run-item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,6 +87,19 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
     setIsProcessing(true);
 
     try {
+      // Fetch experiment details once per processQueue run
+      const { data: experiment, error: expError } = await supabase
+        .from('experiments')
+        .select('*')
+        .eq('id', activeExperimentId)
+        .single();
+
+      if (expError || !experiment) {
+        console.error('Experiment not found at start of processQueue:', expError);
+        setActiveExperimentId(null);
+        return;
+      }
+
       while (activeExperimentId) {
         const items = await fetchNextItems(activeExperimentId);
 
@@ -140,7 +142,7 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
         });
 
         // Process batch concurrently (limit of 3 as per ticket)
-        await Promise.all(items.map(item => processItem(item, activeExperimentId)));
+        await Promise.all(items.map(item => processItem(item, experiment as Experiment)));
       }
     } finally {
       processingRef.current = false;
