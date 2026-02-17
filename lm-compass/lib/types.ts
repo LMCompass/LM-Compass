@@ -20,6 +20,7 @@ export interface Experiment {
   configuration: {
     selected_models: string[];
     rubric_id: string;
+    eval_method: string;
   } | null;
 }
 
