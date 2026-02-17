@@ -57,9 +57,10 @@ export default function TestWorkerPage() {
       // 3. Set active experiment to trigger worker
       setActiveExperimentId(experiment.id);
       alert(`Experiment ${experiment.id} created and started!`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating test experiment:', error);
-      alert(`Error: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      alert(`Error: ${errorMessage}`);
     } finally {
       setIsCreating(false);
     }
@@ -100,7 +101,7 @@ export default function TestWorkerPage() {
       <div className="mt-8 p-4 bg-muted rounded-md text-sm">
         <p><strong>How to test:</strong></p>
         <ol className="list-decimal ml-5 mt-2 space-y-1">
-          <li>Click <strong>"Create & Run Real Test Exp"</strong>. This will insert a real experiment and 2 rows into your Supabase DB.</li>
+          <li>Click <strong>&quot;Create &amp; Run Real Test Exp&quot;</strong>. This will insert a real experiment and 2 rows into your Supabase DB.</li>
           <li>The worker in <code>ExperimentsContext</code> will detect the active ID and start processing.</li>
           <li>Open <strong>Network tab</strong> to see requests to <code>/api/experiments/run-item</code>.</li>
           <li>Navigate to another page and back; the progress should persist.</li>

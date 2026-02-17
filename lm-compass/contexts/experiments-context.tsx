@@ -78,13 +78,14 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
       if (updateError) {
         console.error('Error updating item status:', updateError);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error processing item ${item.id}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       await supabase
         .from('experiments_items')
         .update({
           status: 3, // 3 for error
-          error_message: error.message,
+          error_message: errorMessage,
         })
         .eq('id', item.id);
     }
