@@ -253,7 +253,8 @@ Instructions:
     responses: ModelResponse[],
     options: EvaluationOptions
   ): Promise<EvaluationResult> {
-    return this.rl4fEvaluate(responses, { ...options, iterations: 1 });
+    const iterations = options.iterations || 1;
+    return this.rl4fEvaluate(responses, { ...options, iterations });
   }
 
   /**

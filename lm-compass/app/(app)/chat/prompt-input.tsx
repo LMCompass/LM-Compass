@@ -44,6 +44,7 @@ type PromptInputComponentProps = {
   >;
   selectedModels: string[];
   evaluationMethod: string;
+  iterations: number;
   chatId: string;
 };
 
@@ -55,6 +56,7 @@ export function PromptInputComponent({
   setLoadingPhase,
   selectedModels,
   evaluationMethod,
+  iterations,
   chatId,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("");
@@ -139,6 +141,7 @@ export function PromptInputComponent({
             })),
           models: selectedModels.length > 0 ? selectedModels : undefined,
           evaluationMethod,
+          iterations,
           chatId,
         }),
         signal: abortControllerRef.current.signal,

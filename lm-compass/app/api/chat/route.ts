@@ -96,7 +96,7 @@ export async function POST(req: Request) {
       },
     });
 
-    const { messages, model, models, evaluationMethod, chatId } = await req.json();
+    const { messages, model, models, evaluationMethod, iterations, chatId } = await req.json();
 
     // Normalize to models array - handle both single model (legacy) and multi-model cases
     let modelsToQuery: string[];
@@ -200,6 +200,7 @@ export async function POST(req: Request) {
               }
               const evaluationResult = await evaluator.evaluate(successfulResults, {
                 userQuery,
+                iterations,
               });
 
               // Aggregate reasoning for each model
