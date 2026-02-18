@@ -36,16 +36,19 @@ class GradeHITL(Evaluator):
         if not model_names:
             model_names = (DEFAULT_MODEL_NAME,)
         super().__init__(*model_names)
-        self.model_name = model_names[0] if model_names else DEFAULT_MODEL_NAME
 
-    async def call_llm(self, prompt: str) -> Dict[str, Any]:
+    async def call_llm(self, prompt: str, model_name: str = None) -> Dict[str, Any]:
         """Call the configured OpenRouter model and return parsed JSON.
 
         This uses the same AsyncOpenAI client and JSON-extraction helper as the
         rest of the eval-notebooks stack (via `Evaluator`).
+
+        :param model_name: If provided, use this model; otherwise use the default (first in model_names).
         """
 
-        result = await self.query_model(self.model_name, prompt)
+        if model_name is None:
+            model_name = self.model_names[0] if self.model_names else DEFAULT_MODEL_NAME
+        result = await self.query_model(model_name, prompt)
         parsed = self.extract_outermost_json(result["response"])
         if parsed is None:
             raise ValueError(
@@ -55,9 +58,8 @@ class GradeHITL(Evaluator):
             raise ValueError(f"Expected JSON object, got: {type(parsed)}")
         return parsed
 
-    async def grade_with_confidence(self, example: Dict[str, Any], rubric: Rubric) -> GradeResult:
-        """Grade a single example with the current rubric."""
-
+    def _grading_prompt(self, example: Dict[str, Any], rubric: Rubric) -> str:
+        """Build the combined system + user prompt used for grading (shared by all model calls)."""
         system_prompt = f"""You are an expert grader.
 Use the rubric below to grade the student's response.
 
@@ -74,19 +76,73 @@ Example format:
 
 Do not include any text before or after the JSON object. Return ONLY the JSON.
 """
-
         user_prompt = (
             f"Question/Task:\n{example['prompt']}\n\n"
             f"Student Response:\n{example['response']}\n"
         )
+        return system_prompt + "\n\n" + user_prompt
 
-        raw = await self.call_llm(system_prompt + "\n\n" + user_prompt)
-
+    async def _grade_one_model(
+        self, example: Dict[str, Any], rubric: Rubric, model_name: str
+    ) -> GradeResult:
+        """Grade a single example with one model. Used internally for single- and multi-model flows."""
+        prompt = self._grading_prompt(example, rubric)
+        raw = await self.call_llm(prompt, model_name=model_name)
         return GradeResult(
             scores=raw["scores"],
             justification=raw["justification"],
             confidence=float(raw["confidence"]),
             raw_model_output=raw,
+        )
+
+    async def grade_with_confidence(self, example: Dict[str, Any], rubric: Rubric) -> GradeResult:
+        """Grade a single example with the current rubric (single model: first in model_names)."""
+        model_name = self.model_names[0] if self.model_names else DEFAULT_MODEL_NAME
+        return await self._grade_one_model(example, rubric, model_name)
+
+    async def grade_with_confidence_multi(
+        self, example: Dict[str, Any], rubric: Rubric
+    ) -> GradeResult:
+        """Grade a single example with all configured models and aggregate results.
+
+        All models receive the same prompt and student response. Scores are averaged
+        per dimension, and confidence is averaged. If average confidence is below
+        the threshold, the human-in-the-loop flow is triggered.
+        """
+        if not self.model_names:
+            return await self.grade_with_confidence(example, rubric)
+        if len(self.model_names) == 1:
+            return await self._grade_one_model(example, rubric, self.model_names[0])
+
+        # Grade in parallel with all models
+        results: List[GradeResult] = await asyncio.gather(
+            *[self._grade_one_model(example, rubric, m) for m in self.model_names]
+        )
+
+        # Average confidence
+        avg_confidence = sum(r.confidence for r in results) / len(results)
+
+        # Average scores per dimension (union of all keys)
+        all_keys = set()
+        for r in results:
+            all_keys.update(r.scores.keys())
+        avg_scores: Dict[str, float] = {}
+        for k in all_keys:
+            values = [r.scores[k] for r in results if k in r.scores]
+            avg_scores[k] = sum(values) / len(values) if values else 0.0
+
+        # Combined justification: one line per model
+        justifications = [
+            f"[{self.model_names[i]}] {r.justification}"
+            for i, r in enumerate(results)
+        ]
+        combined_justification = " ".join(justifications)
+
+        return GradeResult(
+            scores=avg_scores,
+            justification=combined_justification,
+            confidence=avg_confidence,
+            raw_model_output={m: r.raw_model_output for m, r in zip(self.model_names, results)},
         )
 
     def flag_low_confidence(self, grade: GradeResult, *, threshold: float = 0.6) -> bool:
@@ -208,7 +264,8 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
         for ex in examples:
             print("Grading example: ", ex['prompt'])
             print("Response: ", ex['response'])
-            result = await self.grade_with_confidence(ex, updated_rubric)
+            # Use multi-model grading when 2+ models are configured (average confidence used for threshold)
+            result = await self.grade_with_confidence_multi(ex, updated_rubric)
             grades.append(result)
 
             if not self.flag_low_confidence(result, threshold=confidence_threshold):
@@ -235,8 +292,8 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
             print("Updated rubric: ", updated_rubric.description)
             print("--------------------------------")
 
-            # (4) Regrade this example with the updated rubric.
-            new_result = await self.grade_with_confidence(ex, updated_rubric)
+            # (4) Regrade this example with the updated rubric (same multi/single model as above).
+            new_result = await self.grade_with_confidence_multi(ex, updated_rubric)
             grades[-1] = new_result
 
         return updated_rubric, grades
@@ -278,9 +335,10 @@ async def main():
         ),
     )
 
-    evaluator = GradeHITL(DEFAULT_MODEL_NAME)
+    # Single model: GradeHITL(DEFAULT_MODEL_NAME). Multi-model: GradeHITL("Model A", "Model B")
+    evaluator = GradeHITL("Anthropic: Claude Sonnet 4.5", "OpenAI: GPT-4o Mini")
     print("Running GradeHITL pipeline...")
-    print("Using model: ", evaluator.model_name)
+    print("Using model(s): ", evaluator.model_names)
     new_rubric, grade_results = await evaluator.grade_hitl_batch(
         examples,
         rubric,
