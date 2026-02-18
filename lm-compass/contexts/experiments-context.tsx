@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useSupabaseClient } from '@/utils/supabase/client';
 import type { Experiment, ExperimentItem } from '@/lib/types';
+import { ExperimentStatus, ExperimentItemStatus } from '@/lib/types';
 
 interface ExperimentsContextType {
   activeExperimentId: string | null;
@@ -21,19 +22,13 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
   const supabase = useSupabaseClient();
 
   const claimNextItems = useCallback(async (experimentId: string) => {
-    // Attempt to claim 3 items by updating status from pending (0) to running (1)
-    // using a select with subquery to mimic atomic claim since Supabase's JS client
-    // doesn't support UPDATE ... RETURNING with LIMIT directly in a simple way.
-    // However, we can use a select...update flow which is "safe enough" in most cases,
-    // but better would be an RPC. Let's stick to the client-side claim for now with a slight delay
-    // or use a direct update if possible.
 
     // Step 1: Find candidates
     const { data: candidates, error: findError } = await supabase
       .from('experiments_items')
       .select('id')
       .eq('experiment_id', experimentId)
-      .eq('status', 0)
+      .eq('status', ExperimentItemStatus.PENDING)
       .limit(3);
 
     if (findError || !candidates || candidates.length === 0) {
@@ -46,9 +41,9 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
     // Step 2: Claim them
     const { data: claimed, error: claimError } = await supabase
       .from('experiments_items')
-      .update({ status: 1 }) // 1 for running
+      .update({ status: ExperimentItemStatus.RUNNING }) // 1 for running
       .in('id', candidateIds)
-      .eq('status', 0) // Extra safety check
+      .eq('status', ExperimentItemStatus.PENDING) // Extra safety check
       .select();
 
     if (claimError) {
@@ -110,7 +105,7 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
       const { error: updateError } = await supabase
         .from('experiments_items')
         .update({
-          status: 2, // 2 for completed
+          status: ExperimentItemStatus.COMPLETED,
           result: finalResult,
         })
         .eq('id', item.id);
@@ -124,7 +119,7 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
       await supabase
         .from('experiments_items')
         .update({
-          status: 3, // 3 for error
+          status: ExperimentItemStatus.ERROR,
           error_message: errorMessage,
         })
         .eq('id', item.id);
@@ -160,7 +155,7 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
             .from('experiments_items')
             .select('*', { count: 'exact', head: true })
             .eq('experiment_id', activeExperimentId)
-            .eq('status', 0);
+            .eq('status', ExperimentItemStatus.PENDING);
 
           if (countError) {
             console.error('Transient error checking pending count:', countError);
@@ -168,19 +163,19 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
           }
 
           if (count === 0) {
-            // Also ensure no items are still stuck in 'running' (status 1) 
+            // Also ensure no items are still stuck in 'running' 
             // from this specific worker's perspective or others
             const { count: runningCount } = await supabase
               .from('experiments_items')
               .select('*', { count: 'exact', head: true })
               .eq('experiment_id', activeExperimentId)
-              .eq('status', 1);
+              .eq('status', ExperimentItemStatus.RUNNING);
 
             if ((runningCount || 0) === 0) {
               // Mark experiment as completed
               await supabase
                 .from('experiments')
-                .update({ status: 2 })
+                .update({ status: ExperimentStatus.COMPLETED })
                 .eq('id', activeExperimentId);
 
               setActiveExperimentId(null);
@@ -200,7 +195,7 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
           .from('experiments_items')
           .select('*', { count: 'exact', head: true })
           .eq('experiment_id', activeExperimentId)
-          .in('status', [2, 3]); // Completed or Error
+          .in('status', [ExperimentItemStatus.COMPLETED, ExperimentItemStatus.ERROR]); // Completed or Error
 
         setProgress({
           completed: completedCount || 0,
@@ -228,7 +223,7 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
       const { data, error } = await supabase
         .from('experiments')
         .select('id')
-        .eq('status', 1) // 1 for running
+        .eq('status', ExperimentStatus.RUNNING)
         .limit(1)
         .single();
 

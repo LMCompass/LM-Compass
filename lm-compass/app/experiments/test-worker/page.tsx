@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useSupabaseClient } from '@/utils/supabase/client';
 import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { ExperimentStatus, ExperimentItemStatus } from '@/lib/types';
 
 export default function TestWorkerPage() {
   const { activeExperimentId, setActiveExperimentId, isProcessing, progress } = useExperiments();
@@ -26,7 +27,7 @@ export default function TestWorkerPage() {
         .insert({
           user_id: user.id,
           title: 'Automated Test Experiment',
-          status: 1, // running
+          status: ExperimentStatus.RUNNING, // running
           created_at: new Date().toISOString(),
           configuration: {
             selected_models: ['gpt-3.5-turbo', 'gpt-4o'], // Mock models
@@ -44,7 +45,7 @@ export default function TestWorkerPage() {
         experiment_id: experiment.id,
         input_query: `Test Query #${i + 1}: What is ${i} + ${i}?`,
         expected_output: `${i + i}`,
-        status: 0,
+        status: ExperimentItemStatus.PENDING,
         result: {}
       }));
 
