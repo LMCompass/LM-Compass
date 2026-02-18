@@ -11,15 +11,30 @@ export type Message = {
   sequenceOrder?: number;
 };
 
+export enum ExperimentStatus {
+  DRAFT = 'draft',
+  RUNNING = 'running',
+  COMPLETED = 'completed',
+  ERROR = 'error'
+}
+
+export enum ExperimentItemStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  COMPLETED = 'completed',
+  ERROR = 'error'
+}
+
 export interface Experiment {
   id: string;
   user_id: string | null;
   title: string | null;
-  status: number | null;
+  status: ExperimentStatus | null;
   created_at: string | null;
   configuration: {
     selected_models: string[];
     rubric_id: string;
+    eval_method: string;
   } | null;
 }
 
@@ -28,7 +43,7 @@ export interface ExperimentItem {
   experiment_id: string | null;
   input_query: string | null;
   expected_output: string | null;
-  status: number | null;
+  status: ExperimentItemStatus | null;
   result: {
     [modelName: string]: {
       output: string;

@@ -4,6 +4,7 @@ import { SidebarProvider } from "@/components/sidebar/sidebar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ChatProvider } from "@/contexts/chat-context";
+import { ExperimentsProvider } from "@/contexts/experiments-context";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
@@ -35,10 +36,12 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <ChatProvider>
-              <SidebarProvider>
-                <AppSidebar />
-                {children}
-              </SidebarProvider>
+              <ExperimentsProvider>
+                <SidebarProvider>
+                  <AppSidebar />
+                  {children}
+                </SidebarProvider>
+              </ExperimentsProvider>
             </ChatProvider>
           </ThemeProvider>
         </body>
