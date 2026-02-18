@@ -30,6 +30,7 @@ interface EvaluationMethodSelectorProps {
 const evaluationMethods = [
   { value: "prompt-based", label: "Prompt-based scoring" },
   { value: "n-prompt-based", label: "One-Shot Prompt-based scoring" },
+  { value: "rl4f", label: "Rationale Based Self Critique Loops" },
 ]
 
 export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSelectorProps) {

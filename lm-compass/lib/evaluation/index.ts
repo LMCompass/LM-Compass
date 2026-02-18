@@ -10,7 +10,12 @@ export type {
   EvaluationMetadata,
 } from './types';
 
+export type { CritiqueEntry } from './rl4f-evaluator';
+export type { ModelQueryResponse } from './evaluator';
+export type { EvaluationAnswer, ScoreTable } from './prompt-based-evaluators';
+
 export * from './interfaces';
 export * from './types';
-export * from './prompt-based-evaluator';
-export * from './n-prompt-based-evaluator';
+export * from './evaluator';
+export * from './prompt-based-evaluators';
+export * from './rl4f-evaluator';

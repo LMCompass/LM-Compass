@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
-import { PromptBasedEvaluator, NPromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
+import { PromptBasedEvaluator, NPromptBasedEvaluator, RL4FEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
 import { saveChat, loadAllMessages } from '@/lib/chat-storage';
 import type { Message } from '@/lib/types';
 import { randomUUID } from 'crypto';
@@ -192,6 +192,8 @@ export async function POST(req: Request) {
               let evaluator;
               if (evaluationMethod === 'n-prompt-based') {
                 evaluator = new NPromptBasedEvaluator(llmClient);
+              } else if (evaluationMethod === 'rl4f') {
+                evaluator = new RL4FEvaluator(llmClient);
               } else {
                 // Default to n^2 prompt-based
                 evaluator = new PromptBasedEvaluator(llmClient);
