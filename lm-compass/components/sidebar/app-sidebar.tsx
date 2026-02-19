@@ -37,6 +37,7 @@ import {
 } from "./sidebar";
 import { SettingsDialog } from "@/components/ui/settings-dialog";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useChat } from "@/contexts/chat-context";
 
 import {
@@ -85,19 +86,21 @@ export function AppSidebar() {
               </SidebarMenuButton>
             ) : (
               <div className="flex items-center gap-1 w-full">
-                <SidebarMenuButton
-                  size="lg"
-                  className="flex-1 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <Compass className="size-4" />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="text-lg truncate font-bold">
-                      LM Compass
-                    </span>
-                  </div>
-                </SidebarMenuButton>
+                <Link href="/" className="flex-1 block">
+                  <SidebarMenuButton
+                    size="lg"
+                    className="w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  >
+                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                      <Compass className="size-4" />
+                    </div>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="text-lg truncate font-bold">
+                        LM Compass
+                      </span>
+                    </div>
+                  </SidebarMenuButton>
+                </Link>
                 <SidebarMenuButton
                   onClick={toggleSidebar}
                   tooltip="Collapse Sidebar"

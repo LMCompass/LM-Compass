@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { useMotionValueEvent, useScroll, motion, AnimatePresence } from "framer-motion";
+import {
+  useMotionValueEvent,
+  useScroll,
+  motion,
+  AnimatePresence,
+} from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface ContentItem {
@@ -25,22 +30,18 @@ export function StickyScroll({
   });
 
   const cardLength = content.length;
+  // Switch earlier so right panel stays in sync with left text (responsive thresholds)
+  const switchThresholds =
+    cardLength === 3
+      ? [0.16, 0.48]
+      : Array.from({ length: cardLength - 1 }, (_, i) => (i + 1) / cardLength);
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    const cardsBreakpoints = content.map(
-      (_, index) => index / cardLength
-    );
-    const closestBreakpointIndex = cardsBreakpoints.reduce(
-      (acc, breakpoint, index) => {
-        const distance = Math.abs(latest - breakpoint);
-        if (distance < Math.abs(latest - cardsBreakpoints[acc])) {
-          return index;
-        }
-        return acc;
-      },
-      0
-    );
-    setActiveCard(closestBreakpointIndex);
+    let index = 0;
+    for (let i = 0; i < switchThresholds.length; i++) {
+      if (latest >= switchThresholds[i]) index = i + 1;
+    }
+    setActiveCard(index);
   });
 
   return (
@@ -57,12 +58,12 @@ export function StickyScroll({
                 animate={{
                   opacity: activeCard === index ? 1 : 0.25,
                 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.2 }}
               >
                 <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-6">
                   {item.title}
                 </h3>
-                <p className="text-lg text-muted-foreground leading-relaxed max-w-md">
+                <p className="text-lg text-white/75 leading-relaxed max-w-md">
                   {item.description}
                 </p>
               </motion.div>
@@ -74,18 +75,18 @@ export function StickyScroll({
         <div className="hidden lg:flex w-1/2 items-start">
           <div
             className={cn(
-              "sticky top-32 h-[24rem] w-full rounded-2xl overflow-hidden",
-              contentClassName
+              "sticky top-[calc(50vh-12rem)] h-[24rem] w-full rounded-2xl overflow-hidden",
+              contentClassName,
             )}
           >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeCard}
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="h-full w-full rounded-2xl bg-gradient-to-br from-primary/20 via-chart-2/20 to-chart-3/20 border border-border/50 backdrop-blur-sm"
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="h-full w-full rounded-2xl bg-gradient-to-br from-primary/20 via-chart-2/20 to-chart-3/20 backdrop-blur-sm shadow-[0_4px_24px_-6px_rgba(0,0,0,0.3),0_8px_32px_-12px_rgba(0,0,0,0.2)]"
               >
                 {content[activeCard].content ?? null}
               </motion.div>

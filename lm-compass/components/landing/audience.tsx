@@ -26,12 +26,30 @@ export function Audience() {
   return (
     <section className="py-20 md:py-28">
       <div className="max-w-5xl mx-auto px-6">
-        <p className="text-sm font-medium text-primary mb-3 tracking-wide uppercase text-center">
+        <div className="text-center">
+        <motion.p
+          className="inline-block text-xs font-semibold text-white/95 mb-6 tracking-[0.2em] uppercase px-5 py-2 rounded-full border border-[#ea580c]/40"
+          style={{
+            background: "rgba(234,88,12,0.18)",
+            boxShadow: "0 0 0 1px rgba(234,88,12,0.12) inset, 0 4px 16px -2px rgba(234,88,12,0.35)",
+          }}
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px 0px -20px 0px" }}
+          transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
           Built For
-        </p>
-        <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-14 tracking-tight">
+        </motion.p>
+        <motion.h2
+          className="text-3xl md:text-4xl font-bold text-center mb-14 tracking-tight font-heading bg-gradient-to-b from-white from-10% to-gray-400 to-90% bg-clip-text text-transparent"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px 0px -20px 0px" }}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.05 }}
+        >
           Who It&apos;s For
-        </h2>
+        </motion.h2>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {audiences.map((item, index) => (
             <motion.div
@@ -48,7 +66,7 @@ export function Audience() {
               <h3 className="text-lg font-semibold text-foreground mb-2">
                 {item.title}
               </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm text-white/75 leading-relaxed">
                 {item.description}
               </p>
             </motion.div>

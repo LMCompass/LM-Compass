@@ -22,7 +22,7 @@ export function Footer() {
               </div>
               <span className="font-semibold text-foreground">LM Compass</span>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-white/75 leading-relaxed">
               A peer-review evaluation platform for LLMs and SLMs.
             </p>
           </div>
@@ -35,7 +35,7 @@ export function Footer() {
               <li>
                 <button
                   onClick={() => scrollTo("features")}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  className="text-sm text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
                 >
                   Features
                 </button>
@@ -43,7 +43,7 @@ export function Footer() {
               <li>
                 <button
                   onClick={() => scrollTo("how-it-works")}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  className="text-sm text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
                 >
                   How It Works
                 </button>
@@ -61,7 +61,7 @@ export function Footer() {
                   href="https://github.com/LMCompass/LM-Compass"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  className="text-sm text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
                 >
                   GitHub
                 </a>
@@ -73,7 +73,7 @@ export function Footer() {
             <h4 className="text-xs font-semibold text-foreground mb-4 uppercase tracking-wider">
               Legal
             </h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-white/75 leading-relaxed">
               Rankings and evaluations are experimental and should not be
               considered definitive.
             </p>
@@ -81,7 +81,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-border/40">
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-xs text-white/60 text-center">
             &copy; {new Date().getFullYear()} LM Compass &middot; CS 4ZP6
           </p>
         </div>

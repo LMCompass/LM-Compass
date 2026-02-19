@@ -39,7 +39,7 @@ export function ContainerScroll({
       ref={containerRef}
     >
       <div
-        className="py-10 md:py-40 w-full relative"
+        className="pt-10 pb-10 md:pt-16 md:pb-20 w-full relative"
         style={{
           perspective: "1000px",
         }}
@@ -89,11 +89,31 @@ function Card({
         rotateX: rotate,
         scale,
         boxShadow:
-          "0 0 #0000004d, 0 9px 20px #0000004a, 0 37px 37px #00000042, 0 84px 50px #00000026, 0 149px 60px #0000000a, 0 233px 65px #00000003",
+          "0 8px 24px -4px rgba(0,0,0,0.4), 0 24px 48px -12px rgba(0,0,0,0.35), 0 48px 80px -16px rgba(0,0,0,0.2)",
       }}
-      className="max-w-5xl -mt-12 mx-auto h-[30rem] md:h-[40rem] w-full border-4 border-[#6C6C6C] p-2 md:p-6 bg-[#222222] rounded-[30px] shadow-2xl"
+      className="max-w-5xl -mt-12 mx-auto h-[30rem] md:h-[40rem] w-full px-2 rounded-[30px] shadow-2xl relative"
     >
-      <div className="h-full w-full overflow-hidden rounded-2xl bg-gray-100 dark:bg-zinc-900 md:rounded-2xl md:p-4">
+      {/* Top edge: gradient line + glow that fades to nothing at ends */}
+      <div className="absolute left-0 right-0 top-0 z-10">
+        {/* Glow from gradient only (no box-shadow) – transparent at ends */}
+        <div
+          className="absolute inset-x-0 -top-px h-5 rounded-t-[30px] opacity-90"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(194,65,12,0.08) 20%, rgba(234,88,12,0.35) 50%, rgba(194,65,12,0.08) 80%, transparent 100%)",
+            filter: "blur(10px)",
+          }}
+        />
+        {/* Crisp gradient line – no box-shadow so glow comes only from blurred layer */}
+        <div
+          className="relative h-[2px] rounded-t-[30px]"
+          style={{
+            background:
+              "linear-gradient(90deg, #0a0a0a 0%, #1a1a1a 15%, #c2410c 30%, #ea580c 40%, #ffffff 50%, #ea580c 60%, #c2410c 70%, #1a1a1a 85%, #0a0a0a 100%)",
+          }}
+        />
+      </div>
+      <div className="h-full w-full overflow-hidden rounded-2xl bg-gray-100 dark:bg-zinc-900 md:rounded-2xl">
         {children}
       </div>
     </motion.div>

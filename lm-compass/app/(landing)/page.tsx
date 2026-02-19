@@ -10,14 +10,16 @@ import { Footer } from "@/components/landing/footer";
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <Navbar />
-      <Hero />
-      <HowItWorks />
-      <FeaturesGrid />
-      <Audience />
-      <FinalCTA />
-      <Footer />
+    <main className="relative min-h-screen dark text-foreground bg-[#0a0a0a]">
+      <div className="relative z-10">
+        <Navbar />
+        <Hero />
+        <HowItWorks />
+        <FeaturesGrid />
+        <Audience />
+        <FinalCTA />
+        <Footer />
+      </div>
     </main>
   );
 }

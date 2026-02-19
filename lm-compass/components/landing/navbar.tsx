@@ -55,13 +55,13 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-7">
           <button
             onClick={() => scrollTo("features")}
-            className="text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-200"
+            className="text-[13px] text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
           >
             Features
           </button>
           <button
             onClick={() => scrollTo("how-it-works")}
-            className="text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-200"
+            className="text-[13px] text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
           >
             How It Works
           </button>
@@ -70,7 +70,7 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           <SignedOut>
             <SignInButton mode="modal">
-              <button className="text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-200">
+              <button className="text-[13px] text-white/70 hover:text-white transition-colors duration-200 cursor-pointer">
                 Sign In
               </button>
             </SignInButton>
@@ -78,14 +78,14 @@ export function Navbar() {
           <SignedIn>
             <Link
               href="/chat"
-              className="text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-200"
+              className="text-[13px] text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
             >
               Go to App
             </Link>
           </SignedIn>
           <Link
             href="/chat"
-            className="text-[13px] font-medium px-4 py-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_-4px] hover:shadow-primary/30 transition-all duration-300"
+            className="text-[13px] font-medium px-4 py-2 rounded-full bg-[#c2410c] text-white shadow-[0_2px_12px_-2px_rgba(194,65,12,0.45)] hover:shadow-[0_4px_20px_-2px_rgba(194,65,12,0.5)] hover:bg-[#ea580c] transition-all duration-300 cursor-pointer"
           >
             Get Started
           </Link>
@@ -114,27 +114,27 @@ export function Navbar() {
           >
             <button
               onClick={() => scrollTo("features")}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left py-1"
+              className="text-sm text-white/70 hover:text-white transition-colors text-left py-1 cursor-pointer"
             >
               Features
             </button>
             <button
               onClick={() => scrollTo("how-it-works")}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left py-1"
+              className="text-sm text-white/70 hover:text-white transition-colors text-left py-1 cursor-pointer"
             >
               How It Works
             </button>
             <hr className="border-border/40" />
             <SignedOut>
               <SignInButton mode="modal">
-                <button className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left py-1">
-                  Sign In
-                </button>
+              <button className="text-sm text-white/70 hover:text-white transition-colors text-left py-1 cursor-pointer">
+                Sign In
+              </button>
               </SignInButton>
             </SignedOut>
             <Link
               href="/chat"
-              className="text-sm font-medium px-4 py-2.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-center"
+              className="text-sm font-medium px-4 py-2.5 rounded-full bg-[#c2410c] text-white shadow-[0_2px_12px_-2px_rgba(194,65,12,0.45)] hover:shadow-[0_4px_20px_-2px_rgba(194,65,12,0.5)] hover:bg-[#ea580c] transition-colors text-center cursor-pointer"
             >
               Get Started
             </Link>
