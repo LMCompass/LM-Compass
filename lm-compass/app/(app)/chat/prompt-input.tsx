@@ -31,6 +31,7 @@ type StreamResponse = {
   phase: string;
   results?: MultiResult[];
   evaluationMetadata?: EvaluationMetadata;
+  iterationResults?: any[];
   error?: string;
 };
 
@@ -40,7 +41,7 @@ type PromptInputComponentProps = {
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setLoadingPhase: React.Dispatch<
-    React.SetStateAction<"querying" | "evaluating">
+    React.SetStateAction<"querying" | "evaluating" | "refining">
   >;
   selectedModels: string[];
   evaluationMethod: string;
@@ -201,6 +202,11 @@ export function PromptInputComponent({
                   setLoadingPhase("evaluating");
                 }
 
+                // Update loading phase when refinement starts
+                if (data.phase === "refining") {
+                  setLoadingPhase("refining");
+                }
+
                 // Store final data when complete
                 if (data.phase === "complete") {
                   finalData = data;
@@ -261,6 +267,7 @@ export function PromptInputComponent({
         content,
         multiResults,
         evaluationMetadata: finalData.evaluationMetadata,
+        ...(finalData.iterationResults && { iterationResults: finalData.iterationResults }),
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {

@@ -1,19 +1,20 @@
 import { Loader } from "@/components/ui/loader";
 
 interface LoaderBannerProps {
-  phase: "querying" | "evaluating";
+  phase: "querying" | "evaluating" | "refining";
   models: string[];
   labelMap: Record<string, string>;
 }
 
 const loadingMessage = (
-  phase: "querying" | "evaluating",
+  phase: "querying" | "evaluating" | "refining",
   models: string[],
   labelMap: Record<string, string>
 ): string => {
   const count = models.length;
 
   if (phase === "evaluating") return "Evaluating responses";
+  if (phase === "refining") return "Refining evaluations";
   if (count === 0) return "Processing";
   if (count === 1) return `Querying ${labelMap[models[0]] || models[0]}`;
   return `Querying ${count} models`;

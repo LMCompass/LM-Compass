@@ -47,7 +47,7 @@ export default function Home() {
   } = useChat();
   const { user, isLoaded: userLoaded } = useUser();
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">(
+  const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating" | "refining">(
     "querying",
   );
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);

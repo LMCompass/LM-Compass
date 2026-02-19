@@ -23,6 +23,23 @@ function loadRubric(): string {
 const SELECTED_RUBRIC = loadRubric();
 
 /**
+ * Represents a single iteration's evaluation results in RL4F
+ */
+export type RL4FIterationResult = {
+  iterationNumber: number;
+  winner: ModelResponse | null;
+  meanScores: Record<string, number>;
+  scores: EvaluationScore[];
+};
+
+/**
+ * Extended evaluation result for RL4F that includes iteration history
+ */
+export type RL4FEvaluationResult = EvaluationResult & {
+  iterationResults?: RL4FIterationResult[];
+};
+
+/**
  * Represents a single critique entry in the refinement history
  */
 export type CritiqueEntry = {
@@ -42,9 +59,12 @@ export class RL4FEvaluator extends PromptBasedEvaluator {
   private critiqueHistory: CritiqueEntry[][] = [];
   private userQueryAnswers: ModelResponse[] = [];
   private evaluationQueryAnswers: EvaluationScore[] = [];
+  private iterationResults: RL4FIterationResult[] = [];
+  private onRefinementStart?: () => void;
 
-  constructor(client: OpenAI) {
+  constructor(client: OpenAI, onRefinementStart?: () => void) {
     super(client);
+    this.onRefinementStart = onRefinementStart;
   }
 
   /**
@@ -252,7 +272,7 @@ Instructions:
   async evaluate(
     responses: ModelResponse[],
     options: EvaluationOptions
-  ): Promise<EvaluationResult> {
+  ): Promise<RL4FEvaluationResult> {
     const iterations = options.iterations || 1;
     return this.rl4fEvaluate(responses, { ...options, iterations });
   }
@@ -263,7 +283,7 @@ Instructions:
   async rl4fEvaluate(
     responses: ModelResponse[],
     options: EvaluationOptions & { iterations?: number }
-  ): Promise<EvaluationResult> {
+  ): Promise<RL4FEvaluationResult> {
     const rubric = options.rubric || SELECTED_RUBRIC;
     const userQuery = options.userQuery;
     const iterations = options.iterations || 1;
@@ -271,16 +291,38 @@ Instructions:
     // Reset state
     this.critiqueHistory = [];
     this.userQueryAnswers = responses;
+    this.iterationResults = [];
 
     // Initial n² evaluation using parent implementation
     const initialResult = await super.evaluate(responses, options);
     this.evaluationQueryAnswers = initialResult.scores;
+
+    // Store initial iteration result - use consistent mean score calculation
+    const modelNames = responses.map(r => r.model);
+    const initialMeanScores = this.calculateMeanScoresFromEntries(
+      initialResult.scores,
+      modelNames
+    );
+    const initialWinner = this.determineWinner(initialResult.scores, modelNames);
+    // Clone the scores to preserve the initial state (they will be mutated during refinement)
+    const initialScoresClone = initialResult.scores.map(s => ({ ...s }));
+    this.iterationResults.push({
+      iterationNumber: 0,
+      winner: initialWinner,
+      meanScores: initialMeanScores,
+      scores: initialScoresClone,
+    });
 
     // Create map of responses for critique process
     const responseByModel = new Map<string, string>();
     responses.forEach((r) => {
       responseByModel.set(r.model, r.content);
     });
+
+    // Call callback before starting refinement iterations if configured
+    if (iterations > 0 && this.onRefinementStart) {
+      this.onRefinementStart();
+    }
 
     // Perform refinement iterations
     for (let i = 0; i < iterations; i++) {
@@ -294,18 +336,65 @@ Instructions:
 
       this.critiqueHistory.push(roundData);
       console.log(`[RL4FEvaluator] Completed refinement round ${i + 1}/${iterations}`);
+
+      // Calculate and store iteration result
+      const iterationWinner = this.determineWinner(this.evaluationQueryAnswers, modelNames);
+      const iterationMeanScores = this.calculateMeanScoresFromEntries(
+        this.evaluationQueryAnswers,
+        modelNames
+      );
+
+      this.iterationResults.push({
+        iterationNumber: i + 1,
+        winner: iterationWinner,
+        meanScores: iterationMeanScores,
+        scores: this.evaluationQueryAnswers.map(s => ({ ...s })), // Clone the scores
+      });
     }
 
-    // Return refined evaluation result
+    // Return refined evaluation result with iteration history
+    const finalWinner = this.determineWinner(this.evaluationQueryAnswers, modelNames);
+    const finalMeanScores = this.calculateMeanScoresFromEntries(
+      this.evaluationQueryAnswers,
+      modelNames
+    );
+
     return {
-      winner: initialResult.winner,
+      winner: finalWinner,
       scores: this.evaluationQueryAnswers,
-      meanScores: this.calculateMeanScoresFromEntries(
-        this.evaluationQueryAnswers,
-        responses.map((r) => r.model)
-      ),
-      tiedModels: initialResult.tiedModels,
+      meanScores: finalMeanScores,
+      tiedModels: this.calculateTiedModels(finalMeanScores),
+      iterationResults: this.iterationResults,
     };
+  }
+
+  /**
+   * Determine winner from evaluation scores
+   */
+  private determineWinner(scores: EvaluationScore[], modelNames: string[]): ModelResponse | null {
+    const meanScores = this.calculateMeanScoresFromEntries(scores, modelNames);
+    const maxScore = Math.max(...Object.values(meanScores));
+    const winners = modelNames.filter(model => meanScores[model] === maxScore);
+    
+    if (winners.length === 0) return null;
+    if (winners.length === 1) {
+      const winnerModel = winners[0];
+      return {
+        model: winnerModel,
+        content: '',
+      };
+    }
+    return null; // Tie
+  }
+
+  /**
+   * Calculate tied models from mean scores
+   */
+  private calculateTiedModels(meanScores: Record<string, number>): string[] {
+    const maxScore = Math.max(...Object.values(meanScores));
+    return Object.entries(meanScores)
+      .filter(([_, score]) => score === maxScore)
+      .map(([model]) => model);
   }
 
   /**
@@ -338,6 +427,13 @@ Instructions:
     });
 
     return meanScores;
+  }
+
+  /**
+   * Get iteration results for display in UI
+   */
+  getIterationResults(): RL4FIterationResult[] {
+    return this.iterationResults;
   }
 
   /**

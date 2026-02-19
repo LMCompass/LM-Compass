@@ -1,4 +1,5 @@
 import type { EvaluationMetadata } from './evaluation/types';
+import type { RL4FIterationResult } from './evaluation/rl4f-evaluator';
 
 export type Message = {
   role: 'user' | 'assistant' | 'system';
@@ -9,6 +10,7 @@ export type Message = {
   evaluationMetadata?: EvaluationMetadata;
   userSelectedWinner?: string;
   sequenceOrder?: number;
+  iterationResults?: RL4FIterationResult[];
 };
 
 export enum ExperimentStatus {

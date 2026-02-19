@@ -18,6 +18,7 @@ import { EmptyChatHeader } from "@/components/chat/empty-chat-header";
 import { ModelResponseCard } from "@/components/chat/model-response-card";
 import { WinnerBanner } from "@/components/chat/winner-banner";
 import { ComparisonPanel } from "@/components/chat/comparison-panel";
+import { IterationResults } from "@/components/ui/iteration-results";
 import { useChat } from "@/contexts/chat-context";
 import { Button } from "@/components/ui/button";
 import { ChevronUp } from "lucide-react";
@@ -28,7 +29,7 @@ import { saveChat, loadAllMessages } from "@/lib/chat-storage";
 type MessagesDisplayProps = {
   messages: MessageType[];
   isLoading: boolean;
-  loadingPhase: "querying" | "evaluating";
+  loadingPhase: "querying" | "evaluating" | "refining";
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
   setMessages: React.Dispatch<React.SetStateAction<MessageType[]>>;
   selectedModels: string[];
@@ -353,6 +354,10 @@ export function MessagesDisplay({
                         modelLabelMap={modelLabelMap}
                         userSelectedWinner={userSelectedWinner}
                       />
+                    )}
+
+                    {message.iterationResults && message.iterationResults.length > 0 && (
+                      <IterationResults results={message.iterationResults} />
                     )}
                   </div>
                 )}
