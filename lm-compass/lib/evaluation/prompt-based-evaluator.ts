@@ -303,13 +303,13 @@ export class PromptBasedEvaluator implements IEvaluationService {
     const maxScore = Math.max(...scores);
 
     // Count how many models have the maximum score
-    const modelsWithMaxScore = Object.entries(meanScores).filter(([_, score]) => score === maxScore);
+    const modelsWithMaxScore = Object.entries(meanScores).filter(([, score]) => score === maxScore);
 
     // If multiple models have the same highest score, it's a tie
     if (modelsWithMaxScore.length > 1) {
       return {
         winner: null,
-        tiedModels: modelsWithMaxScore.map(([model, _]) => model)
+        tiedModels: modelsWithMaxScore.map(([model]) => model)
       };
     }
 

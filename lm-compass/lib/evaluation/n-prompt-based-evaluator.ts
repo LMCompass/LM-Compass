@@ -3,20 +3,34 @@
  * Each model evaluates all other models in a single prompt
  */
 
-import type { OpenAI } from 'openai';
-import type { IEvaluationService } from './interfaces';
-import type { ModelResponse, EvaluationResult, EvaluationOptions, EvaluationScore } from './types';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import type { OpenAI } from "openai";
+import type { IEvaluationService } from "./interfaces";
+import type {
+  ModelResponse,
+  EvaluationResult,
+  EvaluationOptions,
+  EvaluationScore,
+} from "./types";
+import { readFileSync } from "fs";
+import { join } from "path";
 
-const SELECTED_RUBRIC_PATH = join(process.cwd(), 'app', 'rubric', 'types', 'default.txt');
+const SELECTED_RUBRIC_PATH = join(
+  process.cwd(),
+  "app",
+  "rubric",
+  "types",
+  "default.txt",
+);
 
 function loadRubric(): string {
   try {
-    return readFileSync(SELECTED_RUBRIC_PATH, 'utf-8');
+    return readFileSync(SELECTED_RUBRIC_PATH, "utf-8");
   } catch (err) {
-    console.warn(`[NPromptBasedEvaluator] could not read default rubric at ${SELECTED_RUBRIC_PATH}:`, err);
-    return '';
+    console.warn(
+      `[NPromptBasedEvaluator] could not read default rubric at ${SELECTED_RUBRIC_PATH}:`,
+      err,
+    );
+    return "";
   }
 }
 
@@ -26,7 +40,11 @@ const SELECTED_RUBRIC = loadRubric();
  * Creates a scoring query prompt for evaluation where one judge evaluates multiple candidates
  * in a single prompt
  */
-function createScoringQuery(userQuery: string, candidateResponses: ModelResponse[], rubric: string): string {
+function createScoringQuery(
+  userQuery: string,
+  candidateResponses: ModelResponse[],
+  rubric: string,
+): string {
   let answers = "";
   for (const response of candidateResponses) {
     answers += `${response.model} RESPONSE:\n${response.content}\n\n`;
@@ -62,7 +80,9 @@ Your output must be ONLY a JSON object with keys being the exact model names and
   }
 }
 
-Here are the model names for reference: ${candidateResponses.map(r => r.model).join(', ')}`;
+Here are the model names for reference: ${candidateResponses
+    .map((r) => r.model)
+    .join(", ")}`;
 }
 
 /**
@@ -80,9 +100,11 @@ export class NPromptBasedEvaluator implements IEvaluationService {
    */
   async evaluate(
     responses: ModelResponse[],
-    options: EvaluationOptions
+    options: EvaluationOptions,
   ): Promise<EvaluationResult> {
-    const validResponses = responses.filter((r) => !r.error && r.content.trim().length > 0);
+    const validResponses = responses.filter(
+      (r) => !r.error && r.content.trim().length > 0,
+    );
 
     // If there is only one valid response, return it.
     if (validResponses.length === 1) {
@@ -93,7 +115,7 @@ export class NPromptBasedEvaluator implements IEvaluationService {
         tiedModels: [],
       };
     } else if (validResponses.length === 0) {
-      throw new Error('No valid responses to evaluate');
+      throw new Error("No valid responses to evaluate");
     }
 
     const rubric = options.rubric || SELECTED_RUBRIC;
@@ -102,7 +124,7 @@ export class NPromptBasedEvaluator implements IEvaluationService {
     // Build queries: each model judges all OTHER models
     const evaluationTasks = validResponses.map(async (judgeModelResponse) => {
       const judgeModel = judgeModelResponse.model;
-      const candidates = validResponses.filter(r => r.model !== judgeModel);
+      const candidates = validResponses.filter((r) => r.model !== judgeModel);
 
       if (candidates.length === 0) return null;
 
@@ -111,22 +133,25 @@ export class NPromptBasedEvaluator implements IEvaluationService {
       try {
         const completion = await this.client.chat.completions.create({
           model: judgeModel,
-          messages: [{ role: 'user', content: query }],
+          messages: [{ role: "user", content: query }],
         });
 
-        const responseContent = completion.choices[0].message.content || '';
+        const responseContent = completion.choices[0].message.content || "";
         return {
           judgeModel,
           responseContent,
-          candidates
+          candidates,
         };
       } catch (error) {
-        console.error(`[NPromptBasedEvaluator] Evaluation failed for judge ${judgeModel}:`, error);
+        console.error(
+          `[NPromptBasedEvaluator] Evaluation failed for judge ${judgeModel}:`,
+          error,
+        );
         return {
           judgeModel,
-          responseContent: '',
+          responseContent: "",
           candidates,
-          error
+          error,
         };
       }
     });
@@ -136,34 +161,37 @@ export class NPromptBasedEvaluator implements IEvaluationService {
     // Process results into scores
     const scores: EvaluationScore[] = [];
 
-    results.forEach(result => {
+    results.forEach((result) => {
       if (!result || result.error || !result.responseContent) return;
 
       const extractedScores = this.extractScores(result.responseContent);
 
       // Map extracted scores back to EvaluationScore objects
-      result.candidates.forEach(candidate => {
+      result.candidates.forEach((candidate) => {
         const candidateScore = extractedScores[candidate.model];
         if (candidateScore) {
           scores.push({
             judgeModel: result.judgeModel,
             evaluatedModel: candidate.model,
             score: candidateScore.score,
-            reasoning: candidateScore.reasoning
+            reasoning: candidateScore.reasoning,
           });
         } else {
           scores.push({
             judgeModel: result.judgeModel,
             evaluatedModel: candidate.model,
             score: null,
-            reasoning: null
+            reasoning: null,
           });
         }
       });
     });
 
     // Calculate mean scores
-    const meanScores = this.calculateMeanScores(scores, validResponses.map(r => r.model));
+    const meanScores = this.calculateMeanScores(
+      scores,
+      validResponses.map((r) => r.model),
+    );
 
     // Find winner
     const { winner, tiedModels } = this.findWinner(validResponses, meanScores);
@@ -172,14 +200,16 @@ export class NPromptBasedEvaluator implements IEvaluationService {
       winner,
       scores,
       meanScores,
-      tiedModels
+      tiedModels,
     };
   }
 
   /**
    * Extracts scores mapping from LLM response
    */
-  private extractScores(responseText: string): Record<string, { score: number; reasoning: string }> {
+  private extractScores(
+    responseText: string,
+  ): Record<string, { score: number; reasoning: string }> {
     if (!responseText || responseText.trim().length === 0) {
       return {};
     }
@@ -187,19 +217,21 @@ export class NPromptBasedEvaluator implements IEvaluationService {
     let jsonStr: string | null = null;
 
     // Try to find JSON block
-    const markdownMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+    const markdownMatch = responseText.match(
+      /```(?:json)?\s*(\{[\s\S]*?\})\s*```/,
+    );
     if (markdownMatch) {
       jsonStr = markdownMatch[1];
     } else {
       // Fallback: find outer braces
-      const firstBrace = responseText.indexOf('{');
+      const firstBrace = responseText.indexOf("{");
       if (firstBrace !== -1) {
         let braceCount = 0;
         let end = -1;
         for (let i = firstBrace; i < responseText.length; i++) {
-          if (responseText[i] === '{') {
+          if (responseText[i] === "{") {
             braceCount++;
-          } else if (responseText[i] === '}') {
+          } else if (responseText[i] === "}") {
             braceCount--;
             if (braceCount === 0) {
               end = i;
@@ -220,18 +252,18 @@ export class NPromptBasedEvaluator implements IEvaluationService {
       const result: Record<string, { score: number; reasoning: string }> = {};
 
       for (const [key, value] of Object.entries(parsed)) {
-        if (typeof value === 'object' && value !== null) {
+        if (typeof value === "object" && value !== null) {
           const valObj = value as Record<string, unknown>;
           if (
-            typeof valObj.reasoning === 'string' &&
+            typeof valObj.reasoning === "string" &&
             valObj.reasoning.trim().length > 0 &&
-            typeof valObj.score === 'number' &&
+            typeof valObj.score === "number" &&
             valObj.score >= 0 &&
             valObj.score <= 100
           ) {
             result[key] = {
               score: valObj.score,
-              reasoning: valObj.reasoning
+              reasoning: valObj.reasoning,
             };
           }
         }
@@ -248,7 +280,7 @@ export class NPromptBasedEvaluator implements IEvaluationService {
    */
   private calculateMeanScores(
     scores: EvaluationScore[],
-    modelNames: string[]
+    modelNames: string[],
   ): Record<string, number> {
     const scoreMatrix: Record<string, number[]> = {};
     modelNames.forEach((model) => {
@@ -278,7 +310,10 @@ export class NPromptBasedEvaluator implements IEvaluationService {
   /**
    * Finds the winning response based on mean scores
    */
-  private findWinner(responses: ModelResponse[], meanScores: Record<string, number>): { winner: ModelResponse | null; tiedModels: string[] } {
+  private findWinner(
+    responses: ModelResponse[],
+    meanScores: Record<string, number>,
+  ): { winner: ModelResponse | null; tiedModels: string[] } {
     const responseMap = new Map<string, ModelResponse>();
     responses.forEach((r) => {
       responseMap.set(r.model, r);
@@ -290,12 +325,14 @@ export class NPromptBasedEvaluator implements IEvaluationService {
     }
 
     const maxScore = Math.max(...scores);
-    const modelsWithMaxScore = Object.entries(meanScores).filter(([_, score]) => score === maxScore);
+    const modelsWithMaxScore = Object.entries(meanScores).filter(
+      ([, score]) => score === maxScore,
+    );
 
     if (modelsWithMaxScore.length > 1) {
       return {
         winner: null,
-        tiedModels: modelsWithMaxScore.map(([model, _]) => model)
+        tiedModels: modelsWithMaxScore.map(([model]) => model),
       };
     }
 
@@ -306,7 +343,7 @@ export class NPromptBasedEvaluator implements IEvaluationService {
 
     return {
       winner: responseMap.get(winnerModel)!,
-      tiedModels: []
+      tiedModels: [],
     };
   }
 }
