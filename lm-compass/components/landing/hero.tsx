@@ -100,29 +100,31 @@ export function Hero() {
                   { name: "Gemini Pro", color: "chart-3", rank: "#1" },
                   { name: "Claude 3.5", color: "chart-2", rank: "#2" },
                   { name: "GPT-4o", color: "chart-1", rank: "#3" },
-                ].map((model) => (
-                  <div
-                    key={model.name}
-                    className="p-3 rounded-xl border border-border/60 bg-card space-y-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`size-2 rounded-full bg-${model.color}`}
-                      />
-                      <span className="text-xs font-medium text-foreground">
-                        {model.name}
-                      </span>
-                      <span
-                        className={`ml-auto text-xs px-1.5 py-0.5 rounded bg-${model.color}/10 text-${model.color} font-medium`}
-                      >
-                        {model.rank}
-                      </span>
+                ].map(
+                  (model: { name: string; color: string; rank: string }) => (
+                    <div
+                      key={model.name}
+                      className="p-3 rounded-xl border border-border/60 bg-card space-y-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`size-2 rounded-full bg-${model.color}`}
+                        />
+                        <span className="text-xs font-medium text-foreground">
+                          {model.name}
+                        </span>
+                        <span
+                          className={`ml-auto text-xs px-1.5 py-0.5 rounded bg-${model.color}/10 text-${model.color} font-medium`}
+                        >
+                          {model.rank}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted/60 w-full" />
+                      <div className="h-2 rounded-full bg-muted/60 w-4/5" />
+                      <div className="h-2 rounded-full bg-muted/60 w-3/5" />
                     </div>
-                    <div className="h-2 rounded-full bg-muted/60 w-full" />
-                    <div className="h-2 rounded-full bg-muted/60 w-4/5" />
-                    <div className="h-2 rounded-full bg-muted/60 w-3/5" />
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
 
               {/* Consensus bar */}
