@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ChatProvider } from "@/contexts/chat-context";
+import { ExperimentsProvider } from "@/contexts/experiments-context";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
@@ -31,7 +33,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <ChatProvider>
+              <ExperimentsProvider>{children}</ExperimentsProvider>
+            </ChatProvider>
           </ThemeProvider>
         </body>
       </html>
