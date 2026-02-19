@@ -2,19 +2,11 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
-from evaluator import Evaluator
+from prompt_based_evaluator import PromptBasedEvaluator
 
 
 # You can change this to any of the names in Evaluator.candidate_models
 DEFAULT_MODEL_NAME = "Anthropic: Claude Sonnet 4.5"
-
-
-@dataclass
-class Rubric:
-    """Simple container for rubric text or structured rubric config."""
-
-    version: int
-    description: str  # natural-language rubric / grading prompt
 
 
 @dataclass
@@ -25,7 +17,7 @@ class GradeResult:
     raw_model_output: Any
 
 
-class GradeHITL(Evaluator):
+class GradeHITL(PromptBasedEvaluator):
     """Human-in-the-loop grading evaluator that refines rubrics based on ambiguous cases."""
 
     def __init__(self, *model_names):
@@ -58,13 +50,13 @@ class GradeHITL(Evaluator):
             raise ValueError(f"Expected JSON object, got: {type(parsed)}")
         return parsed
 
-    def _grading_prompt(self, example: Dict[str, Any], rubric: Rubric) -> str:
+    def _grading_prompt(self, example: Dict[str, Any], rubric: str) -> str:
         """Build the combined system + user prompt used for grading (shared by all model calls)."""
         system_prompt = f"""You are an expert grader.
 Use the rubric below to grade the student's response.
 
-Rubric (v{rubric.version}):
-{rubric.description}
+RUBRIC:
+{rubric}
 
 Your output must be ONLY a JSON object with these exact fields:
 - "scores": an object mapping dimension names to numeric scores
@@ -83,7 +75,7 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
         return system_prompt + "\n\n" + user_prompt
 
     async def _grade_one_model(
-        self, example: Dict[str, Any], rubric: Rubric, model_name: str
+        self, example: Dict[str, Any], rubric: str, model_name: str
     ) -> GradeResult:
         """Grade a single example with one model. Used internally for single- and multi-model flows."""
         prompt = self._grading_prompt(example, rubric)
@@ -95,13 +87,13 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
             raw_model_output=raw,
         )
 
-    async def grade_with_confidence(self, example: Dict[str, Any], rubric: Rubric) -> GradeResult:
+    async def grade_with_confidence(self, example: Dict[str, Any], rubric: str) -> GradeResult:
         """Grade a single example with the current rubric (single model: first in model_names)."""
         model_name = self.model_names[0] if self.model_names else DEFAULT_MODEL_NAME
         return await self._grade_one_model(example, rubric, model_name)
 
     async def grade_with_confidence_multi(
-        self, example: Dict[str, Any], rubric: Rubric
+        self, example: Dict[str, Any], rubric: str
     ) -> GradeResult:
         """Grade a single example with all configured models and aggregate results.
 
@@ -151,7 +143,7 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
         return grade.confidence < threshold
 
     async def generate_questions_for_human(
-        self, example: Dict[str, Any], rubric: Rubric, grade: GradeResult
+        self, example: Dict[str, Any], rubric: str, grade: GradeResult
     ) -> Dict[str, Any]:
         """Ask the model to formulate targeted clarification questions."""
 
@@ -161,8 +153,8 @@ case is ambiguous and propose 1–3 concise questions for the educator.
 Also propose concrete rubric tweaks that would resolve similar cases
 consistently in the future.
 
-Rubric (v{rubric.version}):
-{rubric.description}
+RUBRIC:
+{rubric}
 """
 
         user_prompt = f"""Example prompt:\n{example['prompt']}\n\nStudent response:\n{example['response']}\n\nGrader justification:\n{grade.justification}\n\nGrader scores: {grade.scores}\nConfidence: {grade.confidence}\n
@@ -203,12 +195,12 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
 
     async def update_rubric_from_human(
         self,
-        rubric: Rubric,
+        rubric: str,
         example: Dict[str, Any],
         grade: GradeResult,
         questions_and_drafts: Dict[str, Any],
         human_answers: Dict[str, str],
-    ) -> Rubric:
+    ) -> str:
         """Create a new rubric version incorporating human clarification."""
 
         q_block = "\n".join(
@@ -222,8 +214,8 @@ clarification questions, and the educator's answers, produce an updated
 rubric description that would lead to correct grading of this and
 similar cases. Keep it concise but explicit about edge cases.
 
-Current rubric (v{rubric.version}):
-{rubric.description}
+CURRENT RUBRIC:
+{rubric}
 """
 
         user_prompt = f"""Example prompt:\n{example['prompt']}\n\nStudent response:\n{example['response']}\n\nGrader scores: {grade.scores}\nJustification:\n{grade.justification}\n\nClarifications:\n{q_block}\n\nDraft rubric changes from helper model:\n{questions_and_drafts.get('draft_rubric_changes', '')}
@@ -241,16 +233,16 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
 
         # Extract the rubric text from the JSON response
         rubric_text = raw.get("rubric", str(raw))
-        return Rubric(version=rubric.version + 1, description=rubric_text)
+        return rubric_text
 
     async def grade_hitl_batch(
         self,
         examples: List[Dict[str, Any]],
-        rubric: Rubric,
+        rubric: str,
         *,
         confidence_threshold: float = 0.9,
         interactive: bool = True,
-    ) -> Tuple[Rubric, List[GradeResult]]:
+    ) -> Tuple[str, List[GradeResult]]:
         """Run a single HITL-augmented grading pass over a batch.
 
         If `interactive` is True, questions for ambiguous cases will be
@@ -289,7 +281,7 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
                 human_answers,
             )
             print("--------------------------------")
-            print("Updated rubric: ", updated_rubric.description)
+            print("Updated rubric: ", updated_rubric)
             print("--------------------------------")
 
             # (4) Regrade this example with the updated rubric (same multi/single model as above).
@@ -325,14 +317,11 @@ async def main():
         }
     ]
 
-    rubric = Rubric(
-        version=1,
-        description=(
+    rubric = (
         "Grade each response on two dimensions: 'correctness' (0-1) and 'clarity' (0-1). Return scores as a JSON object like {\"scores\": {\"correctness\": 0-1, \"clarity\": 0-1}, \"justification\": \"...\", \"confidence\": 0-1}.\n"
         "Correctness: Award full credit (1.0) if the final answer is correct, regardless of whether supporting work is shown. Award partial credit for answers that are partially correct or show correct methodology with minor errors. Award zero (0.0) for incorrect answers.\n"
         "Clarity: For math problems, a small explanation is sufficient but not required. Award full credit (1.0) if the answer is clearly presented in the requested format. The answer alone, when properly formatted to the question's requirements, is enough for full clarity credit. Do not penalize lack of methodology explanation for straightforward numerical answers.\n"
         "Confidence: When you cannot verify the correctness of an answer due to computational complexity or lack of resources, assign a low confidence score (0.5 or below) and note the verification limitation in the justification. Low confidence should reflect uncertainty in grading, not uncertainty in the student's response quality.\n"
-        ),
     )
 
     # Single model: GradeHITL(DEFAULT_MODEL_NAME). Multi-model: GradeHITL("Model A", "Model B")
@@ -349,8 +338,7 @@ async def main():
     print("\n" + "=" * 60)
     print("RESULTS")
     print("=" * 60)
-    print(f"Original rubric version: {rubric.version}")
-    print(f"Updated rubric version: {new_rubric.version}")
+    print(f"Final rubric:\n{new_rubric}")
     print()
 
     for i, gr in enumerate(grade_results):
