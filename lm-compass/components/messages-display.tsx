@@ -285,7 +285,6 @@ export function MessagesDisplay({
             const hasEvaluation = hasMultipleResults && evaluationMetadata;
             const hasNoWinner = evaluationMetadata?.winnerModel === null;
             const userSelectedWinner = message.userSelectedWinner;
-            const tiedModels = evaluationMetadata?.tiedModels || [];
 
             const displayModel =
               userSelectedWinner || evaluationMetadata?.winnerModel || null;
