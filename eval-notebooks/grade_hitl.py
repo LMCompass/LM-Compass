@@ -6,10 +6,6 @@ from typing import Any, Dict, List, Tuple
 from prompt_based_evaluator import PromptBasedEvaluator
 
 
-# Can change this to any of the names in Evaluator.candidate_models
-DEFAULT_MODEL_NAME = "Anthropic: Claude Sonnet 4.5"
-
-
 @dataclass
 class GradeResult:
     scores: Dict[str, float]
@@ -23,11 +19,9 @@ class GradeHITL(PromptBasedEvaluator):
 
     def __init__(self, *model_names):
         """Initialize the GradeHITL evaluator.
-        
-        :param model_names: Model names to use for grading. If not provided, uses DEFAULT_MODEL_NAME.
+
+        :param model_names: Model names to use for grading. At least one must be provided.
         """
-        if not model_names:
-            model_names = (DEFAULT_MODEL_NAME,)
         super().__init__(*model_names)
 
     async def call_llm(self, prompt: str, model_name: str = None) -> Dict[str, Any]:
@@ -36,11 +30,11 @@ class GradeHITL(PromptBasedEvaluator):
         This uses the same AsyncOpenAI client and JSON-extraction helper as the
         rest of the eval-notebooks stack (via `Evaluator`).
 
-        :param model_name: If provided, use this model; otherwise use the default (first in model_names).
+        :param model_name: If provided, use this model; otherwise use the first in model_names.
         """
 
         if model_name is None:
-            model_name = self.model_names[0] if self.model_names else DEFAULT_MODEL_NAME
+            model_name = self.model_names[0]
         result = await self.query_model(model_name, prompt)
         parsed = self.extract_outermost_json(result["response"])
         if parsed is None:
@@ -220,10 +214,6 @@ class GradeHITL(PromptBasedEvaluator):
         :param rubric: The grading rubric
         :returns: Dictionary mapping model names to their GradeResult
         """
-        if not self.model_names:
-            model_name = DEFAULT_MODEL_NAME
-            result = await self._grade_one_model(example, rubric, model_name)
-            return {model_name: result}
         if len(self.model_names) == 1:
             result = await self._grade_one_model(example, rubric, self.model_names[0])
             return {self.model_names[0]: result}
