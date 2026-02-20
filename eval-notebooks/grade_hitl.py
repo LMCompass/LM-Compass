@@ -1,5 +1,6 @@
 import asyncio
 from dataclasses import dataclass
+from textwrap import dedent
 from typing import Any, Dict, List, Tuple
 
 from prompt_based_evaluator import PromptBasedEvaluator
@@ -52,22 +53,23 @@ class GradeHITL(PromptBasedEvaluator):
 
     def _grading_prompt(self, example: Dict[str, Any], rubric: str) -> str:
         """Build the combined system + user prompt used for grading (shared by all model calls)."""
-        system_prompt = f"""You are an expert grader.
-Use the rubric below to grade the student's response.
+        system_prompt = dedent(f"""\
+            You are an expert grader.
+            Use the rubric below to grade the student's response.
 
-RUBRIC:
-{rubric}
+            RUBRIC:
+            {rubric}
 
-Your output must be ONLY a JSON object with these exact fields:
-- "scores": an object mapping dimension names to numeric scores
-- "justification": a short natural language explanation (string)
-- "confidence": a number between 0 and 1 representing your confidence
+            Your output must be ONLY a JSON object with these exact fields:
+            - "scores": an object mapping dimension names to numeric scores
+            - "justification": a short natural language explanation (string)
+            - "confidence": a number between 0 and 1 representing your confidence
 
-Example format:
-{{"scores": {{"correctness": 0.8, "clarity": 0.9}}, "justification": "The response is mostly correct but lacks detail.", "confidence": 0.85}}
+            Example format:
+            {{"scores": {{"correctness": 0.8, "clarity": 0.9}}, "justification": "The response is mostly correct but lacks detail.", "confidence": 0.85}}
 
-Do not include any text before or after the JSON object. Return ONLY the JSON.
-"""
+            Do not include any text before or after the JSON object. Return ONLY the JSON.
+        """)
         user_prompt = (
             f"Question/Task:\n{example['prompt']}\n\n"
             f"Student Response:\n{example['response']}\n"
@@ -92,26 +94,39 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
     ) -> Dict[str, Any]:
         """Ask the model to formulate targeted clarification questions."""
 
-        system_prompt = f"""You are helping an educator refine a grading rubric.
-Given the rubric, an example, and the grader's decision, identify why the
-case is ambiguous and propose 1–3 concise questions for the educator.
-Also propose concrete rubric tweaks that would resolve similar cases
-consistently in the future.
+        system_prompt = dedent(f"""\
+            You are helping an educator refine a grading rubric.
+            Given the rubric, an example, and the grader's decision, identify why the
+            case is ambiguous and propose 1–3 concise questions for the educator.
+            Also propose concrete rubric tweaks that would resolve similar cases
+            consistently in the future.
 
-RUBRIC:
-{rubric}
-"""
+            RUBRIC:
+            {rubric}
+        """)
 
-        user_prompt = f"""Example prompt:\n{example['prompt']}\n\nStudent response:\n{example['response']}\n\nGrader justification:\n{grade.justification}\n\nGrader scores: {grade.scores}\nConfidence: {grade.confidence}\n
-Your output must be ONLY a JSON object with these exact fields:
-- "questions": a list of strings (1-3 concise questions for the educator)
-- "draft_rubric_changes": a string describing proposed rubric tweaks
+        user_prompt = dedent(f"""\
+            Example prompt:
+            {example['prompt']}
 
-Example format:
-{{"questions": ["Should partially correct answers receive partial credit?", "Is mentioning specific examples required?"], "draft_rubric_changes": "Clarify that partial credit applies when reasoning is correct but execution has minor errors."}}
+            Student response:
+            {example['response']}
 
-Do not include any text before or after the JSON object. Return ONLY the JSON.
-"""
+            Grader justification:
+            {grade.justification}
+
+            Grader scores: {grade.scores}
+            Confidence: {grade.confidence}
+
+            Your output must be ONLY a JSON object with these exact fields:
+            - "questions": a list of strings (1-3 concise questions for the educator)
+            - "draft_rubric_changes": a string describing proposed rubric tweaks
+
+            Example format:
+            {{"questions": ["Should partially correct answers receive partial credit?", "Is mentioning specific examples required?"], "draft_rubric_changes": "Clarify that partial credit applies when reasoning is correct but execution has minor errors."}}
+
+            Do not include any text before or after the JSON object. Return ONLY the JSON.
+        """)
 
         raw = await self.call_llm(system_prompt + "\n\n" + user_prompt)
         return raw
@@ -153,26 +168,42 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
             for i, q in enumerate(questions_and_drafts.get("questions", []))
         )
 
-        system_prompt = f"""You are a rubric designer.
-Given the current rubric, an ambiguous example, the grader's behavior,
-clarification questions, and the educator's answers, produce an updated
-rubric description that would lead to correct grading of this and
-similar cases. Keep it concise but explicit about edge cases.
+        system_prompt = dedent(f"""\
+            You are a rubric designer.
+            Given the current rubric, an ambiguous example, the grader's behavior,
+            clarification questions, and the educator's answers, produce an updated
+            rubric description that would lead to correct grading of this and
+            similar cases. Keep it concise but explicit about edge cases.
 
-CURRENT RUBRIC:
-{rubric}
-"""
+            CURRENT RUBRIC:
+            {rubric}
+        """)
 
-        user_prompt = f"""Example prompt:\n{example['prompt']}\n\nStudent response:\n{example['response']}\n\nGrader scores: {grade.scores}\nJustification:\n{grade.justification}\n\nClarifications:\n{q_block}\n\nDraft rubric changes from helper model:\n{questions_and_drafts.get('draft_rubric_changes', '')}
+        user_prompt = dedent(f"""\
+            Example prompt:
+            {example['prompt']}
 
-Your output must be ONLY a JSON object with this exact field:
-- "rubric": a string containing the complete updated rubric text
+            Student response:
+            {example['response']}
 
-Example format:
-{{"rubric": "Grade each response on two dimensions: 'correctness' (0-1) and 'clarity' (0-1). Partial credit applies when reasoning is correct but execution has minor errors..."}}
+            Grader scores: {grade.scores}
+            Justification:
+            {grade.justification}
 
-Do not include any text before or after the JSON object. Return ONLY the JSON.
-"""
+            Clarifications:
+            {q_block}
+
+            Draft rubric changes from helper model:
+            {questions_and_drafts.get('draft_rubric_changes', '')}
+
+            Your output must be ONLY a JSON object with this exact field:
+            - "rubric": a string containing the complete updated rubric text
+
+            Example format:
+            {{"rubric": "Grade each response on two dimensions: 'correctness' (0-1) and 'clarity' (0-1). Partial credit applies when reasoning is correct but execution has minor errors..."}}
+
+            Do not include any text before or after the JSON object. Return ONLY the JSON.
+        """)
 
         raw = await self.call_llm(system_prompt + "\n\n" + user_prompt)
 
@@ -215,38 +246,39 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
         :param grader_result: The GradeResult from the grader
         :returns: Formatted prompt string
         """
-        return f"""You are an expert evaluator assessing how well another model performed as a grader.
+        return dedent(f"""\
+            You are an expert evaluator assessing how well another model performed as a grader.
 
-        ORIGINAL QUESTION:
-        {example['prompt']}
+            ORIGINAL QUESTION:
+            {example['prompt']}
 
-        STUDENT RESPONSE:
-        {example['response']}
+            STUDENT RESPONSE:
+            {example['response']}
 
-        GRADING RUBRIC:
-        {rubric}
+            GRADING RUBRIC:
+            {rubric}
 
-        GRADER'S EVALUATION:
-        Grader Model: {grader_name}
-        Scores Given: {grader_result.scores}
-        Justification: {grader_result.justification}
-        Confidence: {grader_result.confidence}
+            GRADER'S EVALUATION:
+            Grader Model: {grader_name}
+            Scores Given: {grader_result.scores}
+            Justification: {grader_result.justification}
+            Confidence: {grader_result.confidence}
 
-        Your task is to evaluate how well this grader performed. Consider:
-        - Did the grader correctly apply the rubric?
-        - Are the scores appropriate given the rubric criteria?
-        - Is the justification reasonable?
-        - Is the confidence level appropriate?
+            Your task is to evaluate how well this grader performed. Consider:
+            - Did the grader correctly apply the rubric?
+            - Are the scores appropriate given the rubric criteria?
+            - Is the justification reasonable?
+            - Is the confidence level appropriate?
 
-        Your output must be ONLY a JSON object with these exact fields:
-        - "score": an integer from 0 to 100 representing how well the grader performed
-        - "reasoning": a short explanation of your evaluation
+            Your output must be ONLY a JSON object with these exact fields:
+            - "score": an integer from 0 to 100 representing how well the grader performed
+            - "reasoning": a short explanation of your evaluation
 
-        Example format:
-        {{"score": 85, "reasoning": "The grader correctly identified the answer as correct and applied the rubric appropriately, though the justification could be more detailed."}}
+            Example format:
+            {{"score": 85, "reasoning": "The grader correctly identified the answer as correct and applied the rubric appropriately, though the justification could be more detailed."}}
 
-        Do not include any text before or after the JSON object. Return ONLY the JSON.
-        """
+            Do not include any text before or after the JSON object. Return ONLY the JSON.
+        """)
 
     async def cross_evaluate_graders(
         self, example: Dict[str, Any], rubric: str, grader_results: Dict[str, GradeResult]
