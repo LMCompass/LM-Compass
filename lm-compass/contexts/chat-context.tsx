@@ -34,21 +34,21 @@ const generateChatId = () => {
 // Re-export ChatHistoryItem from storage
 export type { ChatHistoryItem } from "@/lib/chat-storage";
 
-/** Extract unique model IDs from messages (from multiResults), in order of first occurrence. */
+/** Extract unique model IDs from the most recent message with multiResults */
 function getModelsUsedInMessages(messages: Message[]): string[] {
-  const seen = new Set<string>();
-  const order: string[] = [];
-  for (const msg of messages) {
-    if (msg.multiResults) {
-      for (const r of msg.multiResults) {
-        if (r.model && !seen.has(r.model)) {
-          seen.add(r.model);
-          order.push(r.model);
-        }
-      }
+  const mostRecentWithResults = messages.findLast(msg => msg.multiResults && msg.multiResults.length > 0);
+  if (!mostRecentWithResults?.multiResults) {
+    return [];
+  }
+
+  const uniqueModels = new Set<string>();
+  for (const r of mostRecentWithResults.multiResults) {
+    if (r.model) {
+      uniqueModels.add(r.model);
     }
   }
-  return order;
+
+  return Array.from(uniqueModels);
 }
 
 type ChatContextType = {
