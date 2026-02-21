@@ -11,6 +11,7 @@ import { Send, Square } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { Message } from "@/lib/types";
 import type { EvaluationMetadata } from "@/lib/evaluation/types";
+import type { RL4FIterationResult } from "@/lib/evaluation";
 
 import { MessageCircleWarning } from "lucide-react";
 
@@ -31,7 +32,7 @@ type StreamResponse = {
   phase: string;
   results?: MultiResult[];
   evaluationMetadata?: EvaluationMetadata;
-  iterationResults?: any[];
+  iterationResults?: RL4FIterationResult[];
   error?: string;
 };
 

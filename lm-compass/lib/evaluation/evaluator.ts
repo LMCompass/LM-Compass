@@ -53,7 +53,7 @@ export class Evaluator {
    * @param role - The role of the message (default: "user")
    * @returns Object with model name and response content
    */
-  async queryModel(modelName: string, query: string, role: string = 'user'): Promise<ModelQueryResponse> {
+  async queryModel(modelName: string, query: string, role: 'system' | 'user' | 'assistant' = 'user'): Promise<ModelQueryResponse> {
     const modelDict = this.candidateModels.find((m) => m.name === modelName);
     if (!modelDict) {
       return {
@@ -65,7 +65,7 @@ export class Evaluator {
     try {
       const response = await this.client.chat.completions.create({
         model: modelDict.openrouter,
-        messages: [{ role: role as any, content: query }],
+        messages: [{ role, content: query }],
         temperature: 1,
       });
       const content = response.choices[0].message.content;
@@ -88,7 +88,7 @@ export class Evaluator {
    * @param role - The role of the message (default: "user")
    * @returns Array of query responses
    */
-  async queryModels(modelNames: string[], queries: string[], role: string = 'user'): Promise<ModelQueryResponse[]> {
+  async queryModels(modelNames: string[], queries: string[], role: 'system' | 'user' | 'assistant' = 'user'): Promise<ModelQueryResponse[]> {
     const promises = modelNames.map((modelName, i) => this.queryModel(modelName, queries[i], role));
     return Promise.all(promises);
   }
@@ -99,7 +99,7 @@ export class Evaluator {
    * @param text - The text to extract JSON from
    * @returns Parsed JSON object/array, or null if not found
    */
-  extractOutermostJson(text: string): any {
+  extractOutermostJson(text: string): unknown {
     if (!text) {
       return null;
     }

@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
-import { PromptBasedEvaluator, NPromptBasedEvaluator, RL4FEvaluator, type ModelResponse, type EvaluationMetadata, type RL4FIterationResult } from '@/lib/evaluation';
+import { PromptBasedEvaluator, NPromptBasedEvaluator, RL4FEvaluator, type ModelResponse, type EvaluationMetadata, type RL4FIterationResult, type RL4FEvaluationResult } from '@/lib/evaluation';
 import { saveChat, loadAllMessages } from '@/lib/chat-storage';
 import type { Message } from '@/lib/types';
 import { randomUUID } from 'crypto';
@@ -26,7 +26,7 @@ function extractUserQuery(messages: Array<{ role: string; content: string }>): s
 function createAssistantMessage(
   allResults: Array<{ model: string; message?: {content: string | null}; error?: string }>,
   evaluationMetadata?: EvaluationMetadata,
-  iterationResults?: any[]
+  iterationResults?: RL4FIterationResult[]
 ): Message {
   const multiResults = allResults.map((r) => ({
     model: r.model,
@@ -219,7 +219,7 @@ export async function POST(req: Request) {
               // Extract iteration results if this is RL4F
               let iterationResults: RL4FIterationResult[] | undefined;
               if (isRL4F && 'iterationResults' in evaluationResult) {
-                iterationResults = (evaluationResult as any).iterationResults;
+                iterationResults = (evaluationResult as RL4FEvaluationResult).iterationResults;
               }
 
               // Aggregate reasoning for each model
