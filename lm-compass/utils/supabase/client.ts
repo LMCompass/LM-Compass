@@ -37,7 +37,7 @@ export function useSupabaseClient() {
         },
       },
     });
-  }, [session, supabaseUrl, supabaseKey]);
+  }, [session]);
 
   return client;
 }
