@@ -680,7 +680,7 @@ Use your judgment to apply rubric weightings accurately, and remember that Corre
           const extractedJson = this.extractOutermostJson(rawData[i].response);
           i++;
 
-          if (!extractedJson) continue;
+          if (!extractedJson || typeof extractedJson !== 'object') continue;
 
           // Validate required fields
           if (!('score' in extractedJson)) continue;
@@ -690,7 +690,7 @@ Use your judgment to apply rubric weightings accurately, and remember that Corre
             evaluated_model: model2,
             evaluating_model: evaluatingModel,
             score: parseInt(String(extractedJson.score)),
-            reasoning: extractedJson.reasoning,
+            reasoning: String(extractedJson.reasoning),
           };
 
           formattedJson.push(entry);
@@ -809,6 +809,7 @@ Use your judgment to apply rubric weightings accurately, and remember that Corre
       if (!Array.isArray(extractedJson)) continue;
 
       for (const item2 of extractedJson) {
+        if (typeof item2 !== 'object' || item2 === null) continue;
         // Validate required fields
         if (!('evaluated_model' in item2)) continue;
         if (!('score' in item2)) continue;
