@@ -19,12 +19,10 @@ import type {
   StartExperimentResult,
 } from "@/lib/types";
 import { ExperimentStatus, ExperimentItemStatus } from "@/lib/types";
-
-const DEFAULT_SELECTED_MODELS = ['openai/gpt-5-nano', 'google/gemini-2.5-flash-lite'];
-const DEFAULT_EVAL_METHOD = 'prompt-based';
-const DEFAULT_RUBRIC_ID = '';
-const PRICE_PER_TOKEN_USD = 5 / 1_000_000;
-const BATCH_INSERT_SIZE = 500;
+import {
+  calculateExperimentEstimate,
+  normalizeAndValidateRows,
+} from "@/lib/experiments";
 
 type RunItemResult = {
   model: string;
@@ -41,44 +39,7 @@ type RunItemResponse = {
   };
 };
 
-function normalizeAndValidateRows(rows: MappedRow[]) {
-  const normalizedRows = rows.map((row) => {
-    const query = (row.query ?? '').trim();
-    const groundTruth = (row.ground_truth ?? '').trim();
-
-    return {
-      query,
-      ground_truth: groundTruth.length > 0 ? groundTruth : undefined,
-    };
-  });
-
-  const validRows = normalizedRows.filter((row) => row.query.length > 0);
-  const skippedRows = rows.length - validRows.length;
-
-  return { validRows, skippedRows };
-}
-
-function calculateEstimate(validRows: MappedRow[], skippedRows: number): ExperimentCostEstimate {
-  const totalChars = validRows.reduce(
-    (sum, row) => sum + row.query.length + (row.ground_truth?.length ?? 0),
-    0
-  );
-  const avgChars = validRows.length > 0 ? totalChars / validRows.length : 0;
-  const estTokensPerPrompt = avgChars / 4;
-  const multiplier = DEFAULT_SELECTED_MODELS.length + 1; // selected models + judge
-  const totalTokens = estTokensPerPrompt * multiplier * validRows.length;
-  const estimatedUsd = totalTokens * PRICE_PER_TOKEN_USD;
-
-  return {
-    avgChars,
-    estTokensPerPrompt,
-    multiplier,
-    totalTokens,
-    estimatedUsd,
-    validRows: validRows.length,
-    skippedRows,
-  };
-}
+type StartExperimentApiResponse = Partial<StartExperimentResult> & { error?: string };
 
 interface ExperimentsContextType {
   activeExperimentId: string | null;
@@ -105,98 +66,46 @@ export function ExperimentsProvider({
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const processingRef = useRef(false);
   const supabase = useSupabaseClient();
-  const { user } = useUser();
 
   const estimateExperimentCost = useCallback((rows: MappedRow[]) => {
     const { validRows, skippedRows } = normalizeAndValidateRows(rows);
-    return calculateEstimate(validRows, skippedRows);
+    return calculateExperimentEstimate(validRows, skippedRows);
   }, []);
 
   const startExperiment = useCallback(
     async (input: StartExperimentInput): Promise<StartExperimentResult> => {
-      if (!user?.id) {
-        throw new Error('Please sign in to start an experiment.');
+      const response = await fetch('/api/experiments/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: input.title,
+          rows: input.rows,
+        }),
+      });
+
+      const result: StartExperimentApiResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to start experiment.');
       }
 
-      const { validRows, skippedRows } = normalizeAndValidateRows(input.rows);
-      if (validRows.length === 0) {
-        throw new Error('No valid rows found. Please ensure at least one query is non-empty.');
+      if (!result.experimentId) {
+        throw new Error('Invalid response from start experiment API.');
       }
 
-      const estimate = calculateEstimate(validRows, skippedRows);
-      const experimentTitle = input.title?.trim() || `Experiment ${new Date().toLocaleString()}`;
-
-      const { data: experiment, error: createExperimentError } = await supabase
-        .from('experiments')
-        .insert({
-          user_id: user.id,
-          title: experimentTitle,
-          status: ExperimentStatus.DRAFT,
-          created_at: new Date().toISOString(),
-          configuration: {
-            selected_models: DEFAULT_SELECTED_MODELS,
-            rubric_id: DEFAULT_RUBRIC_ID,
-            eval_method: DEFAULT_EVAL_METHOD,
-          },
-        })
-        .select('id')
-        .single();
-
-      if (createExperimentError || !experiment?.id) {
-        throw new Error(createExperimentError?.message || 'Failed to create experiment.');
-      }
-
-      try {
-        for (let index = 0; index < validRows.length; index += BATCH_INSERT_SIZE) {
-          const chunk = validRows.slice(index, index + BATCH_INSERT_SIZE).map((row) => ({
-            experiment_id: experiment.id,
-            input_query: row.query,
-            expected_output: row.ground_truth ?? null,
-            status: ExperimentItemStatus.PENDING,
-            result: {},
-          }));
-
-          const { error: insertItemsError } = await supabase
-            .from('experiments_items')
-            .insert(chunk);
-
-          if (insertItemsError) {
-            throw insertItemsError;
-          }
-        }
-      } catch (error) {
-        await supabase
-          .from('experiments')
-          .update({ status: ExperimentStatus.ERROR })
-          .eq('id', experiment.id);
-
-        const message =
-          error instanceof Error ? error.message : 'Failed while inserting experiment rows.';
-        throw new Error(message);
-      }
-
-      const { error: updateStatusError } = await supabase
-        .from('experiments')
-        .update({ status: ExperimentStatus.RUNNING })
-        .eq('id', experiment.id);
-
-      if (updateStatusError) {
-        throw new Error(
-          `Experiment saved as draft, but failed to start: ${updateStatusError.message}`
-        );
-      }
-
-      setActiveExperimentId(experiment.id);
-
-      return {
-        experimentId: experiment.id,
-        insertedRows: validRows.length,
-        skippedRows,
+      const finalResult: StartExperimentResult = {
+        experimentId: result.experimentId,
+        insertedRows: result.insertedRows ?? 0,
+        skippedRows: result.skippedRows ?? 0,
         status: ExperimentStatus.RUNNING,
-        estimatedUsd: estimate.estimatedUsd,
+        estimatedUsd: result.estimatedUsd ?? 0,
       };
+
+      setActiveExperimentId(finalResult.experimentId);
+
+      return finalResult;
     },
-    [supabase, user?.id]
+    []
   );
 
   const claimNextItems = useCallback(
