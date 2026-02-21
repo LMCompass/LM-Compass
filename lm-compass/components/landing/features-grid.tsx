@@ -33,7 +33,7 @@ const features = [
     icon: UserCheck,
     title: "Human Feedback",
     description:
-      "Override system decisions when needed. RL4F is built right in.",
+      "Use human feedback or RL4F as one of your evaluation methods. When results are tied, we don't reinforce from any method — you choose.",
   },
   {
     icon: BarChart3,
@@ -67,7 +67,7 @@ export function FeaturesGrid() {
             Why LM Compass?
           </h2>
           <p className="text-lg text-white/75 max-w-xl mx-auto">
-            Built for researchers who need objectivity, not marketing
+            Built for researchers who need the best response for their data, not marketing
             benchmarks.
           </p>
         </motion.div>

@@ -16,7 +16,7 @@ export function FinalCTA() {
         transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
         <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight font-heading bg-gradient-to-b from-white from-10% to-gray-400 to-90% bg-clip-text text-transparent">
-          Ready to evaluate objectively?
+          Ready to find the best response for your data?
         </h2>
         <p className="text-lg text-white/75 mb-10 max-w-xl mx-auto leading-relaxed">
           Support for OpenAI, Anthropic, Google, Meta, Mistral, and more via

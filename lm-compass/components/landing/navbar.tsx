@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Compass, Menu, X } from "lucide-react";
-import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
 export function Navbar() {
@@ -54,16 +54,16 @@ export function Navbar() {
 
         <div className="hidden md:flex items-center gap-7">
           <button
-            onClick={() => scrollTo("features")}
-            className="text-[13px] text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
-          >
-            Features
-          </button>
-          <button
             onClick={() => scrollTo("how-it-works")}
             className="text-[13px] text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
           >
             How It Works
+          </button>
+          <button
+            onClick={() => scrollTo("features")}
+            className="text-[13px] text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
+          >
+            Features
           </button>
         </div>
 
@@ -76,12 +76,14 @@ export function Navbar() {
             </SignInButton>
           </SignedOut>
           <SignedIn>
-            <Link
-              href="/chat"
-              className="text-[13px] text-white/70 hover:text-white transition-colors duration-200 cursor-pointer"
-            >
-              Go to App
-            </Link>
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "size-8 ring-0",
+                },
+              }}
+              afterSignOutUrl="/"
+            />
           </SignedIn>
           <Link
             href="/chat"
@@ -95,11 +97,7 @@ export function Navbar() {
           onClick={() => setMobileOpen(!mobileOpen)}
           className="md:hidden text-foreground"
         >
-          {mobileOpen ? (
-            <X className="size-5" />
-          ) : (
-            <Menu className="size-5" />
-          )}
+          {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
       </div>
 
@@ -113,31 +111,51 @@ export function Navbar() {
             className="mt-2 rounded-2xl bg-background/80 backdrop-blur-2xl border border-border/40 shadow-xl p-5 flex flex-col gap-3 md:hidden"
           >
             <button
-              onClick={() => scrollTo("features")}
-              className="text-sm text-white/70 hover:text-white transition-colors text-left py-1 cursor-pointer"
-            >
-              Features
-            </button>
-            <button
               onClick={() => scrollTo("how-it-works")}
               className="text-sm text-white/70 hover:text-white transition-colors text-left py-1 cursor-pointer"
             >
               How It Works
             </button>
+            <button
+              onClick={() => scrollTo("features")}
+              className="text-sm text-white/70 hover:text-white transition-colors text-left py-1 cursor-pointer"
+            >
+              Features
+            </button>
             <hr className="border-border/40" />
             <SignedOut>
               <SignInButton mode="modal">
-              <button className="text-sm text-white/70 hover:text-white transition-colors text-left py-1 cursor-pointer">
-                Sign In
-              </button>
+                <button className="text-sm text-white/70 hover:text-white transition-colors text-left py-1 cursor-pointer">
+                  Sign In
+                </button>
               </SignInButton>
             </SignedOut>
-            <Link
-              href="/chat"
-              className="text-sm font-medium px-4 py-2.5 rounded-full bg-[#c2410c] text-white shadow-[0_2px_12px_-2px_rgba(194,65,12,0.45)] hover:shadow-[0_4px_20px_-2px_rgba(194,65,12,0.5)] hover:bg-[#ea580c] transition-colors text-center cursor-pointer"
-            >
-              Get Started
-            </Link>
+            <SignedIn>
+              <div className="flex items-center gap-3">
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: "size-8 ring-0",
+                    },
+                  }}
+                  afterSignOutUrl="/"
+                />
+                <Link
+                  href="/chat"
+                  className="text-sm font-medium px-4 py-2.5 rounded-full bg-[#c2410c] text-white shadow-[0_2px_12px_-2px_rgba(194,65,12,0.45)] hover:shadow-[0_4px_20px_-2px_rgba(194,65,12,0.5)] hover:bg-[#ea580c] transition-colors text-center cursor-pointer flex-1"
+                >
+                  Get Started
+                </Link>
+              </div>
+            </SignedIn>
+            <SignedOut>
+              <Link
+                href="/chat"
+                className="text-sm font-medium px-4 py-2.5 rounded-full bg-[#c2410c] text-white shadow-[0_2px_12px_-2px_rgba(194,65,12,0.45)] hover:shadow-[0_4px_20px_-2px_rgba(194,65,12,0.5)] hover:bg-[#ea580c] transition-colors text-center cursor-pointer"
+              >
+                Get Started
+              </Link>
+            </SignedOut>
           </motion.div>
         )}
       </AnimatePresence>

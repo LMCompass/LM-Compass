@@ -42,7 +42,7 @@ const content = [
   {
     title: "02 — Models Judge Each Other",
     description:
-      "Each model evaluates the others using your custom rubric. Consensus emerges from cross-evaluation, not a single opinion. This research-backed approach eliminates single-model bias.",
+      "Each model evaluates the others using your choice of research-based evaluation methods and a custom rubric. Consensus emerges from cross-evaluation, not a single opinion — eliminates single-model bias and gives you choice.",
     content: (
       <div className="flex h-full w-full items-center justify-center p-8">
         <div className="w-full space-y-5">
@@ -108,7 +108,7 @@ const content = [
   {
     title: "03 — Review & Export Results",
     description:
-      "Compare ranked responses, see scores and reasoning from each judge. Override with human feedback when needed — RL4F is built right in. Export your findings for further analysis.",
+      "Compare ranked responses, see scores and reasoning from each judge. Human feedback (e.g. RL4F) is one of the evaluation methods you can use; when there's a tie we don't reinforce from any method — you stay in control. Export your findings for further analysis.",
     content: (
       <div className="flex h-full w-full items-center justify-center p-8">
         <div className="w-full space-y-4">
@@ -184,13 +184,14 @@ export function HowItWorks() {
             className="inline-block text-xs font-semibold text-white/95 mb-6 tracking-[0.2em] uppercase px-5 py-2 rounded-full border border-[#ea580c]/40"
             style={{
               background: "rgba(234,88,12,0.18)",
-              boxShadow: "0 0 0 1px rgba(234,88,12,0.12) inset, 0 4px 16px -2px rgba(234,88,12,0.35)",
+              boxShadow:
+                "0 0 0 1px rgba(234,88,12,0.12) inset, 0 4px 16px -2px rgba(234,88,12,0.35)",
             }}
           >
             How It Works
           </p>
           <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight font-heading bg-gradient-to-b from-white from-10% to-gray-400 to-90% bg-clip-text text-transparent">
-            Three steps to objective evaluation
+            Three steps to finding the best response
           </h2>
           <p className="text-lg text-white/75 max-w-lg mx-auto">
             Submit, evaluate, review. It&apos;s that simple.

@@ -30,9 +30,9 @@ export function Hero() {
                 Open-source LLM evaluation platform
               </div>
               <h1 className="text-5xl md:text-7xl font-bold text-center leading-[1.1] tracking-tight font-heading bg-gradient-to-b from-white from-10% to-gray-400 to-90% bg-clip-text text-transparent">
-                Find the Best LLM Response,{" "}
+                Find the Best LLM Response{" "}
                 <span className="bg-gradient-to-r from-[#ea580c] via-[#ff8c4e] to-[#ea580c] bg-clip-text text-transparent bg-[length:200%_auto] animate-[shimmer-text_3s_ease-in-out_infinite]">
-                  Objectively.
+                  for Your Data
                 </span>
               </h1>
               <p className="text-lg md:text-xl text-white/75 text-center max-w-2xl leading-relaxed">

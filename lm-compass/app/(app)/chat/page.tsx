@@ -7,7 +7,7 @@ import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon, KeyRound, LogIn } from "lucide-react";
-import { SidebarInset } from "@/components/sidebar/sidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/sidebar/sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import { useChat } from "@/contexts/chat-context";
 import {
@@ -34,12 +34,18 @@ import {
 
 export default function Home() {
   const { theme, toggleTheme, mounted } = useTheme();
-  const { messages, setMessages, chatStarted, setChatStarted, chatId, isLoadingMore } =
-    useChat();
+  const {
+    messages,
+    setMessages,
+    chatStarted,
+    setChatStarted,
+    chatId,
+    isLoadingMore,
+  } = useChat();
   const { user, isLoaded: userLoaded } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">(
-    "querying"
+    "querying",
   );
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const prevMessageCountRef = useRef(messages.length);
@@ -65,15 +71,15 @@ export default function Home() {
     // Only scroll to bottom when new messages are APPENDED at the end
     // Don't scroll when messages are PREPENDED (loading previous messages)
     const lastMessageId = messages[messages.length - 1]?.id;
-    const isNewMessageAppended = 
-      messages.length > prevMessageCountRef.current && 
+    const isNewMessageAppended =
+      messages.length > prevMessageCountRef.current &&
       lastMessageId !== lastMessageIdRef.current &&
       !isLoadingMore;
-    
+
     if (isNewMessageAppended) {
       scrollToBottom();
     }
-    
+
     prevMessageCountRef.current = messages.length;
     lastMessageIdRef.current = lastMessageId || null;
   }, [messages, isLoadingMore]);
@@ -158,6 +164,7 @@ export default function Home() {
     <SidebarInset className="overflow-hidden">
       <div className="h-screen flex flex-col overflow-hidden">
         <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
+          <SidebarTrigger className="md:hidden -ml-1 shrink-0" />
           <MultiModelSelector
             values={selectedModels}
             onChange={handleMultiModelChange}

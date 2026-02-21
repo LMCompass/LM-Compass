@@ -8,7 +8,7 @@ const audiences = [
   {
     icon: Code2,
     title: "Researchers & Developers",
-    description: "Compare LLMs and SLMs objectively with custom rubrics and automated evaluation.",
+    description: "Compare LLMs and SLMs with custom rubrics and automated evaluation to find the best response for your data.",
   },
   {
     icon: Building2,
