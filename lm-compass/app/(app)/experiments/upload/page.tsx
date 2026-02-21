@@ -15,37 +15,74 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Upload, FileSpreadsheet, X, CheckCircle2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  ArrowLeft,
+  Upload,
+  FileSpreadsheet,
+  X,
+  CheckCircle2,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
+import { useExperiments } from "@/contexts/experiments-context";
+import type { ExperimentCostEstimate, MappedRow } from "@/lib/types";
 
-// ---------- types ----------
 interface ParsedCSV {
   headers: string[];
   rows: Record<string, string>[];
 }
 
-// Sentinel value used for "no selection" in the optional Ground Truth dropdown
 const NONE_VALUE = "__none__";
+
+function formatNumber(value: number, maxDigits = 2) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: maxDigits,
+  }).format(value);
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(value);
+}
 
 export default function NewExperimentPage() {
   const { open } = useSidebar();
+  const { estimateExperimentCost, startExperiment } = useExperiments();
 
-  // CSV state
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedCSV | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Mapping state
   const [queryColumn, setQueryColumn] = useState<string>("");
   const [groundTruthColumn, setGroundTruthColumn] = useState<string>("");
 
+  const [estimate, setEstimate] = useState<ExperimentCostEstimate | null>(null);
+  const [isEstimateOpen, setIsEstimateOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // -------- CSV Parsing --------
   const handleFile = useCallback((selectedFile: File) => {
-    // Reset previous state
     setParseError(null);
+    setSubmitError(null);
+    setSubmitSuccess(null);
+    setEstimate(null);
+    setIsEstimateOpen(false);
     setQueryColumn("");
     setGroundTruthColumn("");
 
@@ -68,7 +105,7 @@ export default function NewExperimentPage() {
         }
 
         const headers = (results.meta.fields ?? []).filter(
-          (h) => h.trim() !== ""
+          (header) => header.trim() !== ""
         );
         if (headers.length === 0) {
           setParseError("CSV has no headers. Please provide a CSV with a header row.");
@@ -112,63 +149,120 @@ export default function NewExperimentPage() {
     [handleFile]
   );
 
-  // -------- Reset --------
   const resetUpload = useCallback(() => {
     setFile(null);
     setParsedData(null);
     setParseError(null);
+    setSubmitError(null);
+    setSubmitSuccess(null);
+    setEstimate(null);
+    setIsEstimateOpen(false);
     setQueryColumn("");
     setGroundTruthColumn("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }, []);
 
-  // -------- Derived data --------
   const previewRows = useMemo(() => {
-    if (!parsedData || !queryColumn) return [];
+    if (!parsedData || !queryColumn) {
+      return [];
+    }
+
     return parsedData.rows.slice(0, 5).map((row) => {
-      const mapped: Record<string, string> = {
+      const mapped: MappedRow = {
         query: row[queryColumn] ?? "",
       };
+
       if (groundTruthColumn && groundTruthColumn !== NONE_VALUE) {
         mapped.ground_truth = row[groundTruthColumn] ?? "";
       }
+
       return mapped;
     });
   }, [parsedData, queryColumn, groundTruthColumn]);
 
   const mappedData = useMemo(() => {
-    if (!parsedData || !queryColumn) return [];
+    if (!parsedData || !queryColumn) {
+      return [];
+    }
+
     return parsedData.rows.map((row) => {
-      const mapped: Record<string, string> = {
+      const mapped: MappedRow = {
         query: row[queryColumn] ?? "",
       };
+
       if (groundTruthColumn && groundTruthColumn !== NONE_VALUE) {
         mapped.ground_truth = row[groundTruthColumn] ?? "";
       }
+
       return mapped;
     });
   }, [parsedData, queryColumn, groundTruthColumn]);
 
   const isMappingComplete = queryColumn !== "";
-
-  // -------- Confirm handler --------
-  const handleConfirm = useCallback(() => {
-    if (mappedData.length === 0) return;
-    console.log("--- Mapped Experiment Data ---");
-    console.log(JSON.stringify(mappedData, null, 2));
-    console.log(`Total rows: ${mappedData.length}`);
-  }, [mappedData]);
-
-  // -------- Available column options (prevent same column in both dropdowns) --------
   const queryColumnOptions = parsedData?.headers ?? [];
   const groundTruthColumnOptions = useMemo(() => {
-    return (parsedData?.headers ?? []).filter((h) => h !== queryColumn);
+    return (parsedData?.headers ?? []).filter((header) => header !== queryColumn);
   }, [parsedData, queryColumn]);
+
+  const defaultTitle = useMemo(() => {
+    if (!file?.name) {
+      return "";
+    }
+    return file.name.replace(/\.csv$/i, "").trim();
+  }, [file?.name]);
+
+  const handleOpenEstimate = useCallback(() => {
+    if (mappedData.length === 0) {
+      return;
+    }
+
+    const nextEstimate = estimateExperimentCost(mappedData);
+    setEstimate(nextEstimate);
+    setSubmitError(null);
+    setSubmitSuccess(null);
+
+    if (nextEstimate.validRows === 0) {
+      setSubmitError("No valid rows found. Please ensure at least one query is non-empty.");
+      return;
+    }
+
+    setIsEstimateOpen(true);
+  }, [estimateExperimentCost, mappedData]);
+
+  const handleStartAction = useCallback(async () => {
+    if (mappedData.length === 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const result = await startExperiment({
+        title: defaultTitle || undefined,
+        rows: mappedData,
+      });
+
+      setSubmitSuccess(
+        `Experiment ${result.experimentId} started and queued. Inserted ${result.insertedRows} row(s), skipped ${result.skippedRows}.`
+      );
+      setIsEstimateOpen(false);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to create experiment. Please try again.";
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [defaultTitle, mappedData, startExperiment]);
 
   return (
     <SidebarInset>
       <div className="h-screen flex flex-col">
-        {/* ===== Header ===== */}
         <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
           {!open && <SidebarTrigger />}
           <Link href="/chat">
@@ -182,10 +276,20 @@ export default function NewExperimentPage() {
           </h1>
         </header>
 
-        {/* ===== Content ===== */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="max-w-3xl mx-auto space-y-8">
-            {/* ---------- Step 1: Upload ---------- */}
+            {submitError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {submitError}
+              </div>
+            )}
+
+            {submitSuccess && (
+              <div className="rounded-lg border border-green-600/30 bg-green-500/10 px-4 py-3 text-sm text-green-700 dark:text-green-400">
+                {submitSuccess}
+              </div>
+            )}
+
             <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
@@ -242,8 +346,7 @@ export default function NewExperimentPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{file?.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {parsedData.rows.length} rows &middot;{" "}
-                      {parsedData.headers.length} columns
+                      {parsedData.rows.length} rows &middot; {parsedData.headers.length} columns
                     </p>
                   </div>
                   <Button
@@ -258,7 +361,6 @@ export default function NewExperimentPage() {
               )}
             </section>
 
-            {/* ---------- Step 2: Column Mapping ---------- */}
             {parsedData && (
               <section className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -274,18 +376,15 @@ export default function NewExperimentPage() {
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Query Column (Required) */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Query Column{" "}
-                      <span className="text-destructive">*</span>
+                      Query Column <span className="text-destructive">*</span>
                     </label>
                     <Select
                       value={queryColumn}
-                      onValueChange={(val) => {
-                        setQueryColumn(val);
-                        // Clear ground truth if it conflicts
-                        if (groundTruthColumn === val) {
+                      onValueChange={(value) => {
+                        setQueryColumn(value);
+                        if (groundTruthColumn === value) {
                           setGroundTruthColumn("");
                         }
                       }}
@@ -350,8 +449,7 @@ export default function NewExperimentPage() {
                 </div>
 
                 <p className="text-sm text-muted-foreground">
-                  Showing the first {Math.min(5, previewRows.length)} of{" "}
-                  {parsedData.rows.length} rows.
+                  Showing the first {Math.min(5, previewRows.length)} of {parsedData.rows.length} rows.
                 </p>
 
                 <div className="rounded-lg border border-border overflow-hidden">
@@ -362,15 +460,10 @@ export default function NewExperimentPage() {
                           <th className="text-left px-4 py-2.5 font-medium text-muted-foreground w-10">
                             #
                           </th>
-                          <th className="text-left px-4 py-2.5 font-medium">
-                            Query
-                          </th>
-                          {groundTruthColumn &&
-                            groundTruthColumn !== NONE_VALUE && (
-                              <th className="text-left px-4 py-2.5 font-medium">
-                                Ground Truth
-                              </th>
-                            )}
+                          <th className="text-left px-4 py-2.5 font-medium">Query</th>
+                          {groundTruthColumn && groundTruthColumn !== NONE_VALUE && (
+                            <th className="text-left px-4 py-2.5 font-medium">Ground Truth</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -385,14 +478,11 @@ export default function NewExperimentPage() {
                             <td className="px-4 py-2.5 max-w-md">
                               <span className="line-clamp-2">{row.query}</span>
                             </td>
-                            {groundTruthColumn &&
-                              groundTruthColumn !== NONE_VALUE && (
-                                <td className="px-4 py-2.5 max-w-md">
-                                  <span className="line-clamp-2">
-                                    {row.ground_truth}
-                                  </span>
-                                </td>
-                              )}
+                            {groundTruthColumn && groundTruthColumn !== NONE_VALUE && (
+                              <td className="px-4 py-2.5 max-w-md">
+                                <span className="line-clamp-2">{row.ground_truth}</span>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -400,20 +490,88 @@ export default function NewExperimentPage() {
                   </div>
                 </div>
 
-                {/* Confirm button */}
                 <div className="flex justify-end pt-2">
-                  <Button onClick={handleConfirm} className="gap-2">
+                  <Button onClick={handleOpenEstimate} className="gap-2">
                     <CheckCircle2 className="size-4" />
-                    Confirm Mapping
-                    <span className="text-xs opacity-70">
-                      ({mappedData.length} rows)
-                    </span>
+                    Start Experiment
+                    <span className="text-xs opacity-70">({mappedData.length} rows)</span>
                   </Button>
                 </div>
               </section>
             )}
           </div>
         </div>
+
+        <Dialog
+          open={isEstimateOpen}
+          onOpenChange={(isOpen) => {
+            if (!isSubmitting) {
+              setIsEstimateOpen(isOpen);
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Estimated Cost</DialogTitle>
+              <DialogDescription>
+                Rough estimate using avg chars and $5 per 1M tokens.
+              </DialogDescription>
+            </DialogHeader>
+
+            {estimate && (
+              <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Valid rows</span>
+                  <span className="font-medium">{estimate.validRows}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Skipped rows</span>
+                  <span className="font-medium">{estimate.skippedRows}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Average chars / row</span>
+                  <span className="font-medium">{formatNumber(estimate.avgChars)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Estimated tokens / prompt</span>
+                  <span className="font-medium">{formatNumber(estimate.estTokensPerPrompt)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Multiplier (models + judge)</span>
+                  <span className="font-medium">{estimate.multiplier}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Estimated total tokens</span>
+                  <span className="font-medium">{formatNumber(estimate.totalTokens)}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-2">
+                  <span className="text-muted-foreground">Estimated cost</span>
+                  <span className="font-semibold">{formatCurrency(estimate.estimatedUsd)}</span>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEstimateOpen(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleStartAction}
+                disabled={isSubmitting}
+                className="gap-2"
+              >
+                {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                Start Experiment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </SidebarInset>
   );

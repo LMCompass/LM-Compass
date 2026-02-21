@@ -9,14 +9,84 @@ import React, {
   useRef,
 } from "react";
 import { useSupabaseClient } from "@/utils/supabase/client";
-import type { Experiment, ExperimentItem } from "@/lib/types";
+import { useUser } from "@clerk/nextjs";
+import type {
+  Experiment,
+  ExperimentCostEstimate,
+  ExperimentItem,
+  MappedRow,
+  StartExperimentInput,
+  StartExperimentResult,
+} from "@/lib/types";
 import { ExperimentStatus, ExperimentItemStatus } from "@/lib/types";
+
+const DEFAULT_SELECTED_MODELS = ['openai/gpt-5-nano', 'google/gemini-2.5-flash-lite'];
+const DEFAULT_EVAL_METHOD = 'prompt-based';
+const DEFAULT_RUBRIC_ID = '';
+const PRICE_PER_TOKEN_USD = 5 / 1_000_000;
+const BATCH_INSERT_SIZE = 500;
+
+type RunItemResult = {
+  model: string;
+  message?: { content?: string | null };
+  error?: string;
+};
+
+type RunItemResponse = {
+  error?: string;
+  results?: RunItemResult[];
+  evaluationMetadata?: {
+    meanScores?: Record<string, number>;
+    [key: string]: unknown;
+  };
+};
+
+function normalizeAndValidateRows(rows: MappedRow[]) {
+  const normalizedRows = rows.map((row) => {
+    const query = (row.query ?? '').trim();
+    const groundTruth = (row.ground_truth ?? '').trim();
+
+    return {
+      query,
+      ground_truth: groundTruth.length > 0 ? groundTruth : undefined,
+    };
+  });
+
+  const validRows = normalizedRows.filter((row) => row.query.length > 0);
+  const skippedRows = rows.length - validRows.length;
+
+  return { validRows, skippedRows };
+}
+
+function calculateEstimate(validRows: MappedRow[], skippedRows: number): ExperimentCostEstimate {
+  const totalChars = validRows.reduce(
+    (sum, row) => sum + row.query.length + (row.ground_truth?.length ?? 0),
+    0
+  );
+  const avgChars = validRows.length > 0 ? totalChars / validRows.length : 0;
+  const estTokensPerPrompt = avgChars / 4;
+  const multiplier = DEFAULT_SELECTED_MODELS.length + 1; // selected models + judge
+  const totalTokens = estTokensPerPrompt * multiplier * validRows.length;
+  const estimatedUsd = totalTokens * PRICE_PER_TOKEN_USD;
+
+  return {
+    avgChars,
+    estTokensPerPrompt,
+    multiplier,
+    totalTokens,
+    estimatedUsd,
+    validRows: validRows.length,
+    skippedRows,
+  };
+}
 
 interface ExperimentsContextType {
   activeExperimentId: string | null;
   setActiveExperimentId: (id: string | null) => void;
   isProcessing: boolean;
   progress: { completed: number; total: number };
+  estimateExperimentCost: (rows: MappedRow[]) => ExperimentCostEstimate;
+  startExperiment: (input: StartExperimentInput) => Promise<StartExperimentResult>;
 }
 
 const ExperimentsContext = createContext<ExperimentsContextType | undefined>(
@@ -35,6 +105,99 @@ export function ExperimentsProvider({
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const processingRef = useRef(false);
   const supabase = useSupabaseClient();
+  const { user } = useUser();
+
+  const estimateExperimentCost = useCallback((rows: MappedRow[]) => {
+    const { validRows, skippedRows } = normalizeAndValidateRows(rows);
+    return calculateEstimate(validRows, skippedRows);
+  }, []);
+
+  const startExperiment = useCallback(
+    async (input: StartExperimentInput): Promise<StartExperimentResult> => {
+      if (!user?.id) {
+        throw new Error('Please sign in to start an experiment.');
+      }
+
+      const { validRows, skippedRows } = normalizeAndValidateRows(input.rows);
+      if (validRows.length === 0) {
+        throw new Error('No valid rows found. Please ensure at least one query is non-empty.');
+      }
+
+      const estimate = calculateEstimate(validRows, skippedRows);
+      const experimentTitle = input.title?.trim() || `Experiment ${new Date().toLocaleString()}`;
+
+      const { data: experiment, error: createExperimentError } = await supabase
+        .from('experiments')
+        .insert({
+          user_id: user.id,
+          title: experimentTitle,
+          status: ExperimentStatus.DRAFT,
+          created_at: new Date().toISOString(),
+          configuration: {
+            selected_models: DEFAULT_SELECTED_MODELS,
+            rubric_id: DEFAULT_RUBRIC_ID,
+            eval_method: DEFAULT_EVAL_METHOD,
+          },
+        })
+        .select('id')
+        .single();
+
+      if (createExperimentError || !experiment?.id) {
+        throw new Error(createExperimentError?.message || 'Failed to create experiment.');
+      }
+
+      try {
+        for (let index = 0; index < validRows.length; index += BATCH_INSERT_SIZE) {
+          const chunk = validRows.slice(index, index + BATCH_INSERT_SIZE).map((row) => ({
+            experiment_id: experiment.id,
+            input_query: row.query,
+            expected_output: row.ground_truth ?? null,
+            status: ExperimentItemStatus.PENDING,
+            result: {},
+          }));
+
+          const { error: insertItemsError } = await supabase
+            .from('experiments_items')
+            .insert(chunk);
+
+          if (insertItemsError) {
+            throw insertItemsError;
+          }
+        }
+      } catch (error) {
+        await supabase
+          .from('experiments')
+          .update({ status: ExperimentStatus.ERROR })
+          .eq('id', experiment.id);
+
+        const message =
+          error instanceof Error ? error.message : 'Failed while inserting experiment rows.';
+        throw new Error(message);
+      }
+
+      const { error: updateStatusError } = await supabase
+        .from('experiments')
+        .update({ status: ExperimentStatus.RUNNING })
+        .eq('id', experiment.id);
+
+      if (updateStatusError) {
+        throw new Error(
+          `Experiment saved as draft, but failed to start: ${updateStatusError.message}`
+        );
+      }
+
+      setActiveExperimentId(experiment.id);
+
+      return {
+        experimentId: experiment.id,
+        insertedRows: validRows.length,
+        skippedRows,
+        status: ExperimentStatus.RUNNING,
+        estimatedUsd: estimate.estimatedUsd,
+      };
+    },
+    [supabase, user?.id]
+  );
 
   const claimNextItems = useCallback(
     async (experimentId: string) => {
@@ -56,9 +219,9 @@ export function ExperimentsProvider({
       // Step 2: Claim them
       const { data: claimed, error: claimError } = await supabase
         .from("experiments_items")
-        .update({ status: ExperimentItemStatus.RUNNING }) // 1 for running
+        .update({ status: ExperimentItemStatus.RUNNING })
         .in("id", candidateIds)
-        .eq("status", ExperimentItemStatus.PENDING) // Extra safety check
+        .eq("status", ExperimentItemStatus.PENDING)
         .select();
 
       if (claimError) {
@@ -87,46 +250,22 @@ export function ExperimentsProvider({
           }),
         });
 
-        const resultData = await response.json();
+        const resultData: RunItemResponse = await response.json();
 
         if (!response.ok) {
           throw new Error(resultData.error || "Failed to run item");
         }
 
-        // Type definitions
-        type ModelResult = {
-          output: string;
-          status: 'success' | 'error';
-          score?: number;
-        };
-
-        type EvaluationSummary = {
-          [key: string]: unknown;
-          modelReasoning?: undefined;
-        };
-
-        type FinalResult = {
-          evaluation_summary: EvaluationSummary;
-          [modelName: string]: ModelResult | EvaluationSummary;
-        };
-
-        type ResultItem = {
-          model: string;
-          message?: { content: string };
-          error?: string;
-        };
-
-        // Align data structure: Merge model outputs and evaluation scores
-        const finalResult: FinalResult = {
+        const finalResult: Record<string, unknown> = {
           evaluation_summary: {
-            ...resultData.evaluationMetadata,
-            modelReasoning: undefined, // Remove redundant aggregation
+            ...(resultData.evaluationMetadata ?? {}),
+            modelReasoning: undefined,
           },
         };
 
         // 1. Map outputs and status
         if (Array.isArray(resultData.results)) {
-          resultData.results.forEach((r: ResultItem) => {
+          resultData.results.forEach((r) => {
             finalResult[r.model] = {
               output: r.message?.content || r.error || "",
               status: r.error ? "error" : "success",
@@ -138,14 +277,18 @@ export function ExperimentsProvider({
         if (resultData.evaluationMetadata?.meanScores) {
           Object.entries(resultData.evaluationMetadata.meanScores).forEach(
             ([model, score]) => {
-              if (finalResult[model]) {
-                finalResult[model].score = score;
+              const modelResult = finalResult[model];
+              if (
+                modelResult &&
+                typeof modelResult === "object" &&
+                !Array.isArray(modelResult)
+              ) {
+                (modelResult as { score?: number }).score = score;
               }
             },
           );
         }
 
-        // Update item in Supabase
         const { error: updateError } = await supabase
           .from("experiments_items")
           .update({
@@ -300,6 +443,8 @@ export function ExperimentsProvider({
         setActiveExperimentId,
         isProcessing,
         progress,
+        estimateExperimentCost,
+        startExperiment,
       }}
     >
       {children}
