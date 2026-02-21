@@ -34,6 +34,23 @@ const generateChatId = () => {
 // Re-export ChatHistoryItem from storage
 export type { ChatHistoryItem } from "@/lib/chat-storage";
 
+/** Extract unique model IDs from the most recent message with multiResults */
+function getModelsUsedInMessages(messages: Message[]): string[] {
+  const mostRecentWithResults = messages.findLast(msg => msg.multiResults && msg.multiResults.length > 0);
+  if (!mostRecentWithResults?.multiResults) {
+    return [];
+  }
+
+  const uniqueModels = new Set<string>();
+  for (const r of mostRecentWithResults.multiResults) {
+    if (r.model) {
+      uniqueModels.add(r.model);
+    }
+  }
+
+  return Array.from(uniqueModels);
+}
+
 type ChatContextType = {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -47,6 +64,8 @@ type ChatContextType = {
   loadMoreMessages: () => Promise<void>;
   hasMoreMessages: boolean;
   isLoadingMore: boolean;
+  modelsFromLastLoadedChat: string[] | null;
+  clearModelsFromLastLoadedChat: () => void;
 };
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -66,9 +85,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [modelsFromLastLoadedChat, setModelsFromLastLoadedChat] = useState<string[] | null>(null);
   const { user } = useUser();
   const supabase = useSupabaseClient();
   const hasLoadedInitialChat = useRef(false);
+
+  const clearModelsFromLastLoadedChat = useCallback(() => {
+    setModelsFromLastLoadedChat(null);
+  }, []);
 
   const loadChat = useCallback(
     async (chatIdToLoad: string) => {
@@ -95,6 +119,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           setHasMoreMessages(hasMore);
           setChatId(chatIdToLoad);
           setChatStarted(true);
+          // So the UI can prefill the models field when continuing this chat
+          const modelsUsed = getModelsUsedInMessages(loadedMessages);
+          setModelsFromLastLoadedChat(modelsUsed.length > 0 ? modelsUsed : null);
           // Mark that we've loaded a chat (prevents auto-loading on new chat)
           hasLoadedInitialChat.current = true;
         }
@@ -109,6 +136,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setMessages([]);
     setChatStarted(false);
     setHasMoreMessages(false);
+    setModelsFromLastLoadedChat(null);
     const newChatId = generateChatId();
     setChatId(newChatId);
     // Prevent auto-loading after new chat
@@ -233,6 +261,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         loadMoreMessages,
         hasMoreMessages,
         isLoadingMore,
+        modelsFromLastLoadedChat,
+        clearModelsFromLastLoadedChat,
       }}
     >
       {children}

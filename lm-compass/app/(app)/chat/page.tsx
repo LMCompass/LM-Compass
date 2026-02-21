@@ -41,6 +41,8 @@ export default function Home() {
     setChatStarted,
     chatId,
     isLoadingMore,
+    modelsFromLastLoadedChat,
+    clearModelsFromLastLoadedChat,
   } = useChat();
   const { user, isLoaded: userLoaded } = useUser();
   const [isLoading, setIsLoading] = useState(false);
@@ -90,6 +92,14 @@ export default function Home() {
       setChatStarted(true);
     }
   }, [messages.length, chatStarted, setChatStarted]);
+
+  // When an old chat is loaded, prefill the models field with the models used in that chat
+  useEffect(() => {
+    if (modelsFromLastLoadedChat && modelsFromLastLoadedChat.length > 0) {
+      setSelectedModels(modelsFromLastLoadedChat);
+      clearModelsFromLastLoadedChat();
+    }
+  }, [modelsFromLastLoadedChat, clearModelsFromLastLoadedChat]);
 
   // Check if user has API key when signed in
   useEffect(() => {
