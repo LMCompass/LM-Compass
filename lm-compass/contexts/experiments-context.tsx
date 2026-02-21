@@ -9,7 +9,6 @@ import React, {
   useRef,
 } from "react";
 import { useSupabaseClient } from "@/utils/supabase/client";
-import { useUser } from "@clerk/nextjs";
 import type {
   Experiment,
   ExperimentCostEstimate,
