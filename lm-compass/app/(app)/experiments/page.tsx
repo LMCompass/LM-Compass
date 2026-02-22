@@ -43,19 +43,24 @@ function statusBadgeClass(status: string | null | undefined) {
   switch (status) {
     case ExperimentStatus.RUNNING:
     case ExperimentItemStatus.RUNNING:
-      return "bg-blue-500/10 text-blue-600 dark:text-blue-300";
+      return "bg-blue-300 !text-slate-800 ring-1 ring-blue-400/70 shadow-sm dark:bg-blue-300/25 dark:!text-blue-50 dark:ring-blue-300/25";
     case ExperimentStatus.COMPLETED:
     case ExperimentItemStatus.COMPLETED:
-      return "bg-green-500/10 text-green-700 dark:text-green-300";
+      return "bg-emerald-300 !text-slate-800 ring-1 ring-emerald-400/70 shadow-sm dark:bg-emerald-300/25 dark:!text-emerald-50 dark:ring-emerald-300/25";
     case ExperimentStatus.ERROR:
     case ExperimentItemStatus.ERROR:
-      return "bg-red-500/10 text-red-700 dark:text-red-300";
+      return "bg-rose-300 !text-slate-800 ring-1 ring-rose-400/70 shadow-sm dark:bg-rose-300/25 dark:!text-rose-50 dark:ring-rose-300/25";
     case ExperimentStatus.DRAFT:
     case ExperimentItemStatus.PENDING:
-      return "bg-amber-500/10 text-amber-700 dark:text-amber-300";
+      return "bg-amber-300 !text-slate-800 ring-1 ring-amber-400/70 shadow-sm dark:bg-amber-300/25 dark:!text-amber-50 dark:ring-amber-300/25";
     default:
-      return "bg-muted text-muted-foreground";
+      return "bg-foreground/10 !text-foreground ring-1 ring-border/60";
   }
+}
+
+function formatStatusLabel(status: string | null | undefined) {
+  if (!status) return "Unknown";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function formatDate(dateValue: string | null) {
@@ -189,31 +194,42 @@ export default function ExperimentsIndexPage() {
             </div>
           )}
 
-          <div className="rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Progress</TableHead>
+          <div className="overflow-hidden rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm">
+            <Table className="[&_td]:px-4 [&_td]:py-4 [&_th]:px-4 [&_th]:py-3">
+              <TableHeader className="[&_tr]:border-border/50 bg-muted/30">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Title
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Status
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Created
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Progress
+                  </TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className="[&_tr]:border-border/35">
                 {isLoading &&
                   Array.from({ length: 6 }).map((_, idx) => (
-                    <TableRow key={`experiment-skeleton-${idx}`}>
+                    <TableRow
+                      key={`experiment-skeleton-${idx}`}
+                      className="hover:bg-transparent"
+                    >
                       <TableCell>
-                        <div className="h-4 rounded bg-muted animate-pulse" />
+                        <div className="h-4 w-28 rounded bg-muted animate-pulse" />
                       </TableCell>
                       <TableCell>
-                        <div className="h-6 w-20 rounded-full bg-muted animate-pulse" />
+                        <div className="h-7 w-24 rounded-full bg-muted animate-pulse" />
                       </TableCell>
                       <TableCell>
-                        <div className="h-4 rounded bg-muted animate-pulse" />
+                        <div className="h-4 w-44 rounded bg-muted animate-pulse" />
                       </TableCell>
                       <TableCell>
-                        <div className="h-4 rounded bg-muted animate-pulse" />
+                        <div className="h-4 w-12 rounded bg-muted animate-pulse" />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -241,24 +257,45 @@ export default function ExperimentsIndexPage() {
                     return (
                       <TableRow
                         key={experiment.id}
-                        className="cursor-pointer"
+                        className="group cursor-pointer border-border/35 hover:bg-muted/25"
                         onClick={() => router.push(`/experiments/${experiment.id}`)}
                       >
                         <TableCell>
-                          <span className="block truncate" title={experiment.title || ""}>
+                          <span
+                            className="block truncate font-medium text-foreground"
+                            title={experiment.title || ""}
+                          >
                             {experiment.title || "Untitled experiment"}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(experiment.status)}`}
+                            className={`inline-flex min-w-[84px] items-center justify-center rounded-md px-2.5 py-1 text-xs font-bold ${statusBadgeClass(experiment.status)}`}
                           >
-                            {experiment.status || "unknown"}
+                            {formatStatusLabel(experiment.status)}
                           </span>
                         </TableCell>
-                        <TableCell>{formatDate(experiment.created_at)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(experiment.created_at)}
+                        </TableCell>
                         <TableCell>
-                          {progress.done}/{progress.total}
+                          <div className="flex items-center gap-3">
+                            <span className="min-w-10 font-medium tabular-nums">
+                              {progress.done}/{progress.total}
+                            </span>
+                            <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-primary/80 transition-all"
+                                style={{
+                                  width: `${
+                                    progress.total > 0
+                                      ? (progress.done / progress.total) * 100
+                                      : 0
+                                  }%`,
+                                }}
+                              />
+                            </div>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
