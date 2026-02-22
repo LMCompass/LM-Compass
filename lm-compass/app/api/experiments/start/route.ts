@@ -102,6 +102,17 @@ export async function POST(req: Request) {
         }
       }
     } catch (error) {
+      console.error('Error inserting experiment items, cleaning up:', error);
+
+      const { error: cleanupError } = await supabase
+        .from('experiments_items')
+        .delete()
+        .eq('experiment_id', experiment.id);
+
+      if (cleanupError) {
+        console.error('Failed to clean up experiment items after error:', cleanupError);
+      }
+
       await supabase
         .from('experiments')
         .update({ status: ExperimentStatus.ERROR })
