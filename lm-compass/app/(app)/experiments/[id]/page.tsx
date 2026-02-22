@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { ArrowLeft } from "lucide-react";
 import { useSupabaseClient } from "@/utils/supabase/client";
 import {
   ExperimentItemStatus,
@@ -405,6 +407,12 @@ export default function ExperimentDetailPage() {
           <div className="flex items-start gap-3">
             <SidebarTrigger className="md:hidden -ml-1 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
+              <Link href="/experiments" className="inline-flex mb-2">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="size-4 mr-2" />
+                  Back to Experiments
+                </Button>
+              </Link>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
                 {experiment?.title || "Experiment"}
               </h1>
