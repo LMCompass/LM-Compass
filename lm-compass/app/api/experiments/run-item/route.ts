@@ -11,9 +11,20 @@ import { join } from 'path';
  * Loads the default rubric from the file system
  */
 async function loadDefaultRubric(): Promise<string> {
-  const rubricPath = join(process.cwd(), 'app', 'rubric', 'types', 'default.txt');
-  const rubricContent = await readFile(rubricPath, 'utf-8');
-  return rubricContent;
+  const rubricPathCandidates = [
+    join(process.cwd(), 'app', '(app)', 'rubric', 'types', 'default.txt'),
+    join(process.cwd(), 'app', 'rubric', 'types', 'default.txt'),
+  ];
+
+  for (const rubricPath of rubricPathCandidates) {
+    try {
+      const rubricContent = await readFile(rubricPath, 'utf-8');
+      return rubricContent;
+  }
+
+  throw new Error(
+    `Default rubric not found in expected paths: ${rubricPathCandidates.join(', ')}`
+  );
 }
 
 /**

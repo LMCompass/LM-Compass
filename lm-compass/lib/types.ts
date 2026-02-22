@@ -44,12 +44,42 @@ export interface ExperimentItem {
   input_query: string | null;
   expected_output: string | null;
   status: ExperimentItemStatus | null;
+  error_message?: string | null;
   result: {
     [modelName: string]: {
       output: string;
       score?: number;
     };
   } | null;
+}
+
+export type ExperimentModelResultStatus = 'success' | 'error';
+
+export interface ExperimentItemModelResult {
+  output: string;
+  score?: number;
+  status?: ExperimentModelResultStatus;
+}
+
+export interface ExperimentEvaluationScore {
+  judgeModel: string;
+  evaluatedModel: string;
+  score: number | null;
+  reasoning: string | null;
+}
+
+export interface ExperimentEvaluationSummary {
+  winnerModel: string | null;
+  meanScores: Record<string, number>;
+  scores: ExperimentEvaluationScore[];
+}
+
+export interface ExperimentItemResultPayload {
+  evaluation_summary?: ExperimentEvaluationSummary;
+  [modelName: string]:
+    | ExperimentItemModelResult
+    | ExperimentEvaluationSummary
+    | undefined;
 }
 
 export interface MappedRow {

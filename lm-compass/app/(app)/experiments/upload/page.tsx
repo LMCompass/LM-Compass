@@ -32,6 +32,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useExperiments } from "@/contexts/experiments-context";
 import type { ExperimentCostEstimate, MappedRow } from "@/lib/types";
 
@@ -59,6 +60,7 @@ function formatCurrency(value: number) {
 
 export default function NewExperimentPage() {
   const { open } = useSidebar();
+  const router = useRouter();
   const { estimateExperimentCost, startExperiment } = useExperiments();
 
   const [file, setFile] = useState<File | null>(null);
@@ -249,6 +251,7 @@ export default function NewExperimentPage() {
         `Experiment ${result.experimentId} started and queued. Inserted ${result.insertedRows} row(s), skipped ${result.skippedRows}.`
       );
       setIsEstimateOpen(false);
+      router.push(`/experiments/${result.experimentId}`);
     } catch (error) {
       const message =
         error instanceof Error
@@ -258,7 +261,7 @@ export default function NewExperimentPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [defaultTitle, mappedData, startExperiment]);
+  }, [defaultTitle, mappedData, router, startExperiment]);
 
   return (
     <SidebarInset>
