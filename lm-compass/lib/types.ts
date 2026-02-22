@@ -51,3 +51,31 @@ export interface ExperimentItem {
     };
   } | null;
 }
+
+export interface MappedRow {
+  query: string;
+  ground_truth?: string;
+}
+
+export interface ExperimentCostEstimate {
+  avgChars: number;
+  estTokensPerPrompt: number;
+  multiplier: number;
+  totalTokens: number;
+  estimatedUsd: number;
+  validRows: number;
+  skippedRows: number;
+}
+
+export interface StartExperimentInput {
+  title?: string;
+  rows: MappedRow[];
+}
+
+export interface StartExperimentResult {
+  experimentId: string;
+  insertedRows: number;
+  skippedRows: number;
+  status: ExperimentStatus.RUNNING;
+  estimatedUsd: number;
+}

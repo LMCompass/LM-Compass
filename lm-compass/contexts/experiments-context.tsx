@@ -9,14 +9,44 @@ import React, {
   useRef,
 } from "react";
 import { useSupabaseClient } from "@/utils/supabase/client";
-import type { Experiment, ExperimentItem } from "@/lib/types";
+import type {
+  Experiment,
+  ExperimentCostEstimate,
+  ExperimentItem,
+  MappedRow,
+  StartExperimentInput,
+  StartExperimentResult,
+} from "@/lib/types";
 import { ExperimentStatus, ExperimentItemStatus } from "@/lib/types";
+import {
+  calculateExperimentEstimate,
+  normalizeAndValidateRows,
+} from "@/lib/experiments";
+
+type RunItemResult = {
+  model: string;
+  message?: { content?: string | null };
+  error?: string;
+};
+
+type RunItemResponse = {
+  error?: string;
+  results?: RunItemResult[];
+  evaluationMetadata?: {
+    meanScores?: Record<string, number>;
+    [key: string]: unknown;
+  };
+};
+
+type StartExperimentApiResponse = Partial<StartExperimentResult> & { error?: string };
 
 interface ExperimentsContextType {
   activeExperimentId: string | null;
   setActiveExperimentId: (id: string | null) => void;
   isProcessing: boolean;
   progress: { completed: number; total: number };
+  estimateExperimentCost: (rows: MappedRow[]) => ExperimentCostEstimate;
+  startExperiment: (input: StartExperimentInput) => Promise<StartExperimentResult>;
 }
 
 const ExperimentsContext = createContext<ExperimentsContextType | undefined>(
@@ -35,6 +65,47 @@ export function ExperimentsProvider({
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const processingRef = useRef(false);
   const supabase = useSupabaseClient();
+
+  const estimateExperimentCost = useCallback((rows: MappedRow[]) => {
+    const { validRows, skippedRows } = normalizeAndValidateRows(rows);
+    return calculateExperimentEstimate(validRows, skippedRows);
+  }, []);
+
+  const startExperiment = useCallback(
+    async (input: StartExperimentInput): Promise<StartExperimentResult> => {
+      const response = await fetch('/api/experiments/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: input.title,
+          rows: input.rows,
+        }),
+      });
+
+      const result: StartExperimentApiResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to start experiment.');
+      }
+
+      if (!result.experimentId) {
+        throw new Error('Invalid response from start experiment API.');
+      }
+
+      const finalResult: StartExperimentResult = {
+        experimentId: result.experimentId,
+        insertedRows: result.insertedRows ?? 0,
+        skippedRows: result.skippedRows ?? 0,
+        status: ExperimentStatus.RUNNING,
+        estimatedUsd: result.estimatedUsd ?? 0,
+      };
+
+      setActiveExperimentId(finalResult.experimentId);
+
+      return finalResult;
+    },
+    [setActiveExperimentId]
+  );
 
   const claimNextItems = useCallback(
     async (experimentId: string) => {
@@ -56,9 +127,9 @@ export function ExperimentsProvider({
       // Step 2: Claim them
       const { data: claimed, error: claimError } = await supabase
         .from("experiments_items")
-        .update({ status: ExperimentItemStatus.RUNNING }) // 1 for running
+        .update({ status: ExperimentItemStatus.RUNNING })
         .in("id", candidateIds)
-        .eq("status", ExperimentItemStatus.PENDING) // Extra safety check
+        .eq("status", ExperimentItemStatus.PENDING)
         .select();
 
       if (claimError) {
@@ -87,46 +158,22 @@ export function ExperimentsProvider({
           }),
         });
 
-        const resultData = await response.json();
+        const resultData: RunItemResponse = await response.json();
 
         if (!response.ok) {
           throw new Error(resultData.error || "Failed to run item");
         }
 
-        // Type definitions
-        type ModelResult = {
-          output: string;
-          status: 'success' | 'error';
-          score?: number;
-        };
-
-        type EvaluationSummary = {
-          [key: string]: unknown;
-          modelReasoning?: undefined;
-        };
-
-        type FinalResult = {
-          evaluation_summary: EvaluationSummary;
-          [modelName: string]: ModelResult | EvaluationSummary;
-        };
-
-        type ResultItem = {
-          model: string;
-          message?: { content: string };
-          error?: string;
-        };
-
-        // Align data structure: Merge model outputs and evaluation scores
-        const finalResult: FinalResult = {
+        const finalResult: Record<string, unknown> = {
           evaluation_summary: {
-            ...resultData.evaluationMetadata,
-            modelReasoning: undefined, // Remove redundant aggregation
+            ...(resultData.evaluationMetadata ?? {}),
+            modelReasoning: undefined,
           },
         };
 
         // 1. Map outputs and status
         if (Array.isArray(resultData.results)) {
-          resultData.results.forEach((r: ResultItem) => {
+          resultData.results.forEach((r) => {
             finalResult[r.model] = {
               output: r.message?.content || r.error || "",
               status: r.error ? "error" : "success",
@@ -138,14 +185,18 @@ export function ExperimentsProvider({
         if (resultData.evaluationMetadata?.meanScores) {
           Object.entries(resultData.evaluationMetadata.meanScores).forEach(
             ([model, score]) => {
-              if (finalResult[model]) {
-                finalResult[model].score = score;
+              const modelResult = finalResult[model];
+              if (
+                modelResult &&
+                typeof modelResult === "object" &&
+                !Array.isArray(modelResult)
+              ) {
+                (modelResult as { score?: number }).score = score;
               }
             },
           );
         }
 
-        // Update item in Supabase
         const { error: updateError } = await supabase
           .from("experiments_items")
           .update({
@@ -300,6 +351,8 @@ export function ExperimentsProvider({
         setActiveExperimentId,
         isProcessing,
         progress,
+        estimateExperimentCost,
+        startExperiment,
       }}
     >
       {children}
