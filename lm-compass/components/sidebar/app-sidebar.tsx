@@ -183,7 +183,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
             <SidebarMenuButton
               className="hover:bg-sidebar-accent/60"
-              onClick={() => router.push("/experiments/upload")}
+              onClick={() => router.push("/experiments")}
             >
               <FlaskConical className="h-4 w-4" />
               Experiments

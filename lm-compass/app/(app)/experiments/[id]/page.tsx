@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { useSupabaseClient } from "@/utils/supabase/client";
 import {
   ExperimentItemStatus,
@@ -177,6 +178,7 @@ export default function ExperimentDetailPage() {
   const params = useParams<{ id?: string | string[] }>();
   const { open } = useSidebar();
   const supabase = useSupabaseClient();
+  const { user, isLoaded: userLoaded } = useUser();
 
   const experimentId = useMemo(() => {
     const value = params?.id;
@@ -189,6 +191,7 @@ export default function ExperimentDetailPage() {
   const [items, setItems] = useState<ExperimentItemRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAccessBlocked, setIsAccessBlocked] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ExperimentItemRow | null>(null);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -206,11 +209,12 @@ export default function ExperimentDetailPage() {
     }
   }, []);
 
-  const fetchExperiment = useCallback(async (id: string) => {
+  const fetchExperiment = useCallback(async (id: string, userId: string) => {
     const { data, error: fetchError } = await supabase
       .from("experiments")
       .select("id, title, status, created_at, configuration")
       .eq("id", id)
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (fetchError) {
@@ -236,8 +240,21 @@ export default function ExperimentDetailPage() {
 
   const refreshData = useCallback(
     async (showLoading = false) => {
+      if (!userLoaded) {
+        return true;
+      }
+
+      if (!user?.id) {
+        setError("Please sign in to view this experiment.");
+        setIsAccessBlocked(true);
+        setIsLoading(false);
+        stopPolling();
+        return false;
+      }
+
       if (!experimentId) {
         setError("Invalid experiment ID.");
+        setIsAccessBlocked(true);
         setIsLoading(false);
         stopPolling();
         return false;
@@ -251,15 +268,24 @@ export default function ExperimentDetailPage() {
       if (showLoading) setIsLoading(true);
 
       try {
-        const [nextExperiment, nextItems] = await Promise.all([
-          fetchExperiment(experimentId),
-          fetchItems(experimentId),
-        ]);
+        const nextExperiment = await fetchExperiment(experimentId, user.id);
+
+        if (!nextExperiment) {
+          setIsAccessBlocked(true);
+          setError("Experiment not found or you do not have access.");
+          setExperiment(null);
+          setItems([]);
+          stopPolling();
+          return false;
+        }
+
+        const nextItems = await fetchItems(experimentId);
 
         // Keep previously loaded experiment metadata if header query is transiently empty.
-        setExperiment((prev) => nextExperiment ?? prev);
+        setExperiment(nextExperiment);
         setItems(nextItems);
         setError(null);
+        setIsAccessBlocked(false);
 
         const shouldKeepPolling = shouldContinuePolling(
           nextExperiment ?? latestExperimentRef.current,
@@ -279,7 +305,7 @@ export default function ExperimentDetailPage() {
         isRefreshingRef.current = false;
       }
     },
-    [experimentId, fetchExperiment, fetchItems, stopPolling]
+    [experimentId, fetchExperiment, fetchItems, stopPolling, user?.id, userLoaded]
   );
 
   useEffect(() => {
@@ -347,6 +373,21 @@ export default function ExperimentDetailPage() {
             <h2 className="text-lg font-semibold">Invalid experiment ID</h2>
             <p className="text-sm text-muted-foreground mt-1">
               Please start an experiment again from the upload page.
+            </p>
+          </div>
+        </div>
+      </SidebarInset>
+    );
+  }
+
+  if (isAccessBlocked && !isLoading) {
+    return (
+      <SidebarInset>
+        <div className="h-screen flex items-center justify-center p-6">
+          <div className="rounded-lg border border-border bg-card p-6 text-center max-w-md">
+            <h2 className="text-lg font-semibold">Experiment unavailable</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {error || "This experiment was not found or you do not have access."}
             </p>
           </div>
         </div>

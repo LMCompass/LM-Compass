@@ -3,10 +3,11 @@
 import { PromptInputComponent } from "./prompt-input";
 import { MessagesDisplay } from "@/components/messages-display";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, KeyRound, LogIn } from "lucide-react";
+import { Sun, Moon, KeyRound, LogIn, FlaskConical } from "lucide-react";
 import { SidebarInset, SidebarTrigger } from "@/components/sidebar/sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import { useChat } from "@/contexts/chat-context";
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/item";
 
 export default function Home() {
+  const router = useRouter();
   const { theme, toggleTheme, mounted } = useTheme();
   const {
     messages,
@@ -184,6 +186,10 @@ export default function Home() {
             onChange={setSelectedRubric}
           />
           <div className="flex-1" />
+          <Button onClick={() => router.push("/experiments/upload")}>
+            <FlaskConical className="size-4" />
+            Create Experiment
+          </Button>
           <Button
             variant="outline"
             onClick={toggleTheme}
