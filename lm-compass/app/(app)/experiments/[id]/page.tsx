@@ -193,6 +193,11 @@ export default function ExperimentDetailPage() {
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isRefreshingRef = useRef(false);
+  const latestExperimentRef = useRef<Experiment | null>(null);
+
+  useEffect(() => {
+    latestExperimentRef.current = experiment;
+  }, [experiment]);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
@@ -206,10 +211,13 @@ export default function ExperimentDetailPage() {
       .from("experiments")
       .select("id, title, status, created_at, configuration")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
-    if (fetchError) throw fetchError;
-    return data as Experiment;
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    return (data as Experiment | null) ?? null;
   }, [supabase]);
 
   const fetchItems = useCallback(async (id: string) => {
@@ -248,11 +256,15 @@ export default function ExperimentDetailPage() {
           fetchItems(experimentId),
         ]);
 
-        setExperiment(nextExperiment);
+        // Keep previously loaded experiment metadata if header query is transiently empty.
+        setExperiment((prev) => nextExperiment ?? prev);
         setItems(nextItems);
         setError(null);
 
-        const shouldKeepPolling = shouldContinuePolling(nextExperiment, nextItems);
+        const shouldKeepPolling = shouldContinuePolling(
+          nextExperiment ?? latestExperimentRef.current,
+          nextItems
+        );
         if (!shouldKeepPolling) {
           stopPolling();
         }

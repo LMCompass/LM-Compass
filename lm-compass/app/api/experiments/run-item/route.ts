@@ -20,6 +20,9 @@ async function loadDefaultRubric(): Promise<string> {
     try {
       const rubricContent = await readFile(rubricPath, 'utf-8');
       return rubricContent;
+    } catch {
+      // Try next candidate path.
+    }
   }
 
   throw new Error(
