@@ -5,7 +5,6 @@ import Papa from "papaparse";
 import {
   SidebarInset,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/sidebar/sidebar";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +58,6 @@ function formatCurrency(value: number) {
 }
 
 export default function NewExperimentPage() {
-  const { open } = useSidebar();
   const router = useRouter();
   const { estimateExperimentCost, startExperiment } = useExperiments();
 
@@ -267,7 +265,7 @@ export default function NewExperimentPage() {
     <SidebarInset>
       <div className="h-screen flex flex-col">
         <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
-          {!open && <SidebarTrigger />}
+          <SidebarTrigger className="md:hidden -ml-1 shrink-0" />
           <Link href="/experiments">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="size-4 mr-2" />

@@ -15,7 +15,6 @@ import {
 import {
   SidebarInset,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/sidebar/sidebar";
 import { Button } from "@/components/ui/button";
 import {
@@ -181,7 +180,6 @@ function shouldContinuePolling(
 
 export default function ExperimentDetailPage() {
   const params = useParams<{ id?: string | string[] }>();
-  const { open } = useSidebar();
   const supabase = useSupabaseClient();
   const { user, isLoaded: userLoaded } = useUser();
 
@@ -404,8 +402,8 @@ export default function ExperimentDetailPage() {
     <SidebarInset>
       <div className="h-screen flex flex-col overflow-hidden">
         <header className="flex-shrink-0 border-b border-border p-4 sm:p-6">
-          <div className="flex items-center gap-3">
-            {!open && <SidebarTrigger />}
+          <div className="flex items-start gap-3">
+            <SidebarTrigger className="md:hidden -ml-1 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
                 {experiment?.title || "Experiment"}
