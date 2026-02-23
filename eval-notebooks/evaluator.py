@@ -31,6 +31,8 @@ class Evaluator:
         ]
 
         self.model_names = model_names
+        if not self.model_names:
+            raise ValueError("At least one model name must be provided.")
 
 
 
