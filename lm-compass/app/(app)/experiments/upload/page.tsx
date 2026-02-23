@@ -5,7 +5,6 @@ import Papa from "papaparse";
 import {
   SidebarInset,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/sidebar/sidebar";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +31,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useExperiments } from "@/contexts/experiments-context";
 import type { ExperimentCostEstimate, MappedRow } from "@/lib/types";
 
@@ -58,7 +58,7 @@ function formatCurrency(value: number) {
 }
 
 export default function NewExperimentPage() {
-  const { open } = useSidebar();
+  const router = useRouter();
   const { estimateExperimentCost, startExperiment } = useExperiments();
 
   const [file, setFile] = useState<File | null>(null);
@@ -249,6 +249,7 @@ export default function NewExperimentPage() {
         `Experiment ${result.experimentId} started and queued. Inserted ${result.insertedRows} row(s), skipped ${result.skippedRows}.`
       );
       setIsEstimateOpen(false);
+      router.push(`/experiments/${result.experimentId}`);
     } catch (error) {
       const message =
         error instanceof Error
@@ -258,17 +259,17 @@ export default function NewExperimentPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [defaultTitle, mappedData, startExperiment]);
+  }, [defaultTitle, mappedData, router, startExperiment]);
 
   return (
     <SidebarInset>
       <div className="h-screen flex flex-col">
         <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
-          {!open && <SidebarTrigger />}
-          <Link href="/chat">
+          <SidebarTrigger className="md:hidden -ml-1 shrink-0" />
+          <Link href="/experiments">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="size-4 mr-2" />
-              Back to Chat
+              Back to Experiments
             </Button>
           </Link>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex-1">

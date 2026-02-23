@@ -14,24 +14,23 @@ import type {
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const SELECTED_RUBRIC_PATH = join(
-  process.cwd(),
-  "app",
-  "rubric",
-  "types",
-  "default.txt",
-);
+const SELECTED_RUBRIC_PATHS = [
+  join(process.cwd(), "app", "(app)", "rubric", "types", "default.txt"),
+  join(process.cwd(), "app", "rubric", "types", "default.txt"),
+];
 
 function loadRubric(): string {
-  try {
-    return readFileSync(SELECTED_RUBRIC_PATH, "utf-8");
-  } catch (err) {
-    console.warn(
-      `[NPromptBasedEvaluator] could not read default rubric at ${SELECTED_RUBRIC_PATH}:`,
-      err,
-    );
-    return "";
+  for (const rubricPath of SELECTED_RUBRIC_PATHS) {
+    try {
+      return readFileSync(rubricPath, "utf-8");
+    } catch (err) {
+      console.warn(
+        `[NPromptBasedEvaluator] could not read default rubric at ${rubricPath}:`,
+        err,
+      );
+    }
   }
+  return "";
 }
 
 const SELECTED_RUBRIC = loadRubric();

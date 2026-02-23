@@ -104,7 +104,7 @@ export function ExperimentsProvider({
 
       return finalResult;
     },
-    [setActiveExperimentId]
+    []
   );
 
   const claimNextItems = useCallback(
