@@ -57,14 +57,14 @@ examples = [
 ]
 
 grade_hitl_rubric = (
-    "Grade each response on two dimensions: 'correctness' (0-1) and 'clarity' (0-1). Return scores as a JSON object like {\"scores\": {\"correctness\": 0-1, \"clarity\": 0-1}, \"justification\": \"...\", \"confidence\": 0-1}.\n"
+    "Grade each response on two dimensions: 'correctness' (0-1) and 'clarity' (0-1). Return scores as a JSON object like {\"scores\": {\"correctness\": 0-1, \"clarity\": 0-1}, \"justification\": \"...\"}.\n"
     "Correctness: Award full credit (1.0) if the final answer is correct, regardless of whether supporting work is shown. Award partial credit for answers that are partially correct or show correct methodology with minor errors. Award zero (0.0) for incorrect answers.\n"
-    "Verification Requirement: When confidence in correctness scoring is below 0.9, especially for advanced or specialized problems, the grader must take one of the following actions before finalizing a score:\n"
-    "(1) For confidence 0.7-0.9: Satisfy at least one verification method: (a) provide multiple specific, verifiable references with precise citations (page/equation numbers), (b) show explicit independent calculation or verification steps, or (c) use multiple independent computational tools/methods that agree. Then assign a score with appropriate confidence reflecting verification strength. Single computational tool verification warrants confidence 0.5-0.7; multiple independent methods warrant 0.7-0.9.\n"
-    "(2) For confidence below 0.7: Withhold definitive correctness scoring and mark the response as 'PENDING EXPERT REVIEW' rather than assigning a numerical score. In the justification, explain what verification was attempted and why certainty could not be achieved.\n"
-    "(3) For problems beyond the grader's computational or knowledge resources where confidence cannot reach 0.7 even with available tools: Default to flagging for expert review with status 'PENDING EXPERT REVIEW' rather than assigning any definitive correctness score.\n"
+    "Verification Requirement: When you are uncertain about the correctness of your scoring, especially for advanced or specialized problems, take one of the following actions before finalizing a score:\n"
+    "(1) When you are somewhat uncertain: Satisfy at least one verification method: (a) provide multiple specific, verifiable references with precise citations (page/equation numbers), (b) show explicit independent calculation or verification steps, or (c) use multiple independent computational tools/methods that agree. Single computational tool verification may be enough for moderate uncertainty; multiple independent methods when you need higher certainty.\n"
+    "(2) When you are very uncertain: Withhold definitive correctness scoring and mark the response as 'PENDING EXPERT REVIEW' rather than assigning a numerical score. In the justification, explain what verification was attempted and why certainty could not be achieved.\n"
+    "(3) For problems beyond your computational or knowledge resources where you cannot reach sufficient certainty even with available tools: Default to flagging for expert review with status 'PENDING EXPERT REVIEW' rather than assigning any definitive correctness score.\n"
     "Clarity: For math problems, a small explanation is sufficient but not required. Award full credit (1.0) if the answer is clearly presented in the requested format. The answer alone, when properly formatted to the question's requirements, is enough for full clarity credit. Do not penalize lack of methodology explanation for straightforward numerical answers.\n"
-    "Confidence: When you cannot verify the correctness of an answer due to computational complexity or lack of resources, assign a low confidence score (0.7 or below). Confidence below 0.9 on correctness scoring triggers the verification requirement above. Confidence below 0.7 requires withholding definitive scores. Low confidence should reflect uncertainty in grading ability, not uncertainty in the student's response quality. The confidence score should reflect the strength and independence of verification methods used.\n"
+    "Uncertainty in grading: When you cannot verify the correctness of an answer due to computational complexity or lack of resources, treat that as internal uncertainty in your grading ability (not uncertainty in the student's response quality). That uncertainty triggers the verification requirement above: if you are not highly certain, verify further or withhold the score. Your justification should reflect what verification you used and how strong it was.\n"
 )
 
 hitl_evaluator = GradeHITL("Anthropic: Claude Sonnet 4.5", "OpenAI: GPT-4o Mini", "OpenAI: GPT-4o")
@@ -92,7 +92,6 @@ for i, (grader_results, cross_eval_results) in enumerate(zip(all_grader_results,
     for grader_name, result in grader_results.items():
         print(f"    {grader_name}:")
         print(f"      Scores: {result.scores}")
-        print(f"      Confidence: {result.confidence:.2f}")
         print(f"      Justification: {result.justification}...")
 
     print("\n  Cross-Evaluation Results:")

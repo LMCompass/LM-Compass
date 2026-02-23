@@ -10,7 +10,6 @@ from prompt_based_evaluator import PromptBasedEvaluator
 class GradeResult:
     scores: Dict[str, float]
     justification: str
-    confidence: float
     raw_model_output: Any
 
 
@@ -57,10 +56,9 @@ class GradeHITL(PromptBasedEvaluator):
             Your output must be ONLY a JSON object with these exact fields:
             - "scores": an object mapping dimension names to numeric scores
             - "justification": a short natural language explanation (string)
-            - "confidence": a number between 0 and 1 representing your confidence
 
             Example format:
-            {{"scores": {{"correctness": 0.8, "clarity": 0.9}}, "justification": "The response is mostly correct but lacks detail.", "confidence": 0.85}}
+            {{"scores": {{"correctness": 0.8, "clarity": 0.9}}, "justification": "The response is mostly correct but lacks detail."}}
 
             Do not include any text before or after the JSON object. Return ONLY the JSON.
         """)
@@ -79,7 +77,6 @@ class GradeHITL(PromptBasedEvaluator):
         return GradeResult(
             scores=raw["scores"],
             justification=raw["justification"],
-            confidence=float(raw["confidence"]),
             raw_model_output=raw,
         )
 
@@ -110,7 +107,6 @@ class GradeHITL(PromptBasedEvaluator):
             {grade.justification}
 
             Grader scores: {grade.scores}
-            Confidence: {grade.confidence}
 
             Your output must be ONLY a JSON object with these exact fields:
             - "questions": a list of strings (1-3 concise questions for the educator)
@@ -252,13 +248,11 @@ class GradeHITL(PromptBasedEvaluator):
             Grader Model: {grader_name}
             Scores Given: {grader_result.scores}
             Justification: {grader_result.justification}
-            Confidence: {grader_result.confidence}
 
             Your task is to evaluate how well this grader performed. Consider:
             - Did the grader correctly apply the rubric?
             - Are the scores appropriate given the rubric criteria?
             - Is the justification reasonable?
-            - Is the confidence level appropriate?
 
             Your output must be ONLY a JSON object with these exact fields:
             - "score": an integer from 0 to 100 representing how well the grader performed
@@ -374,7 +368,7 @@ class GradeHITL(PromptBasedEvaluator):
             all_grader_results.append(grader_results)
             
             for grader_name, result in grader_results.items():
-                print(f"  {grader_name}: scores={result.scores}, confidence={result.confidence:.2f}")
+                print(f"  {grader_name}: scores={result.scores}")
             
             # Step 2: Cross-evaluate the graders
             print("\nStep 2: Cross-evaluating graders...")
