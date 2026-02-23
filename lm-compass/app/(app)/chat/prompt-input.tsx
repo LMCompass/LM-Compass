@@ -11,6 +11,7 @@ import { Send, Square } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { Message } from "@/lib/types";
 import type { EvaluationMetadata } from "@/lib/evaluation/types";
+import type { RL4FIterationResult } from "@/lib/evaluation";
 
 import { MessageCircleWarning } from "lucide-react";
 
@@ -31,6 +32,7 @@ type StreamResponse = {
   phase: string;
   results?: MultiResult[];
   evaluationMetadata?: EvaluationMetadata;
+  iterationResults?: RL4FIterationResult[];
   error?: string;
 };
 
@@ -40,10 +42,11 @@ type PromptInputComponentProps = {
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setLoadingPhase: React.Dispatch<
-    React.SetStateAction<"querying" | "evaluating">
+    React.SetStateAction<"querying" | "evaluating" | "refining">
   >;
   selectedModels: string[];
   evaluationMethod: string;
+  iterations: number;
   chatId: string;
 };
 
@@ -55,6 +58,7 @@ export function PromptInputComponent({
   setLoadingPhase,
   selectedModels,
   evaluationMethod,
+  iterations,
   chatId,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("");
@@ -139,6 +143,7 @@ export function PromptInputComponent({
             })),
           models: selectedModels.length > 0 ? selectedModels : undefined,
           evaluationMethod,
+          iterations,
           chatId,
         }),
         signal: abortControllerRef.current.signal,
@@ -196,6 +201,11 @@ export function PromptInputComponent({
                 // Update loading phase when evaluation starts
                 if (data.phase === "evaluating") {
                   setLoadingPhase("evaluating");
+                }
+
+                // Update loading phase when refinement starts
+                if (data.phase === "refining") {
+                  setLoadingPhase("refining");
                 }
 
                 // Store final data when complete
@@ -258,6 +268,7 @@ export function PromptInputComponent({
         content,
         multiResults,
         evaluationMetadata: finalData.evaluationMetadata,
+        ...(finalData.iterationResults && { iterationResults: finalData.iterationResults }),
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {

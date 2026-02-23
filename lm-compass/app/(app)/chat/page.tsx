@@ -5,6 +5,7 @@ import { MessagesDisplay } from "@/components/messages-display";
 import { useState, useEffect, useRef } from "react";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
+import { IterationsSelector } from "@/components/ui/iterations-selector";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon, KeyRound, LogIn } from "lucide-react";
 import { SidebarInset, SidebarTrigger } from "@/components/sidebar/sidebar";
@@ -34,19 +35,11 @@ import {
 
 export default function Home() {
   const { theme, toggleTheme, mounted } = useTheme();
-  const {
-    messages,
-    setMessages,
-    chatStarted,
-    setChatStarted,
-    chatId,
-    isLoadingMore,
-    modelsFromLastLoadedChat,
-    clearModelsFromLastLoadedChat,
-  } = useChat();
+  const { messages, setMessages, chatStarted, setChatStarted, chatId, isLoadingMore } =
+    useChat();
   const { user, isLoaded: userLoaded } = useUser();
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating">(
+  const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating" | "refining">(
     "querying",
   );
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -54,6 +47,7 @@ export default function Home() {
   const lastMessageIdRef = useRef<string | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
+  const [iterations, setIterations] = useState(1);
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
   const [pendingModels, setPendingModels] = useState<string[] | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -92,14 +86,6 @@ export default function Home() {
       setChatStarted(true);
     }
   }, [messages.length, chatStarted, setChatStarted]);
-
-  // When an old chat is loaded, prefill the models field with the models used in that chat
-  useEffect(() => {
-    if (modelsFromLastLoadedChat && modelsFromLastLoadedChat.length > 0) {
-      setSelectedModels(modelsFromLastLoadedChat);
-      clearModelsFromLastLoadedChat();
-    }
-  }, [modelsFromLastLoadedChat, clearModelsFromLastLoadedChat]);
 
   // Check if user has API key when signed in
   useEffect(() => {
@@ -183,6 +169,12 @@ export default function Home() {
             value={selectedRubric}
             onChange={setSelectedRubric}
           />
+          {selectedRubric === "rl4f" && (
+            <IterationsSelector
+              value={iterations}
+              onChange={setIterations}
+            />
+          )}
           <div className="flex-1" />
           <Button
             variant="outline"
@@ -277,6 +269,7 @@ export default function Home() {
                 setLoadingPhase={setLoadingPhase}
                 selectedModels={selectedModels}
                 evaluationMethod={selectedRubric}
+                iterations={iterations}
                 chatId={chatId}
               />
             )}

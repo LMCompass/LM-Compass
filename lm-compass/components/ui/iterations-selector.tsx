@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, FileText } from "lucide-react"
+import { Check, ChevronsUpDown, Repeat2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,21 +22,22 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-interface EvaluationMethodSelectorProps {
-  value: string
-  onChange: (value: string) => void
+interface IterationsSelectorProps {
+  value: number
+  onChange: (value: number) => void
 }
 
-const evaluationMethods = [
-  { value: "prompt-based", label: "Prompt-based scoring" },
-  { value: "n-prompt-based", label: "One-Shot Prompt-based scoring" },
-  { value: "rl4f", label: "Rationale Based Self Critique Loops" },
+const iterationOptions = [
+  { value: 1, label: "1 iteration" },
+  { value: 2, label: "2 iterations" },
+  { value: 3, label: "3 iterations" },
+  { value: 4, label: "4 iterations" },
 ]
 
-export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSelectorProps) {
+export function IterationsSelector({ value, onChange }: IterationsSelectorProps) {
   const [open, setOpen] = React.useState(false)
 
-  const selectedMethod = evaluationMethods.find((method) => method.value === value)
+  const selectedOption = iterationOptions.find((option) => option.value === value)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -47,41 +48,41 @@ export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSe
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="min-w-[200px] max-w-fit justify-between"
+              className="min-w-[120px] max-w-fit justify-between"
             >
               <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="truncate">{selectedMethod?.label || "Select method"}</span>
+                <Repeat2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="truncate">{selectedOption?.label || "Select iterations"}</span>
               </div>
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Select an evaluation method</p>
+          <p>Number of self-critique iterations</p>
         </TooltipContent>
       </Tooltip>
-      <PopoverContent className="w-auto min-w-[200px] p-0">
+      <PopoverContent className="w-auto min-w-[120px] p-0">
         <Command>
           <CommandList>
-            <CommandEmpty>No evaluation method found.</CommandEmpty>
+            <CommandEmpty>No iterations found.</CommandEmpty>
             <CommandGroup>
-              {evaluationMethods.map((method) => (
+              {iterationOptions.map((option) => (
                 <CommandItem
-                  key={method.value}
-                  value={method.value}
+                  key={option.value}
+                  value={String(option.value)}
                   onSelect={() => {
-                    onChange(method.value)
+                    onChange(option.value)
                     setOpen(false)
                   }}
                 >
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value === method.value ? "opacity-100" : "opacity-0"
+                      value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <span>{method.label}</span>
+                  <span>{option.label}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -91,4 +92,3 @@ export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSe
     </Popover>
   )
 }
-

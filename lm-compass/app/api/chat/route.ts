@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
-import { PromptBasedEvaluator, NPromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
+import { PromptBasedEvaluator, NPromptBasedEvaluator, RL4FEvaluator, type ModelResponse, type EvaluationMetadata, type RL4FIterationResult, type RL4FEvaluationResult } from '@/lib/evaluation';
 import { saveChat, loadAllMessages } from '@/lib/chat-storage';
 import type { Message } from '@/lib/types';
 import { randomUUID } from 'crypto';
@@ -25,7 +25,8 @@ function extractUserQuery(messages: Array<{ role: string; content: string }>): s
  */
 function createAssistantMessage(
   allResults: Array<{ model: string; message?: {content: string | null}; error?: string }>,
-  evaluationMetadata?: EvaluationMetadata
+  evaluationMetadata?: EvaluationMetadata,
+  iterationResults?: RL4FIterationResult[]
 ): Message {
   const multiResults = allResults.map((r) => ({
     model: r.model,
@@ -42,13 +43,16 @@ function createAssistantMessage(
     content = multiResults[0]?.content || '';
   }
 
-  return {
+  const message: Message = {
     id: randomUUID(),
     role: 'assistant',
     content,
     multiResults: multiResults.length > 1 ? multiResults : undefined,
     ...(evaluationMetadata && { evaluationMetadata }),
+    ...(iterationResults && iterationResults.length > 0 && { iterationResults }),
   };
+
+  return message;
 }
 
 export async function POST(req: Request) {
@@ -80,7 +84,7 @@ export async function POST(req: Request) {
     let apiKey;
     try {
       apiKey = decrypt(userSettings.openrouter_api_key);
-    } catch {
+    } catch (e) {
       return NextResponse.json(
         { error: 'Failed to decrypt API key. Please try again.' },
         { status: 500 }
@@ -96,7 +100,7 @@ export async function POST(req: Request) {
       },
     });
 
-    const { messages, model, models, evaluationMethod, chatId } = await req.json();
+    const { messages, model, models, evaluationMethod, iterations, chatId } = await req.json();
 
     // Normalize to models array - handle both single model (legacy) and multi-model cases
     let modelsToQuery: string[];
@@ -190,15 +194,33 @@ export async function POST(req: Request) {
 
               // Create evaluator based on selected method
               let evaluator;
+              let isRL4F = false;
               if (evaluationMethod === 'n-prompt-based') {
                 evaluator = new NPromptBasedEvaluator(llmClient);
+              } else if (evaluationMethod === 'rl4f') {
+                // For RL4F, pass a callback that will transition to "refining" phase
+                const onRefinementStart = () => {
+                  if (iterations > 1) {
+                    sendProgress({ phase: 'refining' });
+                  }
+                };
+                evaluator = new RL4FEvaluator(llmClient, onRefinementStart);
+                isRL4F = true;
               } else {
                 // Default to n^2 prompt-based
                 evaluator = new PromptBasedEvaluator(llmClient);
               }
+
               const evaluationResult = await evaluator.evaluate(successfulResults, {
                 userQuery,
+                iterations,
               });
+
+              // Extract iteration results if this is RL4F
+              let iterationResults: RL4FIterationResult[] | undefined;
+              if (isRL4F && 'iterationResults' in evaluationResult) {
+                iterationResults = (evaluationResult as RL4FEvaluationResult).iterationResults;
+              }
 
               // Aggregate reasoning for each model
               const modelReasoning: Record<string, string[]> = {};
@@ -221,13 +243,14 @@ export async function POST(req: Request) {
               };
 
               // Create assistant message for saving
-              finalAssistantMessage = createAssistantMessage(allResults, evaluationMetadata);
+              finalAssistantMessage = createAssistantMessage(allResults, evaluationMetadata, iterationResults);
 
               // Send final results
               sendProgress({
                 phase: 'complete',
                 results: allResults,
                 evaluationMetadata,
+                iterationResults,
               });
             } catch (evaluationError) {
               // If evaluation fails, log error and return all results with evaluationError

@@ -49,5 +49,6 @@ export type EvaluationMetadata = {
 export type EvaluationOptions = {
   userQuery: string;
   rubric?: string;
+  iterations?: number;
 };
 
