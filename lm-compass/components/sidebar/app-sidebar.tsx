@@ -13,6 +13,7 @@ import {
   LogIn,
   PanelLeft,
   Settings,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -52,7 +53,7 @@ import {
 export function AppSidebar() {
   const router = useRouter();
   const { user } = useUser();
-  const { handleNewChat, chatHistory, loadChat } = useChat();
+  const { handleNewChat, chatHistory, loadChat, deleteChat } = useChat();
   const { toggleSidebar, state } = useSidebar();
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const userButtonRef = React.useRef<HTMLDivElement>(null);
@@ -148,8 +149,9 @@ export function AppSidebar() {
                           {item.items.map((subItem) => (
                             <SidebarMenuSubItem
                               key={subItem.chatId || subItem.title}
+                              className="group/item flex items-center gap-0 min-w-0"
                             >
-                              <SidebarMenuSubButton asChild>
+                              <SidebarMenuSubButton asChild className="flex-1 min-w-0">
                                 <a
                                   href={subItem.url}
                                   onClick={(e) => {
@@ -157,10 +159,23 @@ export function AppSidebar() {
                                     loadChat(subItem.chatId);
                                     router.push("/chat");
                                   }}
+                                  className="flex-1 min-w-0"
                                 >
-                                  <span>{subItem.title}</span>
+                                  <span className="truncate block">{subItem.title}</span>
                                 </a>
                               </SidebarMenuSubButton>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  deleteChat(subItem.chatId);
+                                }}
+                                aria-label="Delete chat"
+                                className="shrink-0 p-1.5 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground opacity-0 group-hover/item:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             </SidebarMenuSubItem>
                           ))}
                         </SidebarMenuSub>

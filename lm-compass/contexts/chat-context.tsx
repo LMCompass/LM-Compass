@@ -15,6 +15,7 @@ import {
   listChats,
   loadChat as loadChatFromStorage,
   loadMoreMessages as loadMoreMessagesFromStorage,
+  deleteChat as deleteChatFromStorage,
   type ChatHistoryItem,
 } from "@/lib/chat-storage";
 
@@ -65,6 +66,7 @@ type ChatContextType = {
   handleNewChat: () => void;
   retrieveChatHistory: () => Promise<void>;
   loadChat: (chatId: string) => Promise<void>;
+  deleteChat: (chatId: string) => Promise<void>;
   loadMoreMessages: () => Promise<void>;
   hasMoreMessages: boolean;
   isLoadingMore: boolean;
@@ -240,6 +242,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, supabase]);
 
+  const deleteChat = useCallback(
+    async (chatIdToDelete: string) => {
+      if (!user?.id) return;
+      try {
+        const { success, error } = await deleteChatFromStorage(
+          supabase,
+          chatIdToDelete,
+          user.id
+        );
+        if (error) {
+          console.error("Error deleting chat:", error);
+          return;
+        }
+        if (success) {
+          setChatHistory((prev) =>
+            prev.filter((c) => c.chatId !== chatIdToDelete)
+          );
+          if (chatIdToDelete === chatId) {
+            handleNewChat();
+          }
+        }
+      } catch (err) {
+        console.error("Error deleting chat:", err);
+      }
+    },
+    [user?.id, supabase, chatId, handleNewChat]
+  );
+
   // Fetch chat history on mount and when user changes
   useEffect(() => {
     // Only retrieve if user is loaded
@@ -262,6 +292,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         handleNewChat,
         retrieveChatHistory,
         loadChat,
+        deleteChat,
         loadMoreMessages,
         hasMoreMessages,
         isLoadingMore,
