@@ -16,6 +16,7 @@ import {
   loadChat as loadChatFromStorage,
   loadMoreMessages as loadMoreMessagesFromStorage,
   deleteChat as deleteChatFromStorage,
+  updateChatTitle as updateChatTitleInStorage,
   type ChatHistoryItem,
 } from "@/lib/chat-storage";
 
@@ -67,6 +68,7 @@ type ChatContextType = {
   retrieveChatHistory: () => Promise<void>;
   loadChat: (chatId: string) => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
+  updateChatTitle: (chatId: string, title: string) => Promise<void>;
   loadMoreMessages: () => Promise<void>;
   hasMoreMessages: boolean;
   isLoadingMore: boolean;
@@ -270,6 +272,36 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [user?.id, supabase, chatId, handleNewChat]
   );
 
+  const updateChatTitle = useCallback(
+    async (chatIdToUpdate: string, title: string) => {
+      if (!user?.id) return;
+      const trimmed = title.trim();
+      if (!trimmed) return;
+      try {
+        const { success, error } = await updateChatTitleInStorage(
+          supabase,
+          chatIdToUpdate,
+          user.id,
+          trimmed
+        );
+        if (error) {
+          console.error("Error updating chat title:", error);
+          return;
+        }
+        if (success) {
+          setChatHistory((prev) =>
+            prev.map((c) =>
+              c.chatId === chatIdToUpdate ? { ...c, title: trimmed } : c
+            )
+          );
+        }
+      } catch (err) {
+        console.error("Error updating chat title:", err);
+      }
+    },
+    [user?.id, supabase]
+  );
+
   // Fetch chat history on mount and when user changes
   useEffect(() => {
     // Only retrieve if user is loaded
@@ -293,6 +325,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         retrieveChatHistory,
         loadChat,
         deleteChat,
+        updateChatTitle,
         loadMoreMessages,
         hasMoreMessages,
         isLoadingMore,

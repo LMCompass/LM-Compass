@@ -14,6 +14,7 @@ import {
   PanelLeft,
   Settings,
   Trash2,
+  Pencil,
 } from "lucide-react";
 
 import {
@@ -36,6 +37,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "./sidebar";
+import { Input } from "@/components/ui/input";
 import { SettingsDialog } from "@/components/ui/settings-dialog";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -53,10 +55,21 @@ import {
 export function AppSidebar() {
   const router = useRouter();
   const { user } = useUser();
-  const { handleNewChat, chatHistory, loadChat, deleteChat } = useChat();
+  const { handleNewChat, chatHistory, loadChat, deleteChat, updateChatTitle } =
+    useChat();
   const { toggleSidebar, state } = useSidebar();
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  const [editingChatId, setEditingChatId] = React.useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = React.useState("");
   const userButtonRef = React.useRef<HTMLDivElement>(null);
+  const editInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (editingChatId !== null && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingChatId]);
 
   const previousChats = [
     {
@@ -151,31 +164,94 @@ export function AppSidebar() {
                               key={subItem.chatId || subItem.title}
                               className="group/item flex items-center gap-0 min-w-0"
                             >
-                              <SidebarMenuSubButton asChild className="flex-1 min-w-0">
-                                <a
-                                  href={subItem.url}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    loadChat(subItem.chatId);
-                                    router.push("/chat");
-                                  }}
-                                  className="flex-1 min-w-0"
-                                >
-                                  <span className="truncate block">{subItem.title}</span>
-                                </a>
-                              </SidebarMenuSubButton>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  deleteChat(subItem.chatId);
-                                }}
-                                aria-label="Delete chat"
-                                className="shrink-0 p-1.5 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground opacity-0 group-hover/item:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
+                              {editingChatId === subItem.chatId ? (
+                                <div className="flex flex-1 min-w-0 items-center gap-1 px-2 py-1">
+                                  <Input
+                                    ref={editInputRef}
+                                    value={editingTitle}
+                                    onChange={(e) =>
+                                      setEditingTitle(e.target.value)
+                                    }
+                                    onBlur={() => {
+                                      const trimmed = editingTitle.trim();
+                                      if (trimmed) {
+                                        updateChatTitle(subItem.chatId, trimmed);
+                                      }
+                                      setEditingChatId(null);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const trimmed = editingTitle.trim();
+                                        if (trimmed) {
+                                          updateChatTitle(
+                                            subItem.chatId,
+                                            trimmed
+                                          );
+                                        }
+                                        setEditingChatId(null);
+                                      } else if (e.key === "Escape") {
+                                        setEditingChatId(null);
+                                        setEditingTitle(
+                                          subItem.title ||
+                                            `Chat ${subItem.chatId.slice(0, 8)}`
+                                        );
+                                      }
+                                    }}
+                                    className="h-7 flex-1 min-w-0 text-sm bg-sidebar-accent/50 border-sidebar-border"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                              ) : (
+                                <>
+                                  <SidebarMenuSubButton
+                                    asChild
+                                    className="flex-1 min-w-0"
+                                  >
+                                    <a
+                                      href={subItem.url}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        loadChat(subItem.chatId);
+                                        router.push("/chat");
+                                      }}
+                                      className="flex-1 min-w-0"
+                                    >
+                                      <span className="truncate block">
+                                        {subItem.title}
+                                      </span>
+                                    </a>
+                                  </SidebarMenuSubButton>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setEditingChatId(subItem.chatId);
+                                      setEditingTitle(
+                                        subItem.title ||
+                                          `Chat ${subItem.chatId.slice(0, 8)}`
+                                      );
+                                    }}
+                                    aria-label="Edit chat title"
+                                    className="shrink-0 p-1.5 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground opacity-0 group-hover/item:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      deleteChat(subItem.chatId);
+                                    }}
+                                    aria-label="Delete chat"
+                                    className="shrink-0 p-1.5 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground opacity-0 group-hover/item:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </>
+                              )}
                             </SidebarMenuSubItem>
                           ))}
                         </SidebarMenuSub>
