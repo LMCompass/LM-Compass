@@ -142,34 +142,38 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {item.items && item.items.length > 0 ? (
-                        item.items.map((subItem) => (
-                          <SidebarMenuSubItem
-                            key={subItem.chatId || subItem.title}
-                          >
-                            <SidebarMenuSubButton asChild>
-                              <a
-                                href={subItem.url}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  loadChat(subItem.chatId);
-                                  router.push("/chat");
-                                }}
-                              >
-                                <span>{subItem.title}</span>
-                              </a>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))
-                      ) : (
+                    {item.items && item.items.length > 0 ? (
+                      <div className="max-h-[min(200px,40vh)] overflow-y-auto">
+                        <SidebarMenuSub>
+                          {item.items.map((subItem) => (
+                            <SidebarMenuSubItem
+                              key={subItem.chatId || subItem.title}
+                            >
+                              <SidebarMenuSubButton asChild>
+                                <a
+                                  href={subItem.url}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    loadChat(subItem.chatId);
+                                    router.push("/chat");
+                                  }}
+                                >
+                                  <span>{subItem.title}</span>
+                                </a>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </div>
+                    ) : (
+                      <SidebarMenuSub>
                         <SidebarMenuSubItem>
                           <div className="px-2 py-1.5 text-sm text-muted-foreground">
                             No previous chats
                           </div>
                         </SidebarMenuSubItem>
-                      )}
-                    </SidebarMenuSub>
+                      </SidebarMenuSub>
+                    )}
                   </CollapsibleContent>
                 </SidebarMenuItem>
               </Collapsible>
