@@ -35,8 +35,16 @@ import {
 
 export default function Home() {
   const { theme, toggleTheme, mounted } = useTheme();
-  const { messages, setMessages, chatStarted, setChatStarted, chatId, isLoadingMore } =
-    useChat();
+  const {
+    messages,
+    setMessages,
+    chatStarted,
+    setChatStarted,
+    chatId,
+    isLoadingMore,
+    modelsFromLastLoadedChat,
+    clearModelsFromLastLoadedChat,
+  } = useChat();
   const { user, isLoaded: userLoaded } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating" | "refining">(
@@ -86,6 +94,14 @@ export default function Home() {
       setChatStarted(true);
     }
   }, [messages.length, chatStarted, setChatStarted]);
+
+  // When an old chat is loaded, prefill the models field with the models used in that chat
+  useEffect(() => {
+    if (modelsFromLastLoadedChat && modelsFromLastLoadedChat.length > 0) {
+      setSelectedModels(modelsFromLastLoadedChat);
+      clearModelsFromLastLoadedChat();
+    }
+  }, [modelsFromLastLoadedChat, clearModelsFromLastLoadedChat]);
 
   // Check if user has API key when signed in
   useEffect(() => {
