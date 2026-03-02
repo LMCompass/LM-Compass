@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
-import { PromptBasedEvaluator, NPromptBasedEvaluator, RL4FEvaluator, type ModelResponse, type EvaluationMetadata, type RL4FIterationResult, type RL4FEvaluationResult } from '@/lib/evaluation';
+import { PromptBasedEvaluator, NPromptBasedEvaluator, RL4FEvaluator, GradeHITLEvaluator, type ModelResponse, type EvaluationMetadata, type RL4FIterationResult, type RL4FEvaluationResult } from '@/lib/evaluation';
 import { saveChat, loadAllMessages } from '@/lib/chat-storage';
 import type { Message } from '@/lib/types';
 import { randomUUID } from 'crypto';
@@ -246,6 +246,7 @@ export async function POST(req: Request) {
               // Create evaluator based on selected method
               let evaluator;
               let isRL4F = false;
+              let isHITL = false;
               if (evaluationMethod === 'n-prompt-based') {
                 evaluator = new NPromptBasedEvaluator(llmClient);
               } else if (evaluationMethod === 'rl4f') {
@@ -257,45 +258,104 @@ export async function POST(req: Request) {
                 };
                 evaluator = new RL4FEvaluator(llmClient, onRefinementStart);
                 isRL4F = true;
+              } else if (evaluationMethod === 'hitl') {
+                isHITL = true;
+                evaluator = null; // HITL uses GradeHITLEvaluator separately
               } else {
                 // Default to n^2 prompt-based
                 evaluator = new PromptBasedEvaluator(llmClient);
               }
 
-              const evaluationResult = await evaluator.evaluate(
-                successfulResults,
-                {
+              let evaluationMetadata: EvaluationMetadata;
+              let iterationResults: RL4FIterationResult[] | undefined;
+
+              if (isHITL) {
+                // HITL: one example (user query + first model response), phase1 only in this request
+                const rubric = GradeHITLEvaluator.getDefaultRubric();
+                const example = {
+                  prompt: userQuery,
+                  response: successfulResults[0].content,
+                };
+                const hitlEvaluator = new GradeHITLEvaluator(
+                  llmClient,
+                  ...successfulResults.map((r) => r.model)
+                );
+                const phase1Result = await hitlEvaluator.phase1(example, rubric, 1);
+
+                const modelReasoning: Record<string, string[]> = {};
+                const meanScores: Record<string, number> = {};
+                for (const [modelName, gr] of Object.entries(phase1Result.graderResults)) {
+                  modelReasoning[modelName] = [gr.justification];
+
+                  // Only average numeric, finite scores to avoid NaN/null issues in the UI
+                  const numericVals = Object.values(gr.scores).filter(
+                    (v): v is number => typeof v === "number" && Number.isFinite(v)
+                  );
+                  if (numericVals.length > 0) {
+                    const sum = numericVals.reduce((a, b) => a + b, 0);
+                    meanScores[modelName] = sum / numericVals.length;
+                  } else {
+                    // No valid numeric scores; treat as 0 for visualization purposes
+                    meanScores[modelName] = 0;
+                  }
+                }
+
+                // Determine winner based on highest mean score (like other evaluators)
+                let winnerModel: string | null = null;
+                let tiedModels: string[] = [];
+                const meanEntries = Object.entries(meanScores);
+                if (meanEntries.length > 0) {
+                  const maxScore = Math.max(...meanEntries.map(([, score]) => score));
+                  const winners = meanEntries
+                    .filter(([, score]) => score === maxScore)
+                    .map(([modelName]) => modelName);
+                  if (winners.length === 1) {
+                    winnerModel = winners[0];
+                  } else {
+                    winnerModel = null;
+                    tiedModels = winners;
+                  }
+                }
+
+                evaluationMetadata = {
+                  winnerModel,
+                  scores: [],
+                  meanScores,
+                  modelReasoning,
+                  tiedModels,
+                  hitlPhase1: phase1Result,
+                  hitlRubric: rubric,
+                };
+                iterationResults = undefined;
+              } else {
+                const evaluationResult = await evaluator!.evaluate(successfulResults, {
                   userQuery,
                   iterations,
                   ...(rubricText && { rubric: rubricText }),
-                },
-              );
+                });
 
-              // Extract iteration results if this is RL4F
-              let iterationResults: RL4FIterationResult[] | undefined;
-              if (isRL4F && 'iterationResults' in evaluationResult) {
-                iterationResults = (evaluationResult as RL4FEvaluationResult).iterationResults;
-              }
-
-              // Aggregate reasoning for each model
-              const modelReasoning: Record<string, string[]> = {};
-              successfulResults.forEach((r) => {
-                modelReasoning[r.model] = [];
-              });
-              evaluationResult.scores.forEach((score) => {
-                if (score.reasoning !== null) {
-                  modelReasoning[score.evaluatedModel].push(score.reasoning);
+                if (isRL4F && 'iterationResults' in evaluationResult) {
+                  iterationResults = (evaluationResult as RL4FEvaluationResult).iterationResults;
                 }
-              });
 
-              // Create evaluation metadata
-              const evaluationMetadata: EvaluationMetadata = {
-                winnerModel: evaluationResult.winner ? evaluationResult.winner.model : null,
-                scores: evaluationResult.scores,
-                meanScores: evaluationResult.meanScores,
-                modelReasoning,
-                tiedModels: evaluationResult.tiedModels,
-              };
+                const modelReasoning: Record<string, string[]> = {};
+                successfulResults.forEach((r) => {
+                  modelReasoning[r.model] = [];
+                });
+                evaluationResult.scores.forEach((score) => {
+                  if (score.reasoning !== null) {
+                    modelReasoning[score.evaluatedModel].push(score.reasoning);
+                  }
+                });
+
+                evaluationMetadata = {
+                  winnerModel: evaluationResult.winner ? evaluationResult.winner.model : null,
+                  scores: evaluationResult.scores,
+                  meanScores: evaluationResult.meanScores,
+                  modelReasoning,
+                  tiedModels: evaluationResult.tiedModels,
+                };
+              }
 
               // Create assistant message for saving
               finalAssistantMessage = createAssistantMessage(allResults, evaluationMetadata, iterationResults);

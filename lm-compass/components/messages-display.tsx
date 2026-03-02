@@ -19,6 +19,8 @@ import { ModelResponseCard } from "@/components/chat/model-response-card";
 import { WinnerBanner } from "@/components/chat/winner-banner";
 import { ComparisonPanel } from "@/components/chat/comparison-panel";
 import { IterationResults } from "@/components/ui/iteration-results";
+import { HITLForm } from "@/components/chat/hitl-form";
+import type { HITLPhase2Result } from "@/lib/evaluation";
 import { useChat } from "@/contexts/chat-context";
 import { Button } from "@/components/ui/button";
 import { ChevronUp } from "lucide-react";
@@ -49,6 +51,7 @@ export function MessagesDisplay({
     content: string;
   }>(null);
   const [showComparison, setShowComparison] = useState<string | null>(null);
+  const [hitlPhase2Results, setHitlPhase2Results] = useState<Record<string, HITLPhase2Result>>({});
   const { loadMoreMessages, hasMoreMessages, isLoadingMore, chatId } = useChat();
   const { user } = useUser();
   const supabase = useSupabaseClient();
@@ -360,6 +363,75 @@ export function MessagesDisplay({
                     {message.iterationResults && message.iterationResults.length > 0 && (
                       <IterationResults results={message.iterationResults} />
                     )}
+
+                    {/* HITL: show form for human answers, or phase2 result after submit */}
+                    {hasEvaluation &&
+                      evaluationMetadata?.hitlPhase1?.hitlTriggered &&
+                      isActive && (
+                        <div className="mt-4">
+                          {hitlPhase2Results[message.id] ? (
+                            <div className="rounded-lg border bg-muted/30 p-4 max-w-2xl space-y-3">
+                              <p className="text-sm font-medium">Updated rubric (after your answers):</p>
+                              <pre className="text-xs whitespace-pre-wrap bg-background p-3 rounded overflow-auto max-h-60">
+                                {hitlPhase2Results[message.id].updatedRubric}
+                              </pre>
+                              <div>
+                                <p className="text-xs font-medium text-foreground mb-1">Updated model scores:</p>
+                                <ul className="space-y-1.5 text-xs text-muted-foreground">
+                                  {message.multiResults?.map((r) => {
+                                    const gr = hitlPhase2Results[message.id].graderResults[r.model];
+                                    if (!gr) return null;
+                                    const label = modelLabelMap[r.model] || r.model;
+                                    const numericVals = Object.values(gr.scores).filter(
+                                      (v): v is number => typeof v === "number" && Number.isFinite(v)
+                                    );
+                                    const avgScore =
+                                      numericVals.length > 0
+                                        ? (numericVals.reduce((a, b) => a + b, 0) / numericVals.length).toFixed(1)
+                                        : "—";
+                                    const scoreSummary = Object.entries(gr.scores)
+                                      .filter(([, v]) => typeof v === "number" && Number.isFinite(v))
+                                      .map(([dim, val]) => `${dim}: ${val}`)
+                                      .join("; ");
+                                    return (
+                                      <li key={r.model} className="flex flex-wrap items-baseline gap-x-2">
+                                        <span className="font-medium text-foreground">{label}</span>
+                                        <span>avg {avgScore}/100</span>
+                                        {scoreSummary && (
+                                          <span className="text-muted-foreground/80">
+                                            ({scoreSummary})
+                                          </span>
+                                        )}
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Re-graded with new rubric. Cross-eval scores:{" "}
+                                {Object.entries(
+                                  hitlPhase2Results[message.id].crossEvalResults
+                                ).map(
+                                  ([grader, scores]) =>
+                                    `${grader}: ${Object.values(scores).join(", ")}`
+                                ).join("; ")}
+                              </p>
+                            </div>
+                          ) : (
+                            <HITLForm
+                              message={message}
+                              previousUserContent={
+                                messageIndex > 0 && messages[messageIndex - 1].role === "user"
+                                  ? messages[messageIndex - 1].content
+                                  : ""
+                              }
+                              onPhase2Complete={(msgId, result) =>
+                                setHitlPhase2Results((prev) => ({ ...prev, [msgId]: result }))
+                              }
+                            />
+                          )}
+                        </div>
+                      )}
                   </div>
                 )}
 
