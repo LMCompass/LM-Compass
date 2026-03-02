@@ -9,7 +9,7 @@ import { PromptBasedEvaluator } from './prompt-based-evaluators';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const SELECTED_RUBRIC_PATH = join(process.cwd(), 'app', 'rubric', 'types', 'default.txt');
+const SELECTED_RUBRIC_PATH = join(process.cwd(), 'app', '(app)', 'rubric', 'types', 'default.txt');
 
 function loadRubric(): string {
   try {
