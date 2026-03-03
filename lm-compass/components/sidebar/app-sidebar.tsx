@@ -39,6 +39,16 @@ import {
 } from "./sidebar";
 import { Input } from "@/components/ui/input";
 import { SettingsDialog } from "@/components/ui/settings-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useChat } from "@/contexts/chat-context";
@@ -61,6 +71,8 @@ export function AppSidebar() {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [editingChatId, setEditingChatId] = React.useState<string | null>(null);
   const [editingTitle, setEditingTitle] = React.useState("");
+  const [chatIdPendingDelete, setChatIdPendingDelete] = React.useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const userButtonRef = React.useRef<HTMLDivElement>(null);
   const editInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -243,7 +255,8 @@ export function AppSidebar() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      deleteChat(subItem.chatId);
+                                      setChatIdPendingDelete(subItem.chatId);
+                                      setShowDeleteDialog(true);
                                     }}
                                     aria-label="Delete chat"
                                     className="shrink-0 p-1.5 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground opacity-0 group-hover/item:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
@@ -351,6 +364,45 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      <AlertDialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => {
+          setShowDeleteDialog(open);
+          if (!open) {
+            setChatIdPendingDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete chat</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this chat and its messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setChatIdPendingDelete(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (chatIdPendingDelete) {
+                  await deleteChat(chatIdPendingDelete);
+                }
+                setShowDeleteDialog(false);
+                setChatIdPendingDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <SidebarRail />
     </Sidebar>
   );
