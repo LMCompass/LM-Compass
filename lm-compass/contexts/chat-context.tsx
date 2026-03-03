@@ -15,6 +15,8 @@ import {
   listChats,
   loadChat as loadChatFromStorage,
   loadMoreMessages as loadMoreMessagesFromStorage,
+  deleteChat as deleteChatFromStorage,
+  updateChatTitle as updateChatTitleInStorage,
   type ChatHistoryItem,
 } from "@/lib/chat-storage";
 
@@ -34,6 +36,25 @@ const generateChatId = () => {
 // Re-export ChatHistoryItem from storage
 export type { ChatHistoryItem } from "@/lib/chat-storage";
 
+/** Extract unique model IDs from the most recent message with multiResults */
+function getModelsUsedInMessages(messages: Message[]): string[] {
+  const mostRecentWithResults = messages.findLast(
+    (msg) => msg.multiResults && msg.multiResults.length > 0,
+  );
+  if (!mostRecentWithResults?.multiResults) {
+    return [];
+  }
+
+  const uniqueModels = new Set<string>();
+  for (const r of mostRecentWithResults.multiResults) {
+    if (r.model) {
+      uniqueModels.add(r.model);
+    }
+  }
+
+  return Array.from(uniqueModels);
+}
+
 type ChatContextType = {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -41,9 +62,13 @@ type ChatContextType = {
   setChatStarted: React.Dispatch<React.SetStateAction<boolean>>;
   chatId: string;
   chatHistory: ChatHistoryItem[];
+  modelsFromLastLoadedChat: string[] | null;
+  clearModelsFromLastLoadedChat: () => void;
   handleNewChat: () => void;
   retrieveChatHistory: () => Promise<void>;
   loadChat: (chatId: string) => Promise<void>;
+  deleteChat: (chatId: string) => Promise<void>;
+  updateChatTitle: (chatId: string, title: string) => Promise<void>;
   loadMoreMessages: () => Promise<void>;
   hasMoreMessages: boolean;
   isLoadingMore: boolean;
@@ -66,6 +91,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [modelsFromLastLoadedChat, setModelsFromLastLoadedChat] = useState<string[] | null>(null);
   const { user } = useUser();
   const supabase = useSupabaseClient();
   const hasLoadedInitialChat = useRef(false);
@@ -95,6 +121,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           setHasMoreMessages(hasMore);
           setChatId(chatIdToLoad);
           setChatStarted(true);
+          // So the UI can prefill the models field when continuing this chat
+          const modelsUsed = getModelsUsedInMessages(loadedMessages);
+          setModelsFromLastLoadedChat(modelsUsed.length > 0 ? modelsUsed : null);
           // Mark that we've loaded a chat (prevents auto-loading on new chat)
           hasLoadedInitialChat.current = true;
         }
@@ -105,10 +134,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [user?.id, supabase]
   );
 
+  const clearModelsFromLastLoadedChat = useCallback(() => {
+    setModelsFromLastLoadedChat(null);
+  }, []);
+
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setChatStarted(false);
     setHasMoreMessages(false);
+    setModelsFromLastLoadedChat(null);
     const newChatId = generateChatId();
     setChatId(newChatId);
     // Prevent auto-loading after new chat
@@ -210,6 +244,64 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, supabase]);
 
+  const deleteChat = useCallback(
+    async (chatIdToDelete: string) => {
+      if (!user?.id) return;
+      try {
+        const { success, error } = await deleteChatFromStorage(
+          supabase,
+          chatIdToDelete,
+          user.id
+        );
+        if (error) {
+          console.error("Error deleting chat:", error);
+          return;
+        }
+        if (success) {
+          setChatHistory((prev) =>
+            prev.filter((c) => c.chatId !== chatIdToDelete)
+          );
+          if (chatIdToDelete === chatId) {
+            handleNewChat();
+          }
+        }
+      } catch (err) {
+        console.error("Error deleting chat:", err);
+      }
+    },
+    [user?.id, supabase, chatId, handleNewChat]
+  );
+
+  const updateChatTitle = useCallback(
+    async (chatIdToUpdate: string, title: string) => {
+      if (!user?.id) return;
+      const trimmed = title.trim();
+      if (!trimmed) return;
+      try {
+        const { success, error } = await updateChatTitleInStorage(
+          supabase,
+          chatIdToUpdate,
+          user.id,
+          trimmed
+        );
+        if (error) {
+          console.error("Error updating chat title:", error);
+          return;
+        }
+        if (success) {
+          setChatHistory((prev) =>
+            prev.map((c) =>
+              c.chatId === chatIdToUpdate ? { ...c, title: trimmed } : c
+            )
+          );
+        }
+      } catch (err) {
+        console.error("Error updating chat title:", err);
+      }
+    },
+    [user?.id, supabase]
+  );
+
   // Fetch chat history on mount and when user changes
   useEffect(() => {
     // Only retrieve if user is loaded
@@ -227,9 +319,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setChatStarted,
         chatId,
         chatHistory,
+        modelsFromLastLoadedChat,
+        clearModelsFromLastLoadedChat,
         handleNewChat,
         retrieveChatHistory,
         loadChat,
+        deleteChat,
+        updateChatTitle,
         loadMoreMessages,
         hasMoreMessages,
         isLoadingMore,
