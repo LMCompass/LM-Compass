@@ -291,33 +291,188 @@ export function MessagesDisplay({
             const userSelectedWinner = message.userSelectedWinner;
             const tiedModels = evaluationMetadata?.tiedModels || [];
 
-            const displayModel =
+            // displayModel will be decided after we know if phase2 has completed (may override winner)
+            let displayModel: string | null =
               userSelectedWinner || evaluationMetadata?.winnerModel || null;
+            const shouldShowSelectionButtons =
+              hasNoWinner && !userSelectedWinner;
+
+            const isActive = isMessageActive(message, messageIndex);
+            const isHITLTriggered =
+              hasEvaluation &&
+              evaluationMetadata?.hitlPhase1?.hitlTriggered &&
+              isActive;
+            const phase2Result = hitlPhase2Results[message.id];
+            const hasPhase2 = !!phase2Result;
+
+            // If phase 2 has completed, compute the winner based on updated scores
+            let phase2WinnerModel: string | null = null;
+            if (phase2Result) {
+              const entries = Object.entries(phase2Result.graderResults);
+              if (entries.length > 0) {
+                const meanScores: Record<string, number> = {};
+                entries.forEach(([modelName, gr]) => {
+                  const numericVals = Object.values(gr.scores).filter(
+                    (v): v is number => typeof v === "number" && Number.isFinite(v)
+                  );
+                  meanScores[modelName] =
+                    numericVals.length > 0
+                      ? numericVals.reduce((a, b) => a + b, 0) / numericVals.length
+                      : 0;
+                });
+                const meanEntries = Object.entries(meanScores);
+                const maxScore = Math.max(...meanEntries.map(([, s]) => s));
+                const winners = meanEntries.filter(([, s]) => s === maxScore);
+                if (winners.length === 1) {
+                  phase2WinnerModel = winners[0][0];
+                }
+              }
+            }
+
+            // For display bubble, prefer user-selected winner, then phase2 winner, then phase1 winner
+            if (!userSelectedWinner && phase2WinnerModel) {
+              displayModel = phase2WinnerModel;
+            }
+
             const displayResult =
               displayModel && message.multiResults
                 ? message.multiResults.find((r) => r.model === displayModel)
                 : null;
 
             const shouldShowWinnerBubble =
-              hasEvaluation && displayResult !== null;
-            const shouldShowSelectionButtons =
-              hasNoWinner && !userSelectedWinner;
-
-            const isActive = isMessageActive(message, messageIndex);
+              hasEvaluation &&
+              displayResult !== null &&
+              (!isHITLTriggered || hasPhase2);
 
             return (
               <div key={message.id} className="max-w-5xl mx-auto space-y-4">
-                {/* Only show model response cards for active messages */}
-                {hasMultipleResults && message.multiResults && isActive && (
+                {/* HITL rubric / form/result shown before model responses when disagreement is detected */}
+                {isHITLTriggered && (
+                  <div className="mt-4">
+                    {phase2Result ? (
+                      <div className="rounded-lg border bg-muted/30 p-4 max-w-2xl space-y-3">
+                        <p className="text-sm font-medium">Updated rubric (after your answers):</p>
+                        <pre className="text-xs whitespace-pre-wrap bg-background p-3 rounded overflow-auto max-h-60">
+                          {phase2Result.updatedRubric}
+                        </pre>
+                        <div>
+                          <p className="text-xs font-medium text-foreground mb-1">Updated model scores:</p>
+                          <ul className="space-y-1.5 text-xs text-muted-foreground">
+                            {message.multiResults?.map((r) => {
+                              const gr = phase2Result.graderResults[r.model];
+                              if (!gr) return null;
+                              const label = modelLabelMap[r.model] || r.model;
+                              const numericVals = Object.values(gr.scores).filter(
+                                (v): v is number => typeof v === "number" && Number.isFinite(v)
+                              );
+                              const avgScore =
+                                numericVals.length > 0
+                                  ? (numericVals.reduce((a, b) => a + b, 0) / numericVals.length).toFixed(1)
+                                  : "—";
+                              const scoreSummary = Object.entries(gr.scores)
+                                .filter(([, v]) => typeof v === "number" && Number.isFinite(v))
+                                .map(([dim, val]) => `${dim}: ${val}`)
+                                .join("; ");
+                              return (
+                                <li key={r.model} className="flex flex-wrap items-baseline gap-x-2">
+                                  <span className="font-medium text-foreground">{label}</span>
+                                  <span>avg {avgScore}/100</span>
+                                  {scoreSummary && (
+                                    <span className="text-muted-foreground/80">
+                                      ({scoreSummary})
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                        {/* Phase 2 winner summary based on updated scores */}
+                        {(() => {
+                          const entries = Object.entries(phase2Result.graderResults);
+                          if (entries.length === 0) return null;
+                          const meanScores: Record<string, number> = {};
+                          entries.forEach(([modelName, gr]) => {
+                            const numericVals = Object.values(gr.scores).filter(
+                              (v): v is number => typeof v === "number" && Number.isFinite(v)
+                            );
+                            meanScores[modelName] =
+                              numericVals.length > 0
+                                ? numericVals.reduce((a, b) => a + b, 0) / numericVals.length
+                                : 0;
+                          });
+                          const meanEntries = Object.entries(meanScores);
+                          const maxScore = Math.max(...meanEntries.map(([, s]) => s));
+                          const winners = meanEntries.filter(([, s]) => s === maxScore);
+                          if (winners.length === 0) return null;
+                          const [winnerModel, winnerScore] = winners[0];
+                          const winnerLabel = modelLabelMap[winnerModel] || winnerModel;
+                          return (
+                            <p className="text-xs font-medium text-foreground">
+                              Top model after updated rubric: {winnerLabel} ({winnerScore.toFixed(1)}/100)
+                            </p>
+                          );
+                        })()}
+                        <p className="text-xs text-muted-foreground">
+                          Re-graded with new rubric. Cross-eval scores:{" "}
+                          {Object.entries(phase2Result.crossEvalResults)
+                            .map(
+                              ([grader, scores]) =>
+                                `${grader}: ${Object.values(scores).join(", ")}`
+                            )
+                            .join("; ")}
+                        </p>
+                      </div>
+                    ) : (
+                      <HITLForm
+                        message={message}
+                        previousUserContent={
+                          messageIndex > 0 && messages[messageIndex - 1].role === "user"
+                            ? messages[messageIndex - 1].content
+                            : ""
+                        }
+                        onPhase2Complete={(msgId, result) =>
+                          setHitlPhase2Results((prev) => ({ ...prev, [msgId]: result }))
+                        }
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Only show model response cards for active messages.
+                    When HITL triggers, hide them until phase 2 completes (then show again). */}
+                {hasMultipleResults &&
+                  message.multiResults &&
+                  isActive &&
+                  (!isHITLTriggered || hasPhase2) && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {message.multiResults.map((r) => {
                       const cardKey = `${message.id}-${r.model}`;
                       const label = modelLabelMap[r.model] || r.model;
-                      const isWinner =
+                      // Winner is normally based on evaluationMetadata; after phase2, override with updated winner
+                      let isWinner =
                         message.evaluationMetadata?.winnerModel === r.model;
+                      if (phase2WinnerModel) {
+                        isWinner = phase2WinnerModel === r.model;
+                      }
                       const isUserSelected = userSelectedWinner === r.model;
-                      const score =
+                      // Default to phase 1 meanScores; if phase 2 has run, override with updated averages
+                      let score =
                         message.evaluationMetadata?.meanScores[r.model];
+                      if (phase2Result) {
+                        const gr = phase2Result.graderResults[r.model];
+                        if (gr) {
+                          const numericVals = Object.values(gr.scores).filter(
+                            (v): v is number =>
+                              typeof v === "number" && Number.isFinite(v)
+                          );
+                          if (numericVals.length > 0) {
+                            score =
+                              numericVals.reduce((a, b) => a + b, 0) /
+                              numericVals.length;
+                          }
+                        }
+                      }
 
                       return (
                         <ModelResponseCard
@@ -342,96 +497,31 @@ export function MessagesDisplay({
                   </div>
                 )}
 
-                {/* Only show WinnerBanner for active messages (last message) */}
+                {/* Winner / comparison panel for active messages (hidden when HITL triggers) */}
                 {hasEvaluation && evaluationMetadata && isActive && (
                   <div>
-                    <WinnerBanner
-                      message={message}
-                      modelLabelMap={modelLabelMap}
-                      isComparisonOpen={showComparison === message.id}
-                      onToggleComparison={() => toggleComparison(message.id)}
-                    />
+                    {!isHITLTriggered && (
+                      <>
+                        <WinnerBanner
+                          message={message}
+                          modelLabelMap={modelLabelMap}
+                          isComparisonOpen={showComparison === message.id}
+                          onToggleComparison={() => toggleComparison(message.id)}
+                        />
 
-                    {showComparison === message.id && (
-                      <ComparisonPanel
-                        message={message}
-                        modelLabelMap={modelLabelMap}
-                        userSelectedWinner={userSelectedWinner}
-                      />
+                        {showComparison === message.id && (
+                          <ComparisonPanel
+                            message={message}
+                            modelLabelMap={modelLabelMap}
+                            userSelectedWinner={userSelectedWinner}
+                          />
+                        )}
+
+                        {message.iterationResults && message.iterationResults.length > 0 && (
+                          <IterationResults results={message.iterationResults} />
+                        )}
+                      </>
                     )}
-
-                    {message.iterationResults && message.iterationResults.length > 0 && (
-                      <IterationResults results={message.iterationResults} />
-                    )}
-
-                    {/* HITL: show form for human answers, or phase2 result after submit */}
-                    {hasEvaluation &&
-                      evaluationMetadata?.hitlPhase1?.hitlTriggered &&
-                      isActive && (
-                        <div className="mt-4">
-                          {hitlPhase2Results[message.id] ? (
-                            <div className="rounded-lg border bg-muted/30 p-4 max-w-2xl space-y-3">
-                              <p className="text-sm font-medium">Updated rubric (after your answers):</p>
-                              <pre className="text-xs whitespace-pre-wrap bg-background p-3 rounded overflow-auto max-h-60">
-                                {hitlPhase2Results[message.id].updatedRubric}
-                              </pre>
-                              <div>
-                                <p className="text-xs font-medium text-foreground mb-1">Updated model scores:</p>
-                                <ul className="space-y-1.5 text-xs text-muted-foreground">
-                                  {message.multiResults?.map((r) => {
-                                    const gr = hitlPhase2Results[message.id].graderResults[r.model];
-                                    if (!gr) return null;
-                                    const label = modelLabelMap[r.model] || r.model;
-                                    const numericVals = Object.values(gr.scores).filter(
-                                      (v): v is number => typeof v === "number" && Number.isFinite(v)
-                                    );
-                                    const avgScore =
-                                      numericVals.length > 0
-                                        ? (numericVals.reduce((a, b) => a + b, 0) / numericVals.length).toFixed(1)
-                                        : "—";
-                                    const scoreSummary = Object.entries(gr.scores)
-                                      .filter(([, v]) => typeof v === "number" && Number.isFinite(v))
-                                      .map(([dim, val]) => `${dim}: ${val}`)
-                                      .join("; ");
-                                    return (
-                                      <li key={r.model} className="flex flex-wrap items-baseline gap-x-2">
-                                        <span className="font-medium text-foreground">{label}</span>
-                                        <span>avg {avgScore}/100</span>
-                                        {scoreSummary && (
-                                          <span className="text-muted-foreground/80">
-                                            ({scoreSummary})
-                                          </span>
-                                        )}
-                                      </li>
-                                    );
-                                  })}
-                                </ul>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                Re-graded with new rubric. Cross-eval scores:{" "}
-                                {Object.entries(
-                                  hitlPhase2Results[message.id].crossEvalResults
-                                ).map(
-                                  ([grader, scores]) =>
-                                    `${grader}: ${Object.values(scores).join(", ")}`
-                                ).join("; ")}
-                              </p>
-                            </div>
-                          ) : (
-                            <HITLForm
-                              message={message}
-                              previousUserContent={
-                                messageIndex > 0 && messages[messageIndex - 1].role === "user"
-                                  ? messages[messageIndex - 1].content
-                                  : ""
-                              }
-                              onPhase2Complete={(msgId, result) =>
-                                setHitlPhase2Results((prev) => ({ ...prev, [msgId]: result }))
-                              }
-                            />
-                          )}
-                        </div>
-                      )}
                   </div>
                 )}
 
