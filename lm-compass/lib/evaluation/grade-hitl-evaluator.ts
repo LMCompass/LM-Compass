@@ -89,7 +89,7 @@ export class GradeHITLEvaluator extends Evaluator {
 
   private gradingPrompt(example: HITLExample, rubric: string): string {
     return `You are an expert grader.
-Use the rubric below to grade the student's response.
+Use the rubric below to grade the model's response.
 
 RUBRIC:
 ${rubric}
@@ -106,7 +106,7 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.
 Question/Task:
 ${example.prompt}
 
-Student Response:
+Model Response:
 ${example.response}`;
   }
 
@@ -144,7 +144,7 @@ ${example.response}`;
 ORIGINAL QUESTION:
 ${example.prompt}
 
-STUDENT RESPONSE:
+MODEL RESPONSE:
 ${example.response}
 
 GRADING RUBRIC:
@@ -237,7 +237,7 @@ ${rubric}`;
     const userPrompt = `Example prompt:
 ${example.prompt}
 
-Student response:
+Model response:
 ${example.response}
 
 Grader justification:
@@ -288,7 +288,7 @@ ${rubric}`;
     const userPrompt = `Example prompt:
 ${example.prompt}
 
-Student response:
+Model response:
 ${example.response}
 
 Grader scores: ${JSON.stringify(grade.scores)}
