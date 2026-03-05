@@ -8,6 +8,12 @@ export type ChatHistoryItem = {
   updatedAt?: Date;
 };
 
+// Stored on the chat record for display when reopening a chat
+export type ChatMetadata = {
+  evaluationMethod?: string;
+  iterations?: number;
+};
+
 type DatabaseMessage = {
   id: string;
   chat_id: string;
@@ -29,6 +35,7 @@ type DatabaseChat = {
   title: string | null;
   created_at: string;
   updated_at: string;
+  metadata?: ChatMetadata | null;
 };
 
 /**
@@ -39,7 +46,8 @@ export async function saveChat(
   chatId: string,
   userId: string,
   messages: Message[],
-  title?: string
+  title?: string,
+  chatMetadata?: ChatMetadata
 ): Promise<{ success: boolean; error?: string }> {
   try {
     console.log('saveChat called:', { chatId, userId, messagesCount: messages.length });
@@ -58,19 +66,41 @@ export async function saveChat(
         : "New Chat";
     }
 
-    // Upsert chat record
-    console.log('Upserting chat:', { id: chatId, user_id: userId, title: chatTitle });
+    // Upsert chat record (include metadata when provided)
+    const chatRow: {
+      id: string;
+      user_id: string;
+      title: string;
+      updated_at: string;
+      metadata?: ChatMetadata;
+    } = {
+      id: chatId,
+      user_id: userId,
+      title: chatTitle,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (chatMetadata && (chatMetadata.evaluationMethod != null || chatMetadata.iterations != null)) {
+      chatRow.metadata = {
+        ...(chatMetadata.evaluationMethod != null && {
+          evaluationMethod: chatMetadata.evaluationMethod,
+        }),
+        ...(chatMetadata.iterations != null && {
+          iterations: chatMetadata.iterations,
+        }),
+      };
+    }
+
+    console.log('Upserting chat:', {
+      id: chatId,
+      user_id: userId,
+      title: chatTitle,
+      metadata: chatRow.metadata,
+    });
+
     const { error: chatError } = await supabase
       .from("chats")
-      .upsert(
-        {
-          id: chatId,
-          user_id: userId,
-          title: chatTitle,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
+      .upsert(chatRow, { onConflict: "id" });
 
     if (chatError) {
       console.error('Error upserting chat:', chatError);
@@ -138,18 +168,19 @@ export async function saveChat(
 
 /**
  * Loads a chat and its messages from the database.
+ * Returns chatMetadata (evaluationMethod, iterations) when present for display when reopening.
  */
 export async function loadChat(
   supabase: SupabaseClient,
   chatId: string,
   userId: string
-): Promise<{ messages: Message[] | null; hasMore: boolean; error?: string }> {
+): Promise<{ messages: Message[] | null; hasMore: boolean; chatMetadata?: ChatMetadata | null; error?: string }> {
   try {
-    // Verify chat belongs to user
+    // Verify chat belongs to user and load metadata
     console.log('loadChat: Attempting to load chat', { chatId, userId });
     const { data: chat, error: chatError } = await supabase
       .from("chats")
-      .select("id, user_id")
+      .select("id, user_id, metadata")
       .eq("id", chatId)
       .eq("user_id", userId)
       .single();
@@ -157,6 +188,8 @@ export async function loadChat(
     if (chatError || !chat) {
       return { messages: null, hasMore: false, error: "Chat not found" };
     }
+
+    const chatMetadata = (chat as DatabaseChat).metadata ?? null;
 
     // First, get the total count of messages
     const { count } = await supabase
@@ -177,7 +210,7 @@ export async function loadChat(
     }
 
     if (!dbMessages || dbMessages.length === 0) {
-      return { messages: [], hasMore: false };
+      return { messages: [], hasMore: false, chatMetadata };
     }
 
     // Reverse the messages to get them in correct chronological order
@@ -213,7 +246,7 @@ export async function loadChat(
 
     const hasMore = (count || 0) > dbMessages.length;
 
-    return { messages, hasMore };
+    return { messages, hasMore, chatMetadata };
   } catch (error) {
     return {
       messages: null,

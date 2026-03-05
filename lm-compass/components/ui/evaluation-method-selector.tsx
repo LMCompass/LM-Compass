@@ -27,11 +27,18 @@ interface EvaluationMethodSelectorProps {
   onChange: (value: string) => void
 }
 
-const evaluationMethods = [
+export const EVALUATION_METHODS = [
   { value: "prompt-based", label: "Prompt-based scoring" },
   { value: "n-prompt-based", label: "One-Shot Prompt-based scoring" },
   { value: "rl4f", label: "Rationale Based Self Critique Loops" },
-]
+  { value: "hitl", label: "Human-in-the-loop (HITL) rubric refinement" },
+] as const
+
+export function getEvaluationMethodLabel(value: string): string {
+  return EVALUATION_METHODS.find((m) => m.value === value)?.label ?? value
+}
+
+const evaluationMethods = EVALUATION_METHODS
 
 export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSelectorProps) {
   const [open, setOpen] = React.useState(false)

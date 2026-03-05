@@ -4,7 +4,7 @@ import { PromptInputComponent } from "./prompt-input";
 import { MessagesDisplay } from "@/components/messages-display";
 import { useState, useEffect, useRef } from "react";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
-import { EvaluationMethodSelector } from "@/components/ui/evaluation-method-selector";
+import { EvaluationMethodSelector, getEvaluationMethodLabel } from "@/components/ui/evaluation-method-selector";
 import { IterationsSelector } from "@/components/ui/iterations-selector";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon, KeyRound, LogIn } from "lucide-react";
@@ -43,7 +43,10 @@ export default function Home() {
     chatId,
     isLoadingMore,
     modelsFromLastLoadedChat,
+    chatMetadataFromLoadedChat,
+    loadedChatDisplayInfo,
     clearModelsFromLastLoadedChat,
+    clearChatMetadataFromLoadedChat,
   } = useChat();
   const { user, isLoaded: userLoaded } = useUser();
   const [isLoading, setIsLoading] = useState(false);
@@ -95,13 +98,27 @@ export default function Home() {
     }
   }, [messages.length, chatStarted, setChatStarted]);
 
-  // When an old chat is loaded, prefill the models field with the models used in that chat
+  // When an old chat is loaded, prefill the models / evaluation method / iterations used in that chat
   useEffect(() => {
     if (modelsFromLastLoadedChat && modelsFromLastLoadedChat.length > 0) {
       setSelectedModels(modelsFromLastLoadedChat);
       clearModelsFromLastLoadedChat();
     }
-  }, [modelsFromLastLoadedChat, clearModelsFromLastLoadedChat]);
+    if (chatMetadataFromLoadedChat) {
+      if (chatMetadataFromLoadedChat.evaluationMethod) {
+        setSelectedRubric(chatMetadataFromLoadedChat.evaluationMethod);
+      }
+      if (chatMetadataFromLoadedChat.iterations != null) {
+        setIterations(chatMetadataFromLoadedChat.iterations);
+      }
+      clearChatMetadataFromLoadedChat();
+    }
+  }, [
+    modelsFromLastLoadedChat,
+    chatMetadataFromLoadedChat,
+    clearModelsFromLastLoadedChat,
+    clearChatMetadataFromLoadedChat,
+  ]);
 
   // Check if user has API key when signed in
   useEffect(() => {
@@ -175,35 +192,60 @@ export default function Home() {
   return (
     <SidebarInset className="overflow-hidden">
       <div className="h-screen flex flex-col overflow-hidden">
-        <header className="flex-shrink-0 flex items-center gap-4 p-4 sm:p-6 border-b border-border">
-          <SidebarTrigger className="md:hidden -ml-1 shrink-0" />
-          <MultiModelSelector
-            values={selectedModels}
-            onChange={handleMultiModelChange}
-          />
-          <EvaluationMethodSelector
-            value={selectedRubric}
-            onChange={setSelectedRubric}
-          />
-          {selectedRubric === "rl4f" && (
-            <IterationsSelector
-              value={iterations}
-              onChange={setIterations}
+        <header className="flex-shrink-0 flex flex-col gap-2 border-b border-border">
+          <div className="flex items-center gap-4 p-4 sm:p-6">
+            <SidebarTrigger className="md:hidden -ml-1 shrink-0" />
+            <MultiModelSelector
+              values={selectedModels}
+              onChange={handleMultiModelChange}
             />
-          )}
-          <div className="flex-1" />
-          <Button
-            variant="outline"
-            onClick={toggleTheme}
-            disabled={!mounted}
-            size="icon"
-          >
-            {mounted && theme === "dark" ? (
-              <Sun className="size-4" />
-            ) : (
-              <Moon className="size-4" />
+            <EvaluationMethodSelector
+              value={selectedRubric}
+              onChange={setSelectedRubric}
+            />
+            {selectedRubric === "rl4f" && (
+              <IterationsSelector
+                value={iterations}
+                onChange={setIterations}
+              />
             )}
-          </Button>
+            <div className="flex-1" />
+            <Button
+              variant="outline"
+              onClick={toggleTheme}
+              disabled={!mounted}
+              size="icon"
+            >
+              {mounted && theme === "dark" ? (
+                <Sun className="size-4" />
+              ) : (
+                <Moon className="size-4" />
+              )}
+            </Button>
+          </div>
+          {loadedChatDisplayInfo && (loadedChatDisplayInfo.models.length > 0 || loadedChatDisplayInfo.evaluationMethod) && (
+            <div className="px-4 sm:px-6 pb-3 pt-0 text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>This chat used:</span>
+              {loadedChatDisplayInfo.models.length > 0 && (
+                <span>
+                  <strong className="font-medium text-foreground">Models:</strong>{" "}
+                  {loadedChatDisplayInfo.models.join(", ")}
+                </span>
+              )}
+              {loadedChatDisplayInfo.evaluationMethod && (
+                <span>
+                  <strong className="font-medium text-foreground">Evaluation:</strong>{" "}
+                  {getEvaluationMethodLabel(loadedChatDisplayInfo.evaluationMethod)}
+                </span>
+              )}
+              {loadedChatDisplayInfo.iterations != null && loadedChatDisplayInfo.iterations > 1 && (
+                <span>
+                  <strong className="font-medium text-foreground">Iterations:</strong>{" "}
+                  {loadedChatDisplayInfo.iterations}
+                </span>
+              )}
+            </div>
+          )}
         </header>
 
         <MessagesDisplay

@@ -18,6 +18,7 @@ import {
   deleteChat as deleteChatFromStorage,
   updateChatTitle as updateChatTitleInStorage,
   type ChatHistoryItem,
+  type ChatMetadata,
 } from "@/lib/chat-storage";
 
 // Generate a random chat ID using crypto.randomUUID for better entropy and collision resistance
@@ -63,7 +64,11 @@ type ChatContextType = {
   chatId: string;
   chatHistory: ChatHistoryItem[];
   modelsFromLastLoadedChat: string[] | null;
+  chatMetadataFromLoadedChat: ChatMetadata | null;
+  /** Snapshot of models + evaluation method for display when viewing a loaded chat */
+  loadedChatDisplayInfo: { models: string[]; evaluationMethod?: string; iterations?: number } | null;
   clearModelsFromLastLoadedChat: () => void;
+  clearChatMetadataFromLoadedChat: () => void;
   handleNewChat: () => void;
   retrieveChatHistory: () => Promise<void>;
   loadChat: (chatId: string) => Promise<void>;
@@ -92,6 +97,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [modelsFromLastLoadedChat, setModelsFromLastLoadedChat] = useState<string[] | null>(null);
+  const [chatMetadataFromLoadedChat, setChatMetadataFromLoadedChat] = useState<ChatMetadata | null>(null);
+  const [loadedChatDisplayInfo, setLoadedChatDisplayInfo] = useState<{
+    models: string[];
+    evaluationMethod?: string;
+    iterations?: number;
+  } | null>(null);
   const { user } = useUser();
   const supabase = useSupabaseClient();
   const hasLoadedInitialChat = useRef(false);
@@ -105,7 +116,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       try {
 
-        const { messages: loadedMessages, hasMore, error } = await loadChatFromStorage(
+        const { messages: loadedMessages, hasMore, chatMetadata, error } = await loadChatFromStorage(
           supabase,
           chatIdToLoad,
           user.id
@@ -124,6 +135,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           // So the UI can prefill the models field when continuing this chat
           const modelsUsed = getModelsUsedInMessages(loadedMessages);
           setModelsFromLastLoadedChat(modelsUsed.length > 0 ? modelsUsed : null);
+          // Store evaluation method/iterations for display when reopening
+          setChatMetadataFromLoadedChat(chatMetadata ?? null);
+          setLoadedChatDisplayInfo({
+            models: modelsUsed,
+            ...(chatMetadata?.evaluationMethod != null && { evaluationMethod: chatMetadata.evaluationMethod }),
+            ...(chatMetadata?.iterations != null && { iterations: chatMetadata.iterations }),
+          });
           // Mark that we've loaded a chat (prevents auto-loading on new chat)
           hasLoadedInitialChat.current = true;
         }
@@ -138,11 +156,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setModelsFromLastLoadedChat(null);
   }, []);
 
+  const clearChatMetadataFromLoadedChat = useCallback(() => {
+    setChatMetadataFromLoadedChat(null);
+  }, []);
+
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setChatStarted(false);
     setHasMoreMessages(false);
     setModelsFromLastLoadedChat(null);
+    setChatMetadataFromLoadedChat(null);
+    setLoadedChatDisplayInfo(null);
     const newChatId = generateChatId();
     setChatId(newChatId);
     // Prevent auto-loading after new chat
@@ -320,7 +344,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         chatId,
         chatHistory,
         modelsFromLastLoadedChat,
+        chatMetadataFromLoadedChat,
+        loadedChatDisplayInfo,
         clearModelsFromLastLoadedChat,
+        clearChatMetadataFromLoadedChat,
         handleNewChat,
         retrieveChatHistory,
         loadChat,
