@@ -335,7 +335,12 @@ export async function POST(req: Request) {
               }
               
               // Save to database (non-blocking, don't wait for it)
-              saveChat(supabase, chatId, userId, messagesToSave).then((result) => {
+              // Include evaluation metadata so we can show it when reopening the chat
+              const chatMetadata = {
+                evaluationMethod,
+                ...(iterations != null && { iterations }),
+              };
+              saveChat(supabase, chatId, userId, messagesToSave, undefined, chatMetadata).then((result) => {
                 if (result.success) {
                   console.log('Chat saved successfully');
                 } else {
