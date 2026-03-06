@@ -182,6 +182,34 @@ export async function getRubrics() {
   }
 }
 
+export async function deleteRubric(id: string) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("rubrics")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting rubric:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Internal server error",
+    };
+  }
+}
+
 export async function getDefaultRubricCategories(): Promise<{
   success: boolean;
   data?: RubricCategory[];

@@ -7,7 +7,7 @@ import {
   useSidebar,
 } from "@/components/sidebar/sidebar";
 import { Button } from "@/components/ui/button";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Trash2 } from "lucide-react";
 import { AddRubricDialog, type NewRubricInput } from "@/components/add-rubric-dialog";
 import { createRubric } from "../actions";
 import { useSupabaseClient } from "@/utils/supabase/client";
@@ -24,6 +24,16 @@ import {
   ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type RubricRow = {
   id: string;
@@ -51,6 +61,8 @@ export default function ViewRubricsPage() {
   const [selectedRubricId, setSelectedRubricId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [rubricIdPendingDelete, setRubricIdPendingDelete] = useState<string | null>(null);
 
   const selectedRubric = useMemo(
     () => rubrics.find((r) => r.id === selectedRubricId) ?? null,
@@ -248,16 +260,31 @@ export default function ViewRubricsPage() {
 
               {/* Right: selected preview */}
               <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-background">
-                <div className="border-b px-4 py-3">
-                  <div className="text-sm font-semibold">
-                    {selectedRubric
-                      ? selectedRubric.rubric_title?.trim() || "Untitled rubric"
-                      : "Rubric preview"}
-                  </div>
-                  {selectedRubric?.created_at && (
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      Created {formatDate(selectedRubric.created_at) ?? selectedRubric.created_at}
+                <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold">
+                      {selectedRubric
+                        ? selectedRubric.rubric_title?.trim() || "Untitled rubric"
+                        : "Rubric preview"}
                     </div>
+                    {selectedRubric?.created_at && (
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        Created {formatDate(selectedRubric.created_at) ?? selectedRubric.created_at}
+                      </div>
+                    )}
+                  </div>
+                  {selectedRubric && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setRubricIdPendingDelete(selectedRubric.id);
+                        setShowDeleteDialog(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
                   )}
                 </div>
 
@@ -296,6 +323,63 @@ export default function ViewRubricsPage() {
           onOpenChange={setShowAddRubricDialog}
           onSave={handleSaveRubric}
         />
+        <AlertDialog
+          open={showDeleteDialog}
+          onOpenChange={(open) => {
+            setShowDeleteDialog(open);
+            if (!open) {
+              setRubricIdPendingDelete(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete rubric</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete this rubric. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setRubricIdPendingDelete(null);
+                }}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (rubricIdPendingDelete) {
+                    console.log("Deleting rubric via client:", {
+                      id: rubricIdPendingDelete,
+                      userId: user?.id,
+                    });
+                    if (!user?.id) {
+                      console.error("Cannot delete rubric: no user id");
+                    } else {
+                      const { error } = await supabase
+                        .from("rubrics")
+                        .delete()
+                        .eq("id", rubricIdPendingDelete)
+                        .eq("user_id", user.id);
+
+                      if (error) {
+                        console.error("Error deleting rubric:", error);
+                      } else {
+                        await refreshRubrics();
+                      }
+                    }
+                  }
+                  setShowDeleteDialog(false);
+                  setRubricIdPendingDelete(null);
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SidebarInset>
   );
