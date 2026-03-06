@@ -168,6 +168,16 @@ export async function POST(req: Request) {
       );
     }
 
+    // Enforce minimum model count for HITL evaluation so the limitation is clear to the user
+    if (evaluationMethod === 'hitl' && modelsToQuery.length < GradeHITLEvaluator.MIN_MODELS) {
+      return NextResponse.json(
+        {
+          error: `Human-in-the-loop evaluation requires at least ${GradeHITLEvaluator.MIN_MODELS} models. Please select ${GradeHITLEvaluator.MIN_MODELS} or more models before using this evaluation method.`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Create a readable stream for progress updates
     const stream = new ReadableStream({
       async start(controller) {
@@ -280,7 +290,7 @@ export async function POST(req: Request) {
                   llmClient,
                   ...successfulResults.map((r) => r.model)
                 );
-                const phase1Result = await hitlEvaluator.phase1(example, rubric, 1);
+                const phase1Result = await hitlEvaluator.phase1(example, rubric, 20);
 
                 const modelReasoning: Record<string, string[]> = {};
                 const meanScores: Record<string, number> = {};

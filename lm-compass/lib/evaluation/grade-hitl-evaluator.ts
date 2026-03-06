@@ -56,6 +56,12 @@ export interface HITLPhase2Result {
  * so it works with OpenRouter IDs from the chat (not just candidateModels names).
  */
 export class GradeHITLEvaluator extends Evaluator {
+  /**
+   * Minimum number of models required for HITL evaluation to be meaningful.
+   * With fewer than this, cross-evaluation of graders is too weak.
+   */
+  static readonly MIN_MODELS = 3;
+
   constructor(client: OpenAI, ...modelNames: string[]) {
     super(client, ...modelNames);
   }
@@ -324,6 +330,12 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.`;
     rubric: string,
     scoreRangeThreshold: number = 20
   ): Promise<HITLPhase1Result> {
+    if (this.modelNames.length < GradeHITLEvaluator.MIN_MODELS) {
+      throw new Error(
+        `Human-in-the-loop grading requires at least ${GradeHITLEvaluator.MIN_MODELS} models, but received ${this.modelNames.length}.`
+      );
+    }
+
     const graderResults = await this.gradeAllModels(example, rubric);
     const crossEvalResults = await this.crossEvaluateGraders(example, rubric, graderResults);
     const [hitlTriggered, scoreRanges] = this.checkScoreRange(crossEvalResults, scoreRangeThreshold);
