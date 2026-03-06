@@ -8,7 +8,7 @@ import {
 } from "@/components/sidebar/sidebar";
 import { Button } from "@/components/ui/button";
 import { FileText, Plus } from "lucide-react";
-import { AddRubricDialog } from "@/components/add-rubric-dialog";
+import { AddRubricDialog, type NewRubricInput } from "@/components/add-rubric-dialog";
 import { createRubric } from "../actions";
 import { useSupabaseClient } from "@/utils/supabase/client";
 import { useUser } from "@clerk/nextjs";
@@ -105,10 +105,7 @@ export default function ViewRubricsPage() {
     }
   }, [rubrics, selectedRubricId]);
 
-  const handleSaveRubric = async (rubric: {
-    name: string;
-    description: string;
-  }) => {
+  const handleSaveRubric = async (rubric: NewRubricInput) => {
     const result = await createRubric(rubric);
 
     if (result.success) {

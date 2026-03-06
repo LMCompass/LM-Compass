@@ -2,26 +2,138 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/utils/supabase/server";
+import {
+  buildRubricFromWeights,
+  loadDefaultRubricText,
+  parseDefaultRubric,
+} from "@/lib/rubrics";
+import type { RubricCategory } from "@/lib/rubrics";
 
-export async function createRubric(rubric: { name: string; description: string }) {
+type CreateRubricFromDefaultPayload = {
+  mode: "weight-adjusted-default";
+  title: string;
+  weights: Record<string, number>;
+};
+
+type CreateCustomRubricPayload = {
+  mode: "custom";
+  title: string;
+  content: string;
+};
+
+type LegacyCreateRubricPayload = {
+  name: string;
+  description: string;
+};
+
+export async function createRubric(
+  input:
+    | CreateRubricFromDefaultPayload
+    | CreateCustomRubricPayload
+    | LegacyCreateRubricPayload
+) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return { error: "Unauthorized", success: false };
     }
 
-    if (!rubric.name?.trim() || !rubric.description?.trim()) {
-      return { error: "Name and description are required", success: false };
+    let mode: "weight-adjusted-default" | "custom";
+    let title: string;
+    let content: string;
+    let weightsJson: Record<string, number> | null = null;
+
+    if ("mode" in input) {
+      title = input.title?.trim() ?? "";
+      if (!title) {
+        return { error: "Name is required", success: false };
+      }
+
+      if (input.mode === "weight-adjusted-default") {
+        mode = "weight-adjusted-default";
+
+        const rawWeights = input.weights ?? {};
+
+        const defaultText = loadDefaultRubricText();
+        const categories = parseDefaultRubric(defaultText);
+
+        if (!categories.length) {
+          return {
+            error: "Default rubric is not configured correctly.",
+            success: false,
+          };
+        }
+
+        const categoryKeys = new Set(categories.map((c) => c.key));
+
+        for (const key of Object.keys(rawWeights)) {
+          if (!categoryKeys.has(key)) {
+            return {
+              error: `Unknown rubric category: ${key}`,
+              success: false,
+            };
+          }
+        }
+
+        const normalizedWeights: Record<string, number> = {};
+        for (const category of categories) {
+          const value = rawWeights[category.key];
+          if (
+            typeof value !== "number" ||
+            !Number.isFinite(value) ||
+            value <= 0
+          ) {
+            return {
+              error: `Invalid weight for category "${category.key}".`,
+              success: false,
+            };
+          }
+          normalizedWeights[category.key] = value;
+        }
+
+        const total = Object.values(normalizedWeights).reduce(
+          (sum, v) => sum + v,
+          0
+        );
+        if (total !== 100) {
+          return {
+            error: `Total points must be 100, got ${total}.`,
+            success: false,
+          };
+        }
+
+        weightsJson = normalizedWeights;
+        content = buildRubricFromWeights(categories, normalizedWeights);
+      } else {
+        mode = "custom";
+        content = input.content?.trim() ?? "";
+        if (!content) {
+          return { error: "Description is required", success: false };
+        }
+      }
+    } else {
+      mode = "custom";
+      title = input.name?.trim() ?? "";
+      content = input.description?.trim() ?? "";
+
+      if (!title || !content) {
+        return {
+          error: "Name and description are required",
+          success: false,
+        };
+      }
     }
 
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from('rubrics')
+      .from("rubrics")
       .insert({
-        rubric_title: rubric.name,
-        rubric_content: rubric.description,
+        rubric_title: title,
+        rubric_content: content,
         user_id: userId,
+        mode,
+        weights_json: weightsJson,
       })
       .select()
       .single();
@@ -69,4 +181,34 @@ export async function getRubrics() {
     };
   }
 }
+
+export async function getDefaultRubricCategories(): Promise<{
+  success: boolean;
+  data?: RubricCategory[];
+  error?: string;
+}> {
+  try {
+    const text = loadDefaultRubricText();
+    const categories = parseDefaultRubric(text);
+
+    if (!categories.length) {
+      return {
+        success: false,
+        error: "Default rubric is not configured correctly.",
+      };
+    }
+
+    return { success: true, data: categories };
+  } catch (error) {
+    console.error("Error loading default rubric categories:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to load default rubric categories",
+    };
+  }
+}
+
 

@@ -12,50 +12,154 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { RubricCategory } from "@/lib/rubrics";
+import { getDefaultRubricCategories } from "@/app/(app)/rubric/actions";
+
+type CreateRubricFromDefaultPayload = {
+  mode: "weight-adjusted-default";
+  title: string;
+  weights: Record<string, number>;
+};
+
+type CreateCustomRubricPayload = {
+  mode: "custom";
+  title: string;
+  content: string;
+};
+
+export type NewRubricInput =
+  | CreateRubricFromDefaultPayload
+  | CreateCustomRubricPayload;
 
 interface AddRubricDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave?: (rubric: { name: string; description: string }) => void;
+  onSave?: (rubric: NewRubricInput) => void | Promise<void>;
 }
 
 export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogProps) {
+  const [mode, setMode] = useState<"custom" | "weight-adjusted-default">("custom");
   const [rubricName, setRubricName] = useState("");
   const [rubricDescription, setRubricDescription] = useState("");
+  const [categories, setCategories] = useState<RubricCategory[] | null>(null);
+  const [weights, setWeights] = useState<Record<string, number>>({});
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
   // Clear form when dialog is closed (handles ESC, click outside, etc.)
   useEffect(() => {
     if (!open) {
       setRubricName("");
       setRubricDescription("");
+      setMode("custom");
+      setCategories(null);
+      setWeights({});
+      setIsLoadingCategories(false);
+      setCategoriesError(null);
     }
   }, [open]);
 
+  // Lazy-load default categories when switching into "weight-adjusted-default"
+  useEffect(() => {
+    if (!open) return;
+    if (mode !== "weight-adjusted-default") return;
+    if (categories || isLoadingCategories) return;
+
+    const loadCategories = async () => {
+      setIsLoadingCategories(true);
+      setCategoriesError(null);
+      try {
+        const result = await getDefaultRubricCategories();
+        if (!result.success || !result.data) {
+          setCategoriesError(result.error ?? "Failed to load default rubric.");
+          setCategories(null);
+          setWeights({});
+          return;
+        }
+
+        setCategories(result.data);
+        const initialWeights: Record<string, number> = {};
+        for (const cat of result.data) {
+          initialWeights[cat.key] = cat.defaultPoints;
+        }
+        setWeights(initialWeights);
+      } catch (error) {
+        console.error("Failed to load default rubric categories:", error);
+        setCategoriesError("Failed to load default rubric.");
+        setCategories(null);
+        setWeights({});
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    void loadCategories();
+  }, [open, mode, categories, isLoadingCategories]);
+
   const clearForm = () => {
-    // Clear form and close dialog
     setRubricName("");
     setRubricDescription("");
+    setMode("custom");
+    setCategories(null);
+    setWeights({});
+    setCategoriesError(null);
     onOpenChange(false);
   };
 
-  const isFormValid = rubricName.trim() !== "" && rubricDescription.trim() !== "";
+  const totalPoints =
+    mode === "weight-adjusted-default"
+      ? Object.values(weights).reduce((sum, v) => sum + (Number.isFinite(v) ? v : 0), 0)
+      : 0;
 
-  const handleSave = () => {
-    // Validation: both fields must be filled
-    if (!isFormValid) {
+  const isCustomValid =
+    rubricName.trim() !== "" && rubricDescription.trim() !== "";
+
+  const isDefaultModeValid =
+    rubricName.trim() !== "" &&
+    categories != null &&
+    categories.length > 0 &&
+    Object.keys(weights).length === categories.length &&
+    Object.values(weights).every((v) => Number.isFinite(v) && v > 0) &&
+    totalPoints === 100;
+
+  const handleSave = async () => {
+    if (!onSave) {
+      if (mode === "custom") {
+        if (!isCustomValid) return;
+        console.log("Saving rubric:", {
+          mode: "custom",
+          title: rubricName,
+          content: rubricDescription,
+        });
+      } else {
+        if (!isDefaultModeValid) return;
+        console.log("Saving rubric:", {
+          mode: "weight-adjusted-default",
+          title: rubricName,
+          weights,
+        });
+      }
+      clearForm();
       return;
     }
 
-    const rubric = { name: rubricName, description: rubricDescription };
-    
-    // Call the onSave callback if provided
-    if (onSave) {
-      onSave(rubric);
+    if (mode === "custom") {
+      if (!isCustomValid) return;
+      await onSave({
+        mode: "custom",
+        title: rubricName.trim(),
+        content: rubricDescription.trim(),
+      });
     } else {
-      // Default behavior: log to console
-      console.log("Saving rubric:", rubric);
+      if (!isDefaultModeValid) return;
+      await onSave({
+        mode: "weight-adjusted-default",
+        title: rubricName.trim(),
+        weights,
+      });
     }
-    
+
     clearForm();
   };
 
@@ -72,7 +176,28 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
             Create a new evaluation rubric
           </DialogDescription>
         </DialogHeader>
+        {/* Mode toggle */}
+        <div className="mt-2 flex gap-2">
+          <Button
+            type="button"
+            variant={mode === "custom" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setMode("custom")}
+          >
+            Custom rubric
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "weight-adjusted-default" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setMode("weight-adjusted-default")}
+          >
+            Adjust default weights
+          </Button>
+        </div>
+
         <div className="space-y-4 py-4">
+          {/* Common: name */}
           <div className="space-y-2">
             <label htmlFor="rubric-name" className="text-sm font-medium">
               Name
@@ -85,26 +210,100 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
               aria-required={true}
             />
           </div>
-          <div className="space-y-2">
-            <label htmlFor="rubric-description" className="text-sm font-medium">
-              Description
-            </label>
-            <Textarea
-              id="rubric-description"
-              placeholder="Enter rubric description"
-              value={rubricDescription}
-              onChange={(e) => setRubricDescription(e.target.value)}
-              rows={6}
-              className="max-h-64 overflow-y-auto"
-              aria-required={true}
-            />
-          </div>
+
+          {mode === "custom" ? (
+            // Custom rubric content
+            <div className="space-y-2">
+              <label htmlFor="rubric-description" className="text-sm font-medium">
+                Description
+              </label>
+              <Textarea
+                id="rubric-description"
+                placeholder="Enter rubric description"
+                value={rubricDescription}
+                onChange={(e) => setRubricDescription(e.target.value)}
+                rows={6}
+                className="max-h-64 overflow-y-auto"
+                aria-required={true}
+              />
+            </div>
+          ) : (
+            // Weight-adjusted default mode
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-sm font-medium">Default categories</span>
+                <span className="text-xs text-muted-foreground">
+                  Total: {totalPoints}/100 points
+                </span>
+              </div>
+
+              {categoriesError && (
+                <p className="text-xs text-destructive">{categoriesError}</p>
+              )}
+
+              {isLoadingCategories && !categories && (
+                <p className="text-sm text-muted-foreground">
+                  Loading default rubric…
+                </p>
+              )}
+
+              {categories && categories.length > 0 && (
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                  {categories.map((cat) => (
+                    <div key={cat.key} className="space-y-1 rounded-md border p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-medium">{cat.key}</div>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            className="h-8 w-20"
+                            value={weights[cat.key] ?? cat.defaultPoints}
+                            onChange={(e) => {
+                              const next = Number(e.target.value);
+                              setWeights((prev) => ({
+                                ...prev,
+                                [cat.key]: Number.isNaN(next) ? 0 : next,
+                              }));
+                            }}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            points
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {cat.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!isFormValid}>Save</Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  onClick={handleSave}
+                  disabled={
+                    mode === "custom" ? !isCustomValid : !isDefaultModeValid
+                  }
+                >
+                  Save
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {mode === "weight-adjusted-default" && (totalPoints > 100 || totalPoints < 100) && (
+              <TooltipContent side="top">
+                Total points must be 100, got {totalPoints}.
+              </TooltipContent>
+            )}
+          </Tooltip>
         </DialogFooter>
       </DialogContent>
     </Dialog>
