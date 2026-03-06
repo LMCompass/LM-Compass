@@ -42,8 +42,18 @@ export async function createRubric(rubric: { name: string; description: string }
 
 export async function getRubrics() {
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { error: "Unauthorized", success: false, data: null };
+    }
+
     const supabase = await createClient();
-    const { data, error } = await supabase.from('rubrics').select('*');
+    const { data, error } = await supabase
+      .from("rubrics")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
     if (error) {
       return { error: error.message, success: false, data: null };

@@ -94,7 +94,8 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
               placeholder="Enter rubric description"
               value={rubricDescription}
               onChange={(e) => setRubricDescription(e.target.value)}
-              rows={4}
+              rows={6}
+              className="max-h-64 overflow-y-auto"
               aria-required={true}
             />
           </div>
