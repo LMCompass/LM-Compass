@@ -10,8 +10,13 @@ from prompt_based_evaluator import PromptBasedEvaluator
 
 @dataclass
 class GradeResult:
-    scores: Dict[str, float]
-    justification: str
+    """
+    Uses the same schema as the prompt-based evaluators:
+    - score: numeric score (0–100)
+    - reasoning: short natural language explanation
+    """
+    score: float
+    reasoning: str
     raw_model_output: Any
 
 
@@ -48,27 +53,9 @@ class GradeHITL(PromptBasedEvaluator):
 
     def _grading_prompt(self, example: Dict[str, Any], rubric: str) -> str:
         """Build the combined system + user prompt used for grading (shared by all model calls)."""
-        system_prompt = dedent(f"""\
-            You are an expert grader.
-            Use the rubric below to grade the student's response.
-
-            RUBRIC:
-            {rubric}
-
-            Your output must be ONLY a JSON object with these exact fields:
-            - "scores": an object mapping dimension names to numeric scores
-            - "justification": a short natural language explanation (string)
-
-            Example format:
-            {{"scores": {{"correctness": 0.8, "clarity": 0.9}}, "justification": "The response is mostly correct but lacks detail."}}
-
-            Do not include any text before or after the JSON object. Return ONLY the JSON.
-        """)
-        user_prompt = (
-            f"Question/Task:\n{example['prompt']}\n\n"
-            f"Student Response:\n{example['response']}\n"
-        )
-        return system_prompt + "\n\n" + user_prompt
+        user_query = example["prompt"]
+        answer = example["response"]
+        return self._n_sq_scoring_query(user_query=user_query, rubric=rubric, answer=answer)
 
     async def _grade_one_model(
         self, example: Dict[str, Any], rubric: str, model_name: str
@@ -77,8 +64,8 @@ class GradeHITL(PromptBasedEvaluator):
         prompt = self._grading_prompt(example, rubric)
         raw = await self.call_llm(prompt, model_name=model_name)
         return GradeResult(
-            scores=raw["scores"],
-            justification=raw["justification"],
+            score=float(raw["score"]),
+            reasoning=str(raw["reasoning"]),
             raw_model_output=raw,
         )
 
@@ -105,10 +92,10 @@ class GradeHITL(PromptBasedEvaluator):
             Student response:
             {example['response']}
 
-            Grader justification:
-            {grade.justification}
+            Grader reasoning:
+            {grade.reasoning}
 
-            Grader scores: {grade.scores}
+            Grader score: {grade.score}
 
             Your output must be ONLY a JSON object with these exact fields:
             - "questions": a list of strings (1-3 concise questions for the educator)
@@ -178,9 +165,9 @@ class GradeHITL(PromptBasedEvaluator):
             Student response:
             {example['response']}
 
-            Grader scores: {grade.scores}
-            Justification:
-            {grade.justification}
+            Grader score: {grade.score}
+            Grader reasoning:
+            {grade.reasoning}
 
             Clarifications:
             {q_block}
@@ -248,8 +235,8 @@ class GradeHITL(PromptBasedEvaluator):
 
             GRADER'S EVALUATION:
             Grader Model: {grader_name}
-            Scores Given: {grader_result.scores}
-            Justification: {grader_result.justification}
+            Score Given: {grader_result.score}
+            Reasoning: {grader_result.reasoning}
 
             Your task is to evaluate how well this grader performed. Consider:
             - Did the grader correctly apply the rubric?
@@ -370,7 +357,7 @@ class GradeHITL(PromptBasedEvaluator):
             all_grader_results.append(grader_results)
             
             for grader_name, result in grader_results.items():
-                print(f"  {grader_name}: scores={result.scores}")
+                print(f"  {grader_name}: score={result.score}")
             
             # Step 2: Cross-evaluate the graders
             print("\nStep 2: Cross-evaluating graders...")

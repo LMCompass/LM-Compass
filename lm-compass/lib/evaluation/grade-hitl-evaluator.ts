@@ -5,6 +5,7 @@
 
 import type { OpenAI } from 'openai';
 import { Evaluator, type ModelQueryResponse } from './evaluator';
+import { createScoringQuery } from './prompt-based-evaluator';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -20,8 +21,8 @@ function loadDefaultRubric(): string {
 }
 
 export interface GradeResult {
-  scores: Record<string, number>;
-  justification: string;
+  score: number;
+  reasoning: string;
   raw_model_output: unknown;
 }
 
@@ -94,49 +95,37 @@ export class GradeHITLEvaluator extends Evaluator {
   }
 
   private gradingPrompt(example: HITLExample, rubric: string): string {
-    return `You are an expert grader.
-Use the rubric below to grade the model's response.
-
-RUBRIC:
-${rubric}
-
-Your output must be ONLY a JSON object with these exact fields:
-- "scores": an object mapping dimension names to numeric scores
-- "justification": a short natural language explanation (string)
-
-Example format:
-{"scores": {"correctness": 0.8, "clarity": 0.9}, "justification": "The response is mostly correct but lacks detail."}
-
-Do not include any text before or after the JSON object. Return ONLY the JSON.
-
-Question/Task:
-${example.prompt}
-
-Model Response:
-${example.response}`;
+    // Reuse the same scoring prompt shape as the main prompt-based evaluator,
+    // mirroring Python's use of `_n_sq_scoring_query`.
+    return createScoringQuery(example.prompt, example.response, rubric);
   }
 
   private async gradeOneModel(example: HITLExample, rubric: string, modelName: string): Promise<GradeResult> {
     const prompt = this.gradingPrompt(example, rubric);
     const raw = await this.callLLMParseJson(modelName, prompt);
-    const scores = (raw.scores as Record<string, number>) ?? {};
-    const justification = typeof raw.justification === 'string' ? raw.justification : '';
+    const scoreRaw = raw.score;
+    const score =
+      typeof scoreRaw === 'number'
+        ? scoreRaw
+        : typeof scoreRaw === 'string'
+          ? Number(scoreRaw)
+          : NaN;
+    const reasoning = typeof raw.reasoning === 'string' ? raw.reasoning : '';
     return {
-      scores,
-      justification,
+      score: Number.isFinite(score) ? score : 0,
+      reasoning,
       raw_model_output: raw,
     };
   }
 
   async gradeAllModels(example: HITLExample, rubric: string): Promise<Record<string, GradeResult>> {
-    const results = await Promise.all(
-      this.modelNames.map((m) => this.gradeOneModel(example, rubric, m))
-    );
-    const out: Record<string, GradeResult> = {};
-    this.modelNames.forEach((name, i) => {
-      out[name] = results[i];
-    });
-    return out;
+    if (this.modelNames.length === 1) {
+      const only = this.modelNames[0];
+      return { [only]: await this.gradeOneModel(example, rubric, only) };
+    }
+
+    const results = await Promise.all(this.modelNames.map((m) => this.gradeOneModel(example, rubric, m)));
+    return Object.fromEntries(this.modelNames.map((name, i) => [name, results[i]]));
   }
 
   private graderEvaluationPrompt(
@@ -158,20 +147,20 @@ ${rubric}
 
 GRADER'S EVALUATION:
 Grader Model: ${graderName}
-Scores Given: ${JSON.stringify(graderResult.scores)}
-Justification: ${graderResult.justification}
+Score Given: ${graderResult.score}
+Reasoning: ${graderResult.reasoning}
 
 Your task is to evaluate how well this grader performed. Consider:
 - Did the grader correctly apply the rubric?
-- Are the scores appropriate given the rubric criteria?
-- Is the justification reasonable?
+- Is the score appropriate given the rubric criteria?
+- Is the reasoning reasonable?
 
 Your output must be ONLY a JSON object with these exact fields:
 - "score": an integer from 0 to 100 representing how well the grader performed
 - "reasoning": a short explanation of your evaluation
 
 Example format:
-{"score": 85, "reasoning": "The grader correctly identified the answer as correct and applied the rubric appropriately, though the justification could be more detailed."}
+{"score": 85, "reasoning": "The grader correctly applied the rubric and assigned a reasonable score, though the reasoning could be more detailed."}
 
 Do not include any text before or after the JSON object. Return ONLY the JSON.`;
   }
@@ -201,8 +190,15 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.`;
       for (let i = 0; i < responses.length; i++) {
         const evaluatorName = responses[i].model;
         const parsed = this.extractOutermostJson(responses[i].response);
-        if (parsed && typeof parsed === 'object' && 'score' in parsed && typeof (parsed as { score: number }).score === 'number') {
-          crossEvalResults[graderName][evaluatorName] = Math.round((parsed as { score: number }).score);
+        if (parsed && typeof parsed === 'object' && 'score' in parsed) {
+          const s = (parsed as { score?: unknown }).score;
+          const n =
+            typeof s === 'number'
+              ? s
+              : typeof s === 'string'
+                ? Number(s)
+                : NaN;
+          if (Number.isFinite(n)) crossEvalResults[graderName][evaluatorName] = Math.round(n);
         }
       }
     }
@@ -246,10 +242,10 @@ ${example.prompt}
 Model response:
 ${example.response}
 
-Grader justification:
-${grade.justification}
+Grader reasoning:
+${grade.reasoning}
 
-Grader scores: ${JSON.stringify(grade.scores)}
+Grader score: ${grade.score}
 
 Your output must be ONLY a JSON object with these exact fields:
 - "questions": a list of strings (1-3 concise questions for the educator)
@@ -297,9 +293,9 @@ ${example.prompt}
 Model response:
 ${example.response}
 
-Grader scores: ${JSON.stringify(grade.scores)}
-Justification:
-${grade.justification}
+Grader score: ${grade.score}
+Grader reasoning:
+${grade.reasoning}
 
 Clarifications:
 ${qBlock}
@@ -345,7 +341,7 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.`;
     let firstGraderResult: GradeResult | undefined;
 
     if (hitlTriggered) {
-      firstGraderName = this.modelNames[0];
+      firstGraderName = Object.keys(graderResults)[0] ?? this.modelNames[0];
       firstGraderResult = graderResults[firstGraderName];
       if (firstGraderResult) {
         questionsAndDrafts = await this.generateQuestionsForHuman(example, rubric, firstGraderResult);
