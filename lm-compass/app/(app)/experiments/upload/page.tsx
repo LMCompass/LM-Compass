@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
+import { parquetReadObjects, parquetMetadataAsync, parquetSchema } from "hyparquet";
 import {
   SidebarInset,
   SidebarTrigger,
@@ -86,38 +87,74 @@ export default function NewExperimentPage() {
     setQueryColumn("");
     setGroundTruthColumn("");
 
-    if (!selectedFile.name.endsWith(".csv")) {
-      setParseError("Please upload a .csv file.");
+    const name = selectedFile.name.toLowerCase();
+    const isCsv = name.endsWith(".csv");
+    const isParquet = name.endsWith(".parquet") || name.endsWith(".pqt");
+
+    if (!isCsv && !isParquet) {
+      setParseError("Please upload a .csv or .parquet file.");
       return;
     }
 
     setFile(selectedFile);
 
-    Papa.parse<Record<string, string>>(selectedFile, {
-      header: true,
-      skipEmptyLines: true,
-      complete(results) {
-        if (results.errors.length > 0) {
-          setParseError(
-            `CSV parse error: ${results.errors[0].message} (row ${results.errors[0].row})`
+    if (isCsv) {
+      Papa.parse<Record<string, string>>(selectedFile, {
+        header: true,
+        skipEmptyLines: true,
+        complete(results) {
+          if (results.errors.length > 0) {
+            setParseError(
+              `CSV parse error: ${results.errors[0].message} (row ${results.errors[0].row})`
+            );
+            return;
+          }
+
+          const headers = (results.meta.fields ?? []).filter(
+            (header) => header.trim() !== ""
           );
-          return;
-        }
+          if (headers.length === 0) {
+            setParseError("CSV has no headers. Please provide a CSV with a header row.");
+            return;
+          }
 
-        const headers = (results.meta.fields ?? []).filter(
-          (header) => header.trim() !== ""
-        );
-        if (headers.length === 0) {
-          setParseError("CSV has no headers. Please provide a CSV with a header row.");
-          return;
-        }
+          setParsedData({ headers, rows: results.data });
+        },
+        error(err) {
+          setParseError(`Failed to read file: ${err.message}`);
+        },
+      });
+    } else {
+      // Parquet file
+      selectedFile.arrayBuffer().then(async (arrayBuffer) => {
+        try {
+          const metadata = await parquetMetadataAsync(arrayBuffer);
+          const schema = parquetSchema(metadata);
+          const headers = schema.children.map((c) => c.element.name);
 
-        setParsedData({ headers, rows: results.data });
-      },
-      error(err) {
-        setParseError(`Failed to read file: ${err.message}`);
-      },
-    });
+          if (headers.length === 0) {
+            setParseError("Parquet file has no columns.");
+            return;
+          }
+
+          const data = await parquetReadObjects({ file: arrayBuffer });
+          const rows: Record<string, string>[] = data.map((row) => {
+            const stringRow: Record<string, string> = {};
+            for (const key of headers) {
+              const val = row[key];
+              stringRow[key] = val == null ? "" : String(val);
+            }
+            return stringRow;
+          });
+
+          setParsedData({ headers, rows });
+        } catch (err) {
+          setParseError(
+            `Failed to read Parquet file: ${err instanceof Error ? err.message : "Unknown error"}`
+          );
+        }
+      });
+    }
   }, []);
 
   // -------- Drag & Drop handlers --------
@@ -210,7 +247,7 @@ export default function NewExperimentPage() {
     if (!file?.name) {
       return "";
     }
-    return file.name.replace(/\.csv$/i, "").trim();
+    return file.name.replace(/\.(csv|parquet|pqt)$/i, "").trim();
   }, [file?.name]);
 
   const handleOpenEstimate = useCallback(() => {
@@ -296,7 +333,7 @@ export default function NewExperimentPage() {
                 <span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
                   1
                 </span>
-                <h2 className="text-lg font-semibold">Upload CSV</h2>
+                <h2 className="text-lg font-semibold">Upload Dataset</h2>
               </div>
 
               {!parsedData ? (
@@ -309,29 +346,28 @@ export default function NewExperimentPage() {
                     className={`
                       relative cursor-pointer rounded-lg border-2 border-dashed p-10
                       flex flex-col items-center justify-center gap-3 transition-colors
-                      ${
-                        isDragOver
-                          ? "border-primary bg-primary/5"
-                          : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
+                      ${isDragOver
+                        ? "border-primary bg-primary/5"
+                        : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
                       }
                     `}
                   >
                     <Upload className="size-10 text-muted-foreground" />
                     <div className="text-center">
                       <p className="text-sm font-medium">
-                        Drag & drop your CSV here, or{" "}
+                        Drag & drop your file here, or{" "}
                         <span className="text-primary underline underline-offset-2">
                           click to browse
                         </span>
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Only .csv files are supported
+                        .csv and .parquet files supported
                       </p>
                     </div>
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".csv"
+                      accept=".csv,.parquet,.pqt"
                       onChange={onFileInputChange}
                       className="hidden"
                     />
