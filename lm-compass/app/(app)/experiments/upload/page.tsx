@@ -77,6 +77,7 @@ export default function NewExperimentPage() {
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const latestFileRef = useRef<File | null>(null);
 
   const handleFile = useCallback((selectedFile: File) => {
     setParseError(null);
@@ -97,12 +98,15 @@ export default function NewExperimentPage() {
     }
 
     setFile(selectedFile);
+    latestFileRef.current = selectedFile;
 
     if (isCsv) {
       Papa.parse<Record<string, string>>(selectedFile, {
         header: true,
         skipEmptyLines: true,
         complete(results) {
+          if (latestFileRef.current !== selectedFile) return;
+
           if (results.errors.length > 0) {
             setParseError(
               `CSV parse error: ${results.errors[0].message} (row ${results.errors[0].row})`
@@ -121,13 +125,17 @@ export default function NewExperimentPage() {
           setParsedData({ headers, rows: results.data });
         },
         error(err) {
+          if (latestFileRef.current !== selectedFile) return;
           setParseError(`Failed to read file: ${err.message}`);
         },
       });
     } else {
       // Parquet file
-      selectedFile.arrayBuffer().then(async (arrayBuffer) => {
+      (async () => {
         try {
+          const arrayBuffer = await selectedFile.arrayBuffer();
+          if (latestFileRef.current !== selectedFile) return;
+
           const metadata = await parquetMetadataAsync(arrayBuffer);
           const schema = parquetSchema(metadata);
           const headers = schema.children.map((c) => c.element.name);
@@ -138,6 +146,8 @@ export default function NewExperimentPage() {
           }
 
           const data = await parquetReadObjects({ file: arrayBuffer });
+          if (latestFileRef.current !== selectedFile) return;
+
           const rows: Record<string, string>[] = data.map((row) => {
             const stringRow: Record<string, string> = {};
             for (const key of headers) {
@@ -149,11 +159,12 @@ export default function NewExperimentPage() {
 
           setParsedData({ headers, rows });
         } catch (err) {
+          if (latestFileRef.current !== selectedFile) return;
           setParseError(
             `Failed to read Parquet file: ${err instanceof Error ? err.message : "Unknown error"}`
           );
         }
-      });
+      })();
     }
   }, []);
 
