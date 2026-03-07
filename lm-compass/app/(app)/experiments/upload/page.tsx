@@ -92,7 +92,7 @@ export default function NewExperimentPage() {
     const isParquet = name.endsWith(".parquet") || name.endsWith(".pqt");
 
     if (!isCsv && !isParquet) {
-      setParseError("Please upload a .csv or .parquet file.");
+      setParseError("Please upload a .csv, .parquet, or .pqt file.");
       return;
     }
 
