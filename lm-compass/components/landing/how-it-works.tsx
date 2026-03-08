@@ -26,7 +26,7 @@ const content = [
             <div className="h-3 rounded-full bg-foreground/8 w-4/5" />
           </div>
           <div className="flex gap-2 pt-3">
-            {["GPT-4o", "Claude 3.5", "Gemini"].map((name) => (
+            {["GPT-5.4", "Claude Sonnet 4.6", "Gemini 3.1 Pro"].map((name) => (
               <div
                 key={name}
                 className="px-3 py-1.5 rounded-lg bg-foreground/5 border border-white/10 text-white/70 text-xs font-medium"
@@ -123,19 +123,19 @@ const content = [
           <div className="space-y-3 mt-2">
             {[
               {
-                name: "GPT-4o",
+                name: "GPT-5.4",
                 width: "87%",
                 score: "8.7",
                 color: "bg-primary/50",
               },
               {
-                name: "Claude",
+                name: "Claude Sonnet 4.6",
                 width: "82%",
                 score: "8.2",
                 color: "bg-chart-2/50",
               },
               {
-                name: "Gemini",
+                name: "Gemini 3.1 Pro",
                 width: "75%",
                 score: "7.5",
                 color: "bg-chart-3/50",

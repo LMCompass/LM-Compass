@@ -25,39 +25,49 @@ interface ModelSelectorProps {
 
 export const models = [
   // OpenAI Models
+  { value: "openai/gpt-5.4", label: "GPT-5.4", provider: "OpenAI" },
+  { value: "openai/gpt-5.2", label: "GPT-5.2", provider: "OpenAI" },
   { value: "openai/gpt-5.1", label: "GPT-5.1", provider: "OpenAI" },
   { value: "openai/gpt-5-mini", label: "GPT-5 Mini", provider: "OpenAI" },
   { value: "openai/gpt-5-nano", label: "GPT-5 Nano", provider: "OpenAI" },
   { value: "openai/gpt-4.1", label: "GPT-4.1", provider: "OpenAI" },
 
   // Anthropic Models
+  { value: "anthropic/claude-opus-4.6", label: "Claude Opus 4.6", provider: "Anthropic" },
+  { value: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", provider: "Anthropic" },
+  { value: "anthropic/claude-opus-4.5", label: "Claude Opus 4.5", provider: "Anthropic" },
   { value: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5", provider: "Anthropic" },
-  { value: "anthropic/claude-haiku-4.5", label: "Claude 4.5 Haiku", provider: "Anthropic" },
-  { value: "anthropic/claude-opus-4.1", label: "Claude Opus 4.1", provider: "Anthropic" },
-  { value: "anthropic/claude-3.7-sonnet", label: "Claude 3.7 Sonnet", provider: "Anthropic" },
-  
+  { value: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", provider: "Anthropic" },
+
+
   // Google Models
-  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "Google" },
-  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "Google" },
-  { value: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", provider: "Google" },
+  { value: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", provider: "Google" },
+  { value: "google/gemini-3-pro-preview", label: "Gemini 3 Pro", provider: "Google" },
+  { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash", provider: "Google" },
   
+
   // Meta Models
   { value: "meta-llama/llama-4-maverick", label: "Llama 4 Maverick", provider: "Meta" },
   { value: "meta-llama/llama-4-scout", label: "Llama 4 Scout", provider: "Meta" },
-  
+
   // DeepSeek Models
-  { value: "tngtech/deepseek-r1t2-chimera:free", label: "DeepSeek Chimera", provider: "DeepSeek" },
-  { value: "deepseek/deepseek-chat-v3-0324", label: "DeepSeek Chat", provider: "DeepSeek" },
-  { value: "deepseek/deepseek-v3.2-exp", label: "DeepSeek Coder", provider: "DeepSeek" },
-  
+  { value: "deepseek/deepseek-v3.2", label: "DeepSeek V3.2", provider: "DeepSeek" },
+  { value: "deepseek/deepseek-chat-v3.1", label: "DeepSeek V3.1", provider: "DeepSeek" },
+  { value: "deepseek/deepseek-r1", label: "DeepSeek R1", provider: "DeepSeek" },
+  { value: "deepseek/deepseek-r1-0528", label: "DeepSeek R1 0528", provider: "DeepSeek" },
+
   // xAI Models
   { value: "x-ai/grok-4", label: "Grok 4", provider: "xAI" },
+  { value: "x-ai/grok-4.1-fast", label: "Grok 4.1 Fast", provider: "xAI" },
   { value: "x-ai/grok-4-fast", label: "Grok 4 Fast", provider: "xAI" },
-  { value: "x-ai/grok-code-fast-1", label: "Grok Code Fast 1", provider: "xAI" },
-  
+  { value: "x-ai/grok-3", label: "Grok 3", provider: "xAI" },
+
   // Mistral Models
-  { value: "mistralai/mistral-nemo", label: "Mistral Nemo", provider: "Mistral" },
+  { value: "mistralai/mistral-medium-3.1", label: "Mistral Medium 3.1", provider: "Mistral" },
   { value: "mistralai/mistral-small-3.2-24b-instruct", label: "Mistral Small 3.2", provider: "Mistral" },
+  { value: "mistralai/codestral-2508", label: "Codestral", provider: "Mistral" },
+
+
 ]
 
 export function ModelSelector({ value, onChange }: ModelSelectorProps) {
