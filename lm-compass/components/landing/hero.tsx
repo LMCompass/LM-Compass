@@ -68,15 +68,15 @@ export function Hero() {
             <div className="flex items-center gap-3 p-4 border-b border-border/60">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/80 text-sm text-foreground/70">
                 <span className="size-2 rounded-full bg-chart-1" />
-                GPT-4o
+                GPT-5.4
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/80 text-sm text-foreground/70">
                 <span className="size-2 rounded-full bg-chart-2" />
-                Claude 3.5
+                Claude Sonnet 4.6
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/80 text-sm text-foreground/70">
                 <span className="size-2 rounded-full bg-chart-3" />
-                Gemini Pro
+                Gemini 3.1 Pro
               </div>
               <div className="flex-1" />
               <div className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-medium">
@@ -97,9 +97,9 @@ export function Hero() {
               {/* Model responses */}
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { name: "Gemini Pro", color: "chart-3", rank: "#1" },
-                  { name: "Claude 3.5", color: "chart-2", rank: "#2" },
-                  { name: "GPT-4o", color: "chart-1", rank: "#3" },
+                  { name: "Gemini 3.1 Pro", color: "chart-3", rank: "#1" },
+                  { name: "Claude Sonnet 4.6", color: "chart-2", rank: "#2" },
+                  { name: "GPT-5.4", color: "chart-1", rank: "#3" },
                 ].map(
                   (model: { name: string; color: string; rank: string }) => (
                     <div
@@ -133,7 +133,7 @@ export function Hero() {
                   Consensus Winner:
                 </span>
                 <span className="text-xs font-bold text-foreground">
-                  Gemini Pro
+                  Gemini 3.1 Pro
                 </span>
                 <span className="text-xs text-white/70">— Score: 8.7/10</span>
               </div>
