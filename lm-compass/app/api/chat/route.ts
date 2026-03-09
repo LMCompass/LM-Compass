@@ -290,24 +290,17 @@ export async function POST(req: Request) {
                   llmClient,
                   ...successfulResults.map((r) => r.model)
                 );
-                const phase1Result = await hitlEvaluator.phase1(example, rubric, 20);
+                const phase1Result = await hitlEvaluator.phase1(example, rubric, 1);
 
                 const modelReasoning: Record<string, string[]> = {};
                 const meanScores: Record<string, number> = {};
                 for (const [modelName, gr] of Object.entries(phase1Result.graderResults)) {
-                  modelReasoning[modelName] = [gr.justification];
+                  // GradeResult has a single numeric score and a reasoning field.
+                  modelReasoning[modelName] = [gr.reasoning];
 
-                  // Only average numeric, finite scores to avoid NaN/null issues in the UI
-                  const numericVals = Object.values(gr.scores).filter(
-                    (v): v is number => typeof v === "number" && Number.isFinite(v)
-                  );
-                  if (numericVals.length > 0) {
-                    const sum = numericVals.reduce((a, b) => a + b, 0);
-                    meanScores[modelName] = sum / numericVals.length;
-                  } else {
-                    // No valid numeric scores; treat as 0 for visualization purposes
-                    meanScores[modelName] = 0;
-                  }
+                  const score =
+                    typeof gr.score === "number" && Number.isFinite(gr.score) ? gr.score : 0;
+                  meanScores[modelName] = score;
                 }
 
                 // Determine winner based on highest mean score (like other evaluators)

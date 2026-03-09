@@ -312,13 +312,11 @@ export function MessagesDisplay({
               if (entries.length > 0) {
                 const meanScores: Record<string, number> = {};
                 entries.forEach(([modelName, gr]) => {
-                  const numericVals = Object.values(gr.scores).filter(
-                    (v): v is number => typeof v === "number" && Number.isFinite(v)
-                  );
-                  meanScores[modelName] =
-                    numericVals.length > 0
-                      ? numericVals.reduce((a, b) => a + b, 0) / numericVals.length
+                  const score =
+                    typeof gr.score === "number" && Number.isFinite(gr.score)
+                      ? gr.score
                       : 0;
+                  meanScores[modelName] = score;
                 });
                 const meanEntries = Object.entries(meanScores);
                 const maxScore = Math.max(...meanEntries.map(([, s]) => s));
@@ -362,17 +360,13 @@ export function MessagesDisplay({
                               const gr = phase2Result.graderResults[r.model];
                               if (!gr) return null;
                               const label = modelLabelMap[r.model] || r.model;
-                              const numericVals = Object.values(gr.scores).filter(
-                                (v): v is number => typeof v === "number" && Number.isFinite(v)
-                              );
-                              const avgScore =
-                                numericVals.length > 0
-                                  ? (numericVals.reduce((a, b) => a + b, 0) / numericVals.length).toFixed(1)
-                                  : "—";
-                              const scoreSummary = Object.entries(gr.scores)
-                                .filter(([, v]) => typeof v === "number" && Number.isFinite(v))
-                                .map(([dim, val]) => `${dim}: ${val}`)
-                                .join("; ");
+                              const score =
+                                typeof gr.score === "number" && Number.isFinite(gr.score)
+                                  ? gr.score
+                                  : null;
+                              const avgScore = score !== null ? score.toFixed(1) : "—";
+                              const scoreSummary =
+                                score !== null ? `score: ${score.toFixed(1)}` : "";
                               return (
                                 <li key={r.model} className="flex flex-wrap items-baseline gap-x-2">
                                   <span className="font-medium text-foreground">{label}</span>
@@ -393,13 +387,11 @@ export function MessagesDisplay({
                           if (entries.length === 0) return null;
                           const meanScores: Record<string, number> = {};
                           entries.forEach(([modelName, gr]) => {
-                            const numericVals = Object.values(gr.scores).filter(
-                              (v): v is number => typeof v === "number" && Number.isFinite(v)
-                            );
-                            meanScores[modelName] =
-                              numericVals.length > 0
-                                ? numericVals.reduce((a, b) => a + b, 0) / numericVals.length
+                            const score =
+                              typeof gr.score === "number" && Number.isFinite(gr.score)
+                                ? gr.score
                                 : 0;
+                            meanScores[modelName] = score;
                           });
                           const meanEntries = Object.entries(meanScores);
                           const maxScore = Math.max(...meanEntries.map(([, s]) => s));
@@ -414,7 +406,7 @@ export function MessagesDisplay({
                           );
                         })()}
                         <p className="text-xs text-muted-foreground">
-                          Re-graded with new rubric. Cross-eval scores:{" "}
+                          Re-graded with new rubric. Cross-eval scores (how good each model is as a grader):{" "}
                           {Object.entries(phase2Result.crossEvalResults)
                             .map(
                               ([grader, scores]) =>
@@ -461,16 +453,8 @@ export function MessagesDisplay({
                         message.evaluationMetadata?.meanScores[r.model];
                       if (phase2Result) {
                         const gr = phase2Result.graderResults[r.model];
-                        if (gr) {
-                          const numericVals = Object.values(gr.scores).filter(
-                            (v): v is number =>
-                              typeof v === "number" && Number.isFinite(v)
-                          );
-                          if (numericVals.length > 0) {
-                            score =
-                              numericVals.reduce((a, b) => a + b, 0) /
-                              numericVals.length;
-                          }
+                        if (gr && typeof gr.score === "number" && Number.isFinite(gr.score)) {
+                          score = gr.score;
                         }
                       }
 
