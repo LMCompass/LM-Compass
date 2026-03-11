@@ -5,6 +5,7 @@ import { ExperimentItemStatus, ExperimentStatus, type MappedRow, type StartExper
 import {
   BATCH_INSERT_SIZE,
   DEFAULT_RUBRIC_ID,
+  ALLOWED_EXPERIMENT_EVAL_METHODS,
   calculateExperimentEstimate,
   isExperimentEvaluationMethod,
   normalizeAndValidateRows,
@@ -78,8 +79,9 @@ export async function POST(req: Request) {
     }
 
     if (!isExperimentEvaluationMethod(evaluationMethod)) {
+      const allowedMethods = ALLOWED_EXPERIMENT_EVAL_METHODS.join(', ');
       return NextResponse.json(
-        { error: 'Unsupported evaluationMethod. Allowed values: prompt-based, n-prompt-based, rl4f.' },
+        { error: `Unsupported evaluationMethod. Allowed values: ${allowedMethods}.` },
         { status: 400 }
       );
     }
