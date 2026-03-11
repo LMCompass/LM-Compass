@@ -5,6 +5,8 @@ import { ExperimentItemStatus, ExperimentStatus, type MappedRow, type StartExper
 import {
   BATCH_INSERT_SIZE,
   DEFAULT_RUBRIC_ID,
+  MAX_EXPERIMENT_MODELS,
+  MIN_EXPERIMENT_MODELS,
   calculateExperimentEstimate,
   isExperimentEvaluationMethod,
   normalizeAndValidateRows,
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
 
     if (!validateSelectedModelsCount(selectedModels)) {
       return NextResponse.json(
-        { error: 'Select between 2 and 4 models to start an experiment.' },
+        { error: `Select between ${MIN_EXPERIMENT_MODELS} and ${MAX_EXPERIMENT_MODELS} models to start an experiment.` },
         { status: 400 }
       );
     }
