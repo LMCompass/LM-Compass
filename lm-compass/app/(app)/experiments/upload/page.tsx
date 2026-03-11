@@ -115,6 +115,57 @@ export default function NewExperimentPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const latestFileRef = useRef<File | null>(null);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchRubrics = async () => {
+      if (!userLoaded) return;
+
+      if (!user?.id) {
+        if (!isCancelled) {
+          setCustomRubrics([]);
+          setRubricsError(null);
+        }
+        return;
+      }
+
+      setIsRubricsLoading(true);
+      setRubricsError(null);
+
+      const response = await supabase
+        .from("rubrics")
+        .select("id, rubric_title")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (isCancelled) {
+        setIsRubricsLoading(false);
+        return;
+      }
+
+      if (response.error) {
+        setRubricsError(response.error.message);
+        setCustomRubrics([]);
+      } else {
+        const nextRubrics = (response.data || []).map((rubric) => ({
+          id: rubric.id as string,
+          title:
+            typeof rubric.rubric_title === "string" && rubric.rubric_title.trim().length > 0
+              ? rubric.rubric_title.trim()
+              : "Untitled rubric",
+        }));
+        setCustomRubrics(nextRubrics);
+      }
+
+      setIsRubricsLoading(false);
+    };
+
+    fetchRubrics();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [supabase, user?.id, userLoaded]);
   const handleFile = useCallback((selectedFile: File) => {
     setParseError(null);
     setSubmitError(null);
