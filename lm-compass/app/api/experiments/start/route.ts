@@ -6,12 +6,12 @@ import {
   BATCH_INSERT_SIZE,
   DEFAULT_RUBRIC_ID,
   ALLOWED_EXPERIMENT_EVAL_METHODS,
-  calculateExperimentEstimate,
   isExperimentEvaluationMethod,
   normalizeAndValidateRows,
   normalizeSelectedModels,
   validateSelectedModelsCount,
 } from '@/lib/experiments';
+import { estimateExperimentCostLive } from '@/lib/cost';
 import { loadDefaultRubricText } from '@/lib/rubrics';
 
 type StartExperimentRequest = {
@@ -86,7 +86,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const estimate = calculateExperimentEstimate(validRows, skippedRows, selectedModels.length);
+    const estimate = await estimateExperimentCostLive({
+      rows: mappedRows,
+      selectedModels,
+      evaluationMethod,
+    });
     const experimentTitle =
       payload.title?.trim() || `Experiment ${new Date().toLocaleString()}`;
 

@@ -77,11 +77,15 @@ function formatNumber(value: number, maxDigits = 2) {
 }
 
 function formatCurrency(value: number) {
+  if (value > 0 && value < 0.0001) {
+    return "<$0.0001";
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
-    maximumFractionDigits: 4,
+    maximumFractionDigits: 6,
   }).format(value);
 }
 
@@ -108,6 +112,7 @@ export default function NewExperimentPage() {
 
   const [estimate, setEstimate] = useState<ExperimentCostEstimate | null>(null);
   const [isEstimateOpen, setIsEstimateOpen] = useState(false);
+  const [isEstimating, setIsEstimating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -365,7 +370,7 @@ export default function NewExperimentPage() {
     );
   }, [hasValidModelCount, selectedEvaluationMethod, selectedRubricId]);
 
-  const handleOpenEstimate = useCallback(() => {
+  const handleOpenEstimate = useCallback(async () => {
     if (mappedData.length === 0) {
       return;
     }
@@ -387,23 +392,38 @@ export default function NewExperimentPage() {
       return;
     }
 
-    const nextEstimate = estimateExperimentCost(mappedData, selectedModels.length);
-    setEstimate(nextEstimate);
-    setSubmitError(null);
-    setSubmitSuccess(null);
+    try {
+      setIsEstimating(true);
+      const nextEstimate = await estimateExperimentCost(
+        mappedData,
+        selectedModels,
+        selectedEvaluationMethod
+      );
+      setEstimate(nextEstimate);
+      setSubmitError(null);
+      setSubmitSuccess(null);
 
-    if (nextEstimate.validRows === 0) {
-      setSubmitError("No valid rows found. Please ensure at least one query is non-empty.");
-      return;
+      if (nextEstimate.validRows === 0) {
+        setSubmitError("No valid rows found. Please ensure at least one query is non-empty.");
+        return;
+      }
+
+      setIsEstimateOpen(true);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to estimate experiment cost. Please try again.";
+      setSubmitError(message);
+    } finally {
+      setIsEstimating(false);
     }
-
-    setIsEstimateOpen(true);
   }, [
     estimateExperimentCost,
     hasValidModelCount,
     mappedData,
     selectedEvaluationMethod,
-    selectedModels.length,
+    selectedModels,
     selectedRubricId,
   ]);
 
@@ -778,10 +798,14 @@ export default function NewExperimentPage() {
                   <Button
                     onClick={handleOpenEstimate}
                     className="gap-2"
-                    disabled={!isConfigurationComplete || isRubricsLoading}
+                    disabled={!isConfigurationComplete || isRubricsLoading || isEstimating}
                   >
-                    <CheckCircle2 className="size-4" />
-                    Start Experiment
+                    {isEstimating ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="size-4" />
+                    )}
+                    {isEstimating ? "Estimating..." : "Start Experiment"}
                     <span className="text-xs opacity-70">({mappedData.length} rows)</span>
                   </Button>
                 </div>
@@ -802,7 +826,7 @@ export default function NewExperimentPage() {
             <DialogHeader>
               <DialogTitle>Estimated Cost</DialogTitle>
               <DialogDescription>
-                Rough estimate using avg chars and $5 per 1M tokens.
+                Live OpenRouter pricing estimate.
               </DialogDescription>
             </DialogHeader>
 
@@ -825,8 +849,20 @@ export default function NewExperimentPage() {
                   <span className="font-medium">{formatNumber(estimate.estTokensPerPrompt)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Multiplier (models + judge)</span>
+                  <span className="text-muted-foreground">Estimated calls / model / row</span>
                   <span className="font-medium">{estimate.multiplier}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Estimated input tokens</span>
+                  <span className="font-medium">{formatNumber(estimate.totalInputTokens)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Estimated output tokens</span>
+                  <span className="font-medium">{formatNumber(estimate.totalOutputTokens)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Estimated requests</span>
+                  <span className="font-medium">{formatNumber(estimate.totalRequests)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Estimated total tokens</span>
@@ -834,8 +870,17 @@ export default function NewExperimentPage() {
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-2">
                   <span className="text-muted-foreground">Estimated cost</span>
-                  <span className="font-semibold">{formatCurrency(estimate.estimatedUsd)}</span>
+                  <span className="font-semibold">
+                    {estimate.estimatedUsd == null
+                      ? "Unavailable"
+                      : formatCurrency(estimate.estimatedUsd)}
+                  </span>
                 </div>
+                {estimate.pricingStatus === "unavailable" && (
+                  <div className="text-xs text-muted-foreground border-t border-border pt-2">
+                    {estimate.pricingError || "Live model pricing is currently unavailable."}
+                  </div>
+                )}
               </div>
             )}
 

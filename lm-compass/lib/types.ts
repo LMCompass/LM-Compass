@@ -1,5 +1,6 @@
 import type { EvaluationMetadata } from './evaluation/types';
 import type { RL4FIterationResult } from './evaluation/rl4f-evaluator';
+import type { CostBreakdownByModel, EstimateProfile, PricingStatus } from './cost/types';
 
 export type Message = {
   role: 'user' | 'assistant' | 'system';
@@ -95,9 +96,16 @@ export interface ExperimentCostEstimate {
   estTokensPerPrompt: number;
   multiplier: number;
   totalTokens: number;
-  estimatedUsd: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalRequests: number;
+  estimatedUsd: number | null;
+  perModelEstimates: CostBreakdownByModel[];
   validRows: number;
   skippedRows: number;
+  pricingStatus: PricingStatus;
+  pricingError?: string;
+  profile: EstimateProfile;
 }
 
 export interface StartExperimentInput {
@@ -118,5 +126,5 @@ export interface StartExperimentResult {
   insertedRows: number;
   skippedRows: number;
   status: ExperimentStatus.RUNNING;
-  estimatedUsd: number;
+  estimatedUsd: number | null;
 }

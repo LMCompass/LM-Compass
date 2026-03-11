@@ -19,9 +19,7 @@ import type {
 } from "@/lib/types";
 import { ExperimentStatus, ExperimentItemStatus } from "@/lib/types";
 import {
-  calculateExperimentEstimate,
   DEFAULT_EVAL_METHOD,
-  normalizeAndValidateRows,
 } from "@/lib/experiments";
 
 type RunItemResult = {
@@ -40,6 +38,7 @@ type RunItemResponse = {
 };
 
 type StartExperimentApiResponse = Partial<StartExperimentResult> & { error?: string };
+type EstimateExperimentApiResponse = Partial<ExperimentCostEstimate> & { error?: string };
 
 interface ExperimentsContextType {
   activeExperimentId: string | null;
@@ -48,8 +47,9 @@ interface ExperimentsContextType {
   progress: { completed: number; total: number };
   estimateExperimentCost: (
     rows: MappedRow[],
-    selectedModelCount: number
-  ) => ExperimentCostEstimate;
+    selectedModels: string[],
+    evaluationMethod: StartExperimentInput["evaluationMethod"]
+  ) => Promise<ExperimentCostEstimate>;
   startExperiment: (input: StartExperimentInput) => Promise<StartExperimentResult>;
 }
 
@@ -71,9 +71,63 @@ export function ExperimentsProvider({
   const supabase = useSupabaseClient();
 
   const estimateExperimentCost = useCallback(
-    (rows: MappedRow[], selectedModelCount: number) => {
-      const { validRows, skippedRows } = normalizeAndValidateRows(rows);
-      return calculateExperimentEstimate(validRows, skippedRows, selectedModelCount);
+    async (
+      rows: MappedRow[],
+      selectedModels: string[],
+      evaluationMethod: StartExperimentInput["evaluationMethod"]
+    ): Promise<ExperimentCostEstimate> => {
+      const response = await fetch("/api/experiments/estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rows,
+          selectedModels,
+          evaluationMethod,
+        }),
+      });
+
+      const result: EstimateExperimentApiResponse = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to estimate experiment cost.");
+      }
+
+      if (
+        typeof result.avgChars !== "number" ||
+        typeof result.estTokensPerPrompt !== "number" ||
+        typeof result.multiplier !== "number" ||
+        typeof result.totalTokens !== "number" ||
+        typeof result.totalInputTokens !== "number" ||
+        typeof result.totalOutputTokens !== "number" ||
+        typeof result.totalRequests !== "number" ||
+        typeof result.validRows !== "number" ||
+        typeof result.skippedRows !== "number" ||
+        !Array.isArray(result.perModelEstimates) ||
+        (result.pricingStatus !== "live" && result.pricingStatus !== "unavailable")
+      ) {
+        throw new Error("Invalid response from estimate experiment API.");
+      }
+
+      return {
+        avgChars: result.avgChars,
+        estTokensPerPrompt: result.estTokensPerPrompt,
+        multiplier: result.multiplier,
+        totalTokens: result.totalTokens,
+        totalInputTokens: result.totalInputTokens,
+        totalOutputTokens: result.totalOutputTokens,
+        totalRequests: result.totalRequests,
+        estimatedUsd: typeof result.estimatedUsd === "number" ? result.estimatedUsd : null,
+        perModelEstimates: result.perModelEstimates,
+        validRows: result.validRows,
+        skippedRows: result.skippedRows,
+        pricingStatus: result.pricingStatus,
+        pricingError: typeof result.pricingError === "string" ? result.pricingError : undefined,
+        profile:
+          result.profile === "aggressive" ||
+          result.profile === "conservative" ||
+          result.profile === "balanced"
+            ? result.profile
+            : "balanced",
+      };
     },
     []
   );
@@ -107,7 +161,7 @@ export function ExperimentsProvider({
         insertedRows: result.insertedRows ?? 0,
         skippedRows: result.skippedRows ?? 0,
         status: ExperimentStatus.RUNNING,
-        estimatedUsd: result.estimatedUsd ?? 0,
+        estimatedUsd: typeof result.estimatedUsd === "number" ? result.estimatedUsd : null,
       };
 
       setActiveExperimentId(finalResult.experimentId);
