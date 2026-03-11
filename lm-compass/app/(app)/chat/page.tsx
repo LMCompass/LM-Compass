@@ -32,6 +32,7 @@ import {
   ItemDescription,
   ItemActions,
 } from "@/components/ui/item";
+import { RubricSelector } from "@/components/ui/rubric-selector";
 
 export default function Home() {
   const { theme, toggleTheme, mounted } = useTheme();
@@ -58,6 +59,7 @@ export default function Home() {
   const lastMessageIdRef = useRef<string | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedRubric, setSelectedRubric] = useState("prompt-based");
+  const [selectedRubricId, setSelectedRubricId] = useState<string>("default");
   const [iterations, setIterations] = useState(1);
   const [showModelChangeDialog, setShowModelChangeDialog] = useState(false);
   const [pendingModels, setPendingModels] = useState<string[] | null>(null);
@@ -110,6 +112,11 @@ export default function Home() {
       }
       if (chatMetadataFromLoadedChat.iterations != null) {
         setIterations(chatMetadataFromLoadedChat.iterations);
+      }
+      if (chatMetadataFromLoadedChat.rubricId) {
+        setSelectedRubricId(chatMetadataFromLoadedChat.rubricId);
+      } else {
+        setSelectedRubricId("default");
       }
       clearChatMetadataFromLoadedChat();
     }
@@ -203,6 +210,10 @@ export default function Home() {
               value={selectedRubric}
               onChange={setSelectedRubric}
             />
+            <RubricSelector
+              value={selectedRubricId}
+              onChange={setSelectedRubricId}
+            />
             {selectedRubric === "rl4f" && (
               <IterationsSelector
                 value={iterations}
@@ -236,6 +247,12 @@ export default function Home() {
                 <span>
                   <strong className="font-medium text-foreground">Evaluation:</strong>{" "}
                   {getEvaluationMethodLabel(loadedChatDisplayInfo.evaluationMethod)}
+                </span>
+              )}
+              {loadedChatDisplayInfo.rubricTitle && (
+                <span>
+                  <strong className="font-medium text-foreground">Rubric:</strong>{" "}
+                  {loadedChatDisplayInfo.rubricTitle}
                 </span>
               )}
               {loadedChatDisplayInfo.iterations != null && loadedChatDisplayInfo.iterations > 1 && (
@@ -329,6 +346,7 @@ export default function Home() {
                 evaluationMethod={selectedRubric}
                 iterations={iterations}
                 chatId={chatId}
+                rubricId={selectedRubricId}
               />
             )}
           </SignedIn>

@@ -100,7 +100,58 @@ export async function POST(req: Request) {
       },
     });
 
-    const { messages, model, models, evaluationMethod, iterations, chatId } = await req.json();
+    const {
+      messages,
+      model,
+      models,
+      evaluationMethod,
+      iterations,
+      chatId,
+      rubricId,
+    } = await req.json();
+
+    let rubricText: string | undefined;
+    let rubricTitle: string | null = null;
+    let rubricMode: "weight-adjusted-default" | "custom" | null = null;
+
+    if (rubricId && rubricId !== "default") {
+      const { data: rubricRow, error: rubricError } = await supabase
+        .from("rubrics")
+        .select("id, rubric_title, rubric_content, mode, user_id")
+        .eq("id", rubricId)
+        .eq("user_id", userId)
+        .single();
+
+      if (rubricError || !rubricRow) {
+        return NextResponse.json(
+          {
+            error:
+              "Selected rubric not found or you don't have access to it.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const content =
+        (rubricRow as { rubric_content: string | null }).rubric_content?.trim() ??
+        "";
+
+      if (!content) {
+        return NextResponse.json(
+          { error: "Selected rubric has no content." },
+          { status: 400 },
+        );
+      }
+
+      rubricText = content;
+      rubricTitle =
+        (rubricRow as { rubric_title: string | null }).rubric_title ?? null;
+      rubricMode =
+        ((rubricRow as { mode: string | null }).mode as
+          | "weight-adjusted-default"
+          | "custom"
+          | null) ?? null;
+    }
 
     // Normalize to models array - handle both single model (legacy) and multi-model cases
     let modelsToQuery: string[];
@@ -211,10 +262,14 @@ export async function POST(req: Request) {
                 evaluator = new PromptBasedEvaluator(llmClient);
               }
 
-              const evaluationResult = await evaluator.evaluate(successfulResults, {
-                userQuery,
-                iterations,
-              });
+              const evaluationResult = await evaluator.evaluate(
+                successfulResults,
+                {
+                  userQuery,
+                  iterations,
+                  ...(rubricText && { rubric: rubricText }),
+                },
+              );
 
               // Extract iteration results if this is RL4F
               let iterationResults: RL4FIterationResult[] | undefined;
@@ -339,6 +394,9 @@ export async function POST(req: Request) {
               const chatMetadata = {
                 evaluationMethod,
                 ...(iterations != null && { iterations }),
+                ...(rubricId && { rubricId }),
+                ...(rubricTitle && { rubricTitle }),
+                ...(rubricMode && { rubricMode }),
               };
               saveChat(supabase, chatId, userId, messagesToSave, undefined, chatMetadata).then((result) => {
                 if (result.success) {

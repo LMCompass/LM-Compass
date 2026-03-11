@@ -66,7 +66,12 @@ type ChatContextType = {
   modelsFromLastLoadedChat: string[] | null;
   chatMetadataFromLoadedChat: ChatMetadata | null;
   /** Snapshot of models + evaluation method for display when viewing a loaded chat */
-  loadedChatDisplayInfo: { models: string[]; evaluationMethod?: string; iterations?: number } | null;
+  loadedChatDisplayInfo: {
+    models: string[];
+    evaluationMethod?: string;
+    iterations?: number;
+    rubricTitle?: string | null;
+  } | null;
   clearModelsFromLastLoadedChat: () => void;
   clearChatMetadataFromLoadedChat: () => void;
   handleNewChat: () => void;
@@ -102,6 +107,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     models: string[];
     evaluationMethod?: string;
     iterations?: number;
+    rubricTitle?: string | null;
   } | null>(null);
   const { user } = useUser();
   const supabase = useSupabaseClient();
@@ -141,6 +147,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             models: modelsUsed,
             ...(chatMetadata?.evaluationMethod != null && { evaluationMethod: chatMetadata.evaluationMethod }),
             ...(chatMetadata?.iterations != null && { iterations: chatMetadata.iterations }),
+            ...(chatMetadata?.rubricTitle != null && { rubricTitle: chatMetadata.rubricTitle }),
           });
           // Mark that we've loaded a chat (prevents auto-loading on new chat)
           hasLoadedInitialChat.current = true;
