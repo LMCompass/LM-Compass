@@ -138,7 +138,10 @@ export default function NewExperimentPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (isCancelled) return;
+      if (isCancelled) {
+        setIsRubricsLoading(false);
+        return;
+      }
 
       if (response.error) {
         setRubricsError(response.error.message);
