@@ -4,16 +4,21 @@ import { createClient } from '@/utils/supabase/server';
 import { ExperimentItemStatus, ExperimentStatus, type MappedRow, type StartExperimentResult } from '@/lib/types';
 import {
   BATCH_INSERT_SIZE,
-  DEFAULT_EVAL_METHOD,
   DEFAULT_RUBRIC_ID,
-  DEFAULT_SELECTED_MODELS,
   calculateExperimentEstimate,
+  isExperimentEvaluationMethod,
   normalizeAndValidateRows,
+  normalizeSelectedModels,
+  validateSelectedModelsCount,
 } from '@/lib/experiments';
+import { loadDefaultRubricText } from '@/lib/rubrics';
 
 type StartExperimentRequest = {
   title?: string;
   rows?: unknown;
+  selectedModels?: unknown;
+  rubricId?: unknown;
+  evaluationMethod?: unknown;
 };
 
 function toMappedRows(rows: unknown): MappedRow[] {
@@ -46,6 +51,9 @@ export async function POST(req: Request) {
     }
 
     const mappedRows = toMappedRows(payload.rows);
+    const selectedModels = normalizeSelectedModels(payload.selectedModels);
+    const rubricId = typeof payload.rubricId === 'string' ? payload.rubricId.trim() : '';
+    const evaluationMethod = payload.evaluationMethod;
     const { validRows, skippedRows } = normalizeAndValidateRows(mappedRows);
 
     if (validRows.length === 0) {
@@ -55,11 +63,61 @@ export async function POST(req: Request) {
       );
     }
 
-    const estimate = calculateExperimentEstimate(validRows, skippedRows);
+    if (!validateSelectedModelsCount(selectedModels)) {
+      return NextResponse.json(
+        { error: 'Select between 2 and 4 models to start an experiment.' },
+        { status: 400 }
+      );
+    }
+
+    if (!rubricId) {
+      return NextResponse.json(
+        { error: 'rubricId is required.' },
+        { status: 400 }
+      );
+    }
+
+    if (!isExperimentEvaluationMethod(evaluationMethod)) {
+      return NextResponse.json(
+        { error: 'Unsupported evaluationMethod. Allowed values: prompt-based, n-prompt-based, rl4f.' },
+        { status: 400 }
+      );
+    }
+
+    const estimate = calculateExperimentEstimate(validRows, skippedRows, selectedModels.length);
     const experimentTitle =
       payload.title?.trim() || `Experiment ${new Date().toLocaleString()}`;
 
     const supabase = await createClient();
+    let rubricContent: string;
+
+    if (rubricId === DEFAULT_RUBRIC_ID) {
+      rubricContent = loadDefaultRubricText();
+    } else {
+      const { data: rubric, error: rubricError } = await supabase
+        .from('rubrics')
+        .select('rubric_content')
+        .eq('id', rubricId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (rubricError) {
+        return NextResponse.json(
+          { error: rubricError.message },
+          { status: 500 }
+        );
+      }
+
+      if (!rubric?.rubric_content || rubric.rubric_content.trim().length === 0) {
+        return NextResponse.json(
+          { error: 'Selected rubric was not found or has no content.' },
+          { status: 400 }
+        );
+      }
+
+      rubricContent = rubric.rubric_content;
+    }
+
     const { data: experiment, error: createExperimentError } = await supabase
       .from('experiments')
       .insert({
@@ -68,9 +126,10 @@ export async function POST(req: Request) {
         status: ExperimentStatus.DRAFT,
         created_at: new Date().toISOString(),
         configuration: {
-          selected_models: DEFAULT_SELECTED_MODELS,
-          rubric_id: DEFAULT_RUBRIC_ID,
-          eval_method: DEFAULT_EVAL_METHOD,
+          selected_models: selectedModels,
+          rubric_id: rubricId,
+          rubric_content: rubricContent,
+          eval_method: evaluationMethod,
         },
       })
       .select('id')

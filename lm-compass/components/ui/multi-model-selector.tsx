@@ -18,14 +18,21 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { models } from "@/components/ui/model-selector"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface MultiModelSelectorProps {
   values: string[]
   onChange: (values: string[]) => void
+  buttonClassName?: string
+  popoverClassName?: string
 }
 
-export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps) {
+export function MultiModelSelector({
+  values,
+  onChange,
+  buttonClassName,
+  popoverClassName,
+}: MultiModelSelectorProps) {
   const [open, setOpen] = React.useState(false)
 
   const selected = models.filter((m) => values.includes(m.value))
@@ -65,7 +72,7 @@ export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-[250px] justify-between"
+              className={cn("w-[250px] justify-between", buttonClassName)}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Sparkles className="h-4 w-4 text-muted-foreground" />
@@ -89,7 +96,7 @@ export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps
           </TooltipContent>
       </Tooltip>
 
-      <PopoverContent className="w-[320px] p-0">
+      <PopoverContent className={cn("w-[320px] p-0", popoverClassName)}>
         <Command>
           <CommandInput placeholder="Search models..." />
           <CommandList>
@@ -120,4 +127,3 @@ export function MultiModelSelector({ values, onChange }: MultiModelSelectorProps
     </Popover>
   )
 }
-

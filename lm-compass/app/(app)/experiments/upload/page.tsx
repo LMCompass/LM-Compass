@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import { parquetReadObjects, parquetMetadataAsync, parquetSchema } from "hyparquet";
 import {
@@ -34,14 +34,41 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useExperiments } from "@/contexts/experiments-context";
-import type { ExperimentCostEstimate, MappedRow } from "@/lib/types";
+import { useSupabaseClient } from "@/utils/supabase/client";
+import { useUser } from "@clerk/nextjs";
+import { MultiModelSelector } from "@/components/ui/multi-model-selector";
+import type {
+  ExperimentCostEstimate,
+  ExperimentEvaluationMethod,
+  MappedRow,
+} from "@/lib/types";
+import {
+  ALLOWED_EXPERIMENT_EVAL_METHODS,
+  DEFAULT_EVAL_METHOD,
+  DEFAULT_RUBRIC_ID,
+  MAX_EXPERIMENT_MODELS,
+  MIN_EXPERIMENT_MODELS,
+  isExperimentEvaluationMethod,
+  validateSelectedModelsCount,
+} from "@/lib/experiments";
 
 interface ParsedCSV {
   headers: string[];
   rows: Record<string, string>[];
 }
 
+type RubricOption = {
+  id: string;
+  title: string;
+};
+
 const NONE_VALUE = "__none__";
+
+const EVALUATION_METHOD_LABELS: Record<ExperimentEvaluationMethod, string> = {
+  "prompt-based": "Prompt-based scoring",
+  "n-prompt-based": "One-Shot Prompt-based scoring",
+  "rl4f": "Rationale Based Self Critique Loops",
+};
 
 function formatNumber(value: number, maxDigits = 2) {
   return new Intl.NumberFormat("en-US", {
@@ -60,6 +87,8 @@ function formatCurrency(value: number) {
 
 export default function NewExperimentPage() {
   const router = useRouter();
+  const supabase = useSupabaseClient();
+  const { user, isLoaded: userLoaded } = useUser();
   const { estimateExperimentCost, startExperiment } = useExperiments();
 
   const [file, setFile] = useState<File | null>(null);
@@ -69,6 +98,13 @@ export default function NewExperimentPage() {
 
   const [queryColumn, setQueryColumn] = useState<string>("");
   const [groundTruthColumn, setGroundTruthColumn] = useState<string>("");
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [selectedRubricId, setSelectedRubricId] = useState<string>(DEFAULT_RUBRIC_ID);
+  const [selectedEvaluationMethod, setSelectedEvaluationMethod] =
+    useState<ExperimentEvaluationMethod>(DEFAULT_EVAL_METHOD);
+  const [customRubrics, setCustomRubrics] = useState<RubricOption[]>([]);
+  const [isRubricsLoading, setIsRubricsLoading] = useState(false);
+  const [rubricsError, setRubricsError] = useState<string | null>(null);
 
   const [estimate, setEstimate] = useState<ExperimentCostEstimate | null>(null);
   const [isEstimateOpen, setIsEstimateOpen] = useState(false);
@@ -78,6 +114,55 @@ export default function NewExperimentPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const latestFileRef = useRef<File | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchRubrics = async () => {
+      if (!userLoaded) return;
+
+      if (!user?.id) {
+        if (!isCancelled) {
+          setCustomRubrics([]);
+          setRubricsError(null);
+        }
+        return;
+      }
+
+      setIsRubricsLoading(true);
+      setRubricsError(null);
+
+      const response = await supabase
+        .from("rubrics")
+        .select("id, rubric_title")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (isCancelled) return;
+
+      if (response.error) {
+        setRubricsError(response.error.message);
+        setCustomRubrics([]);
+      } else {
+        const nextRubrics = (response.data || []).map((rubric) => ({
+          id: rubric.id as string,
+          title:
+            typeof rubric.rubric_title === "string" && rubric.rubric_title.trim().length > 0
+              ? rubric.rubric_title.trim()
+              : "Untitled rubric",
+        }));
+        setCustomRubrics(nextRubrics);
+      }
+
+      setIsRubricsLoading(false);
+    };
+
+    fetchRubrics();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [supabase, user?.id, userLoaded]);
 
   const handleFile = useCallback((selectedFile: File) => {
     setParseError(null);
@@ -261,12 +346,46 @@ export default function NewExperimentPage() {
     return file.name.replace(/\.(csv|parquet|pqt)$/i, "").trim();
   }, [file?.name]);
 
+  const hasValidModelCount = useMemo(
+    () => validateSelectedModelsCount(selectedModels),
+    [selectedModels]
+  );
+
+  const rubricOptions = useMemo<RubricOption[]>(() => {
+    return [{ id: DEFAULT_RUBRIC_ID, title: "Default Rubric" }, ...customRubrics];
+  }, [customRubrics]);
+
+  const isConfigurationComplete = useMemo(() => {
+    return (
+      hasValidModelCount &&
+      selectedRubricId.trim().length > 0 &&
+      isExperimentEvaluationMethod(selectedEvaluationMethod)
+    );
+  }, [hasValidModelCount, selectedEvaluationMethod, selectedRubricId]);
+
   const handleOpenEstimate = useCallback(() => {
     if (mappedData.length === 0) {
       return;
     }
 
-    const nextEstimate = estimateExperimentCost(mappedData);
+    if (!hasValidModelCount) {
+      setSubmitError(
+        `Select between ${MIN_EXPERIMENT_MODELS} and ${MAX_EXPERIMENT_MODELS} models.`
+      );
+      return;
+    }
+
+    if (!selectedRubricId) {
+      setSubmitError("Select a rubric to continue.");
+      return;
+    }
+
+    if (!isExperimentEvaluationMethod(selectedEvaluationMethod)) {
+      setSubmitError("Select a valid evaluation method to continue.");
+      return;
+    }
+
+    const nextEstimate = estimateExperimentCost(mappedData, selectedModels.length);
     setEstimate(nextEstimate);
     setSubmitError(null);
     setSubmitSuccess(null);
@@ -277,10 +396,17 @@ export default function NewExperimentPage() {
     }
 
     setIsEstimateOpen(true);
-  }, [estimateExperimentCost, mappedData]);
+  }, [
+    estimateExperimentCost,
+    hasValidModelCount,
+    mappedData,
+    selectedEvaluationMethod,
+    selectedModels.length,
+    selectedRubricId,
+  ]);
 
   const handleStartAction = useCallback(async () => {
-    if (mappedData.length === 0) {
+    if (mappedData.length === 0 || !isConfigurationComplete) {
       return;
     }
 
@@ -291,6 +417,9 @@ export default function NewExperimentPage() {
       const result = await startExperiment({
         title: defaultTitle || undefined,
         rows: mappedData,
+        selectedModels,
+        rubricId: selectedRubricId,
+        evaluationMethod: selectedEvaluationMethod,
       });
 
       setSubmitSuccess(
@@ -307,7 +436,16 @@ export default function NewExperimentPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [defaultTitle, mappedData, router, startExperiment]);
+  }, [
+    defaultTitle,
+    isConfigurationComplete,
+    mappedData,
+    router,
+    selectedEvaluationMethod,
+    selectedModels,
+    selectedRubricId,
+    startExperiment,
+  ]);
 
   return (
     <SidebarInset>
@@ -486,12 +624,108 @@ export default function NewExperimentPage() {
               </section>
             )}
 
-            {/* ---------- Step 3: Preview ---------- */}
             {parsedData && isMappingComplete && (
               <section className="space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
                     3
+                  </span>
+                  <h2 className="text-lg font-semibold">Experiment Configuration</h2>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  Select required models, rubric, and evaluation method.
+                </p>
+
+                <div className="space-y-4 rounded-lg border border-border p-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">
+                      Models <span className="text-destructive">*</span>
+                    </label>
+                    <MultiModelSelector
+                      values={selectedModels}
+                      onChange={setSelectedModels}
+                      buttonClassName="w-full justify-between font-normal"
+                      popoverClassName="w-[var(--radix-popover-trigger-width)] min-w-[320px]"
+                    />
+                    <p
+                      className={`text-xs ${
+                        hasValidModelCount ? "text-muted-foreground" : "text-destructive"
+                      }`}
+                    >
+                      Select between {MIN_EXPERIMENT_MODELS} and {MAX_EXPERIMENT_MODELS} models.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">
+                        Rubric <span className="text-destructive">*</span>
+                      </label>
+                      <Select value={selectedRubricId} onValueChange={setSelectedRubricId}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select rubric" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rubricOptions.map((rubric) => (
+                            <SelectItem key={rubric.id} value={rubric.id}>
+                              {rubric.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Default rubric is preselected; custom rubrics are available here.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">
+                        Evaluation Method <span className="text-destructive">*</span>
+                      </label>
+                      <Select
+                        value={selectedEvaluationMethod}
+                        onValueChange={(value) => {
+                          if (isExperimentEvaluationMethod(value)) {
+                            setSelectedEvaluationMethod(value);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select evaluation method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ALLOWED_EXPERIMENT_EVAL_METHODS.map((method) => (
+                            <SelectItem key={method} value={method}>
+                              {EVALUATION_METHOD_LABELS[method]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Select how model responses should be evaluated.
+                      </p>
+                    </div>
+                  </div>
+
+                  {isRubricsLoading && (
+                    <p className="text-xs text-muted-foreground">Loading custom rubrics...</p>
+                  )}
+                  {rubricsError && (
+                    <p className="text-xs text-destructive">
+                      Failed to load custom rubrics: {rubricsError}
+                    </p>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* ---------- Step 4: Preview ---------- */}
+            {parsedData && isMappingComplete && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                    4
                   </span>
                   <h2 className="text-lg font-semibold">Preview</h2>
                 </div>
@@ -539,7 +773,11 @@ export default function NewExperimentPage() {
                 </div>
 
                 <div className="flex justify-end pt-2">
-                  <Button onClick={handleOpenEstimate} className="gap-2">
+                  <Button
+                    onClick={handleOpenEstimate}
+                    className="gap-2"
+                    disabled={!isConfigurationComplete || isRubricsLoading}
+                  >
                     <CheckCircle2 className="size-4" />
                     Start Experiment
                     <span className="text-xs opacity-70">({mappedData.length} rows)</span>
