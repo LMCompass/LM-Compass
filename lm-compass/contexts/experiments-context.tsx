@@ -20,6 +20,7 @@ import type {
 import { ExperimentStatus, ExperimentItemStatus } from "@/lib/types";
 import {
   calculateExperimentEstimate,
+  DEFAULT_EVAL_METHOD,
   normalizeAndValidateRows,
 } from "@/lib/experiments";
 
@@ -45,7 +46,10 @@ interface ExperimentsContextType {
   setActiveExperimentId: (id: string | null) => void;
   isProcessing: boolean;
   progress: { completed: number; total: number };
-  estimateExperimentCost: (rows: MappedRow[]) => ExperimentCostEstimate;
+  estimateExperimentCost: (
+    rows: MappedRow[],
+    selectedModelCount: number
+  ) => ExperimentCostEstimate;
   startExperiment: (input: StartExperimentInput) => Promise<StartExperimentResult>;
 }
 
@@ -66,10 +70,13 @@ export function ExperimentsProvider({
   const processingRef = useRef(false);
   const supabase = useSupabaseClient();
 
-  const estimateExperimentCost = useCallback((rows: MappedRow[]) => {
-    const { validRows, skippedRows } = normalizeAndValidateRows(rows);
-    return calculateExperimentEstimate(validRows, skippedRows);
-  }, []);
+  const estimateExperimentCost = useCallback(
+    (rows: MappedRow[], selectedModelCount: number) => {
+      const { validRows, skippedRows } = normalizeAndValidateRows(rows);
+      return calculateExperimentEstimate(validRows, skippedRows, selectedModelCount);
+    },
+    []
+  );
 
   const startExperiment = useCallback(
     async (input: StartExperimentInput): Promise<StartExperimentResult> => {
@@ -79,6 +86,9 @@ export function ExperimentsProvider({
         body: JSON.stringify({
           title: input.title,
           rows: input.rows,
+          selectedModels: input.selectedModels,
+          rubricId: input.rubricId,
+          evaluationMethod: input.evaluationMethod,
         }),
       });
 
@@ -152,9 +162,9 @@ export function ExperimentsProvider({
             input_query: item.input_query,
             expected_output: item.expected_output,
             models: experiment.configuration?.selected_models,
-            rubric: experiment.configuration?.rubric_id,
+            rubric: experiment.configuration?.rubric_content,
             evaluationMethod:
-              experiment.configuration?.eval_method || "prompt-based",
+              experiment.configuration?.eval_method || DEFAULT_EVAL_METHOD,
           }),
         });
 

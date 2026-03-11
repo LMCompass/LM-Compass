@@ -36,7 +36,8 @@ export interface Experiment {
   configuration: {
     selected_models: string[];
     rubric_id: string;
-    eval_method: string;
+    eval_method: ExperimentEvaluationMethod;
+    rubric_content?: string;
   } | null;
 }
 
@@ -102,7 +103,15 @@ export interface ExperimentCostEstimate {
 export interface StartExperimentInput {
   title?: string;
   rows: MappedRow[];
+  selectedModels: string[];
+  rubricId: string;
+  evaluationMethod: ExperimentEvaluationMethod;
 }
+
+export type ExperimentEvaluationMethod =
+  | "prompt-based"
+  | "n-prompt-based"
+  | "rl4f";
 
 export interface StartExperimentResult {
   experimentId: string;
