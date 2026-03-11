@@ -48,6 +48,7 @@ type PromptInputComponentProps = {
   evaluationMethod: string;
   iterations: number;
   chatId: string;
+  rubricId: string;
 };
 
 export function PromptInputComponent({
@@ -60,6 +61,7 @@ export function PromptInputComponent({
   evaluationMethod,
   iterations,
   chatId,
+  rubricId,
 }: PromptInputComponentProps) {
   const [input, setInput] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -145,6 +147,7 @@ export function PromptInputComponent({
           evaluationMethod,
           iterations,
           chatId,
+          rubricId,
         }),
         signal: abortControllerRef.current.signal,
       });
