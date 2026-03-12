@@ -309,3 +309,32 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Global, theme-aware scrollbar styling
+   - Thin thumb-only scrollbar
+   - Transparent track (no background bar)
+   - Uses CSS vars so it works in light & dark */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--ring) 80%, transparent)
+    transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--ring) 85%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklch, var(--ring) 100%, transparent);
+}
