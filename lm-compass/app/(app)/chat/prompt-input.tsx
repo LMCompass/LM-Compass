@@ -94,13 +94,19 @@ export function PromptInputComponent({
     }
   };
 
+  const hitlNeedsMoreModels =
+    evaluationMethod === "hitl" &&
+    selectedModels.length > 0 &&
+    selectedModels.length < 3;
+
   const handleSubmit = async () => {
-    // Prevent submission if waiting for winner selection, no input, or no models selected
+    // Prevent submission if waiting for winner selection, no input, or invalid model selection
     if (
       !input.trim() ||
       isLoading ||
       needsWinnerSelection ||
-      selectedModels.length === 0
+      selectedModels.length === 0 ||
+      hitlNeedsMoreModels
     )
       return;
 
@@ -341,13 +347,31 @@ export function PromptInputComponent({
           </a>
         </Item>
       )}
+      {hitlNeedsMoreModels && (
+        <Item variant="banner" size="sm" asChild>
+          <a>
+            <ItemMedia>
+              <MessageCircleWarning className="size-5" />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>
+                Human-in-the-loop evaluation requires at least 3 models. Please
+                select 3 or more models or choose a different evaluation method.
+              </ItemTitle>
+            </ItemContent>
+          </a>
+        </Item>
+      )}
       <PromptInput
         value={input}
         onValueChange={handleValueChange}
         isLoading={isLoading}
         onSubmit={handleSubmit}
         disabled={
-          isLoading || needsWinnerSelection || selectedModels.length === 0
+          isLoading ||
+          needsWinnerSelection ||
+          selectedModels.length === 0 ||
+          hitlNeedsMoreModels
         }
       >
         <div className="flex items-center gap-2">
@@ -357,10 +381,16 @@ export function PromptInputComponent({
                 ? "Please select a winner first..."
                 : selectedModels.length === 0
                   ? "Please select at least one model first..."
-                  : "Ask me anything..."
+                  : hitlNeedsMoreModels
+                    ? "HITL evaluation requires at least 3 models..."
+                    : "Ask me anything..."
             }
             className="flex-1"
-            disabled={needsWinnerSelection || selectedModels.length === 0}
+            disabled={
+              needsWinnerSelection ||
+              selectedModels.length === 0 ||
+              hitlNeedsMoreModels
+            }
           />
           <PromptInputActions>
             <PromptInputAction
@@ -371,7 +401,9 @@ export function PromptInputComponent({
                     ? "Select a winner first"
                     : selectedModels.length === 0
                       ? "Select at least one model first"
-                      : "Send message"
+                      : hitlNeedsMoreModels
+                        ? "HITL evaluation requires at least 3 models"
+                        : "Send message"
               }
             >
               <Button
@@ -383,7 +415,8 @@ export function PromptInputComponent({
                   !isLoading &&
                   (needsWinnerSelection ||
                     !input.trim() ||
-                    selectedModels.length === 0)
+                    selectedModels.length === 0 ||
+                    hitlNeedsMoreModels)
                 }
               >
                 {isLoading ? (

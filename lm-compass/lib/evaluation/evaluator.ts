@@ -3,7 +3,7 @@
  * Provides core functionality for querying models and extracting JSON from responses
  */
 
-import type { OpenAI } from 'openai';
+import type { OpenAI } from "openai";
 
 /**
  * Model configuration for OpenRouter
@@ -36,13 +36,25 @@ export class Evaluator {
     // Candidate models configuration - mirrors evaluator.py
     this.candidateModels = [
       // PAID
-      { name: 'Anthropic: Claude Sonnet 4.5', openrouter: 'anthropic/claude-sonnet-4.5' },
-      { name: 'OpenAI: GPT-4o', openrouter: 'openai/gpt-4o' },
-      { name: 'OpenAI: GPT-4o Mini', openrouter: 'openai/gpt-4o-mini' },
+      {
+        name: "Anthropic: Claude Sonnet 4.5",
+        openrouter: "anthropic/claude-sonnet-4.5",
+      },
+      { name: "OpenAI: GPT-4o", openrouter: "openai/gpt-4o" },
+      { name: "OpenAI: GPT-4o Mini", openrouter: "openai/gpt-4o-mini" },
       // FREE
-      { name: 'StepFun: Step 3.5 Flash (free)', openrouter: 'stepfun/step-3.5-flash:free' },
-      { name: 'TNG: DeepSeek R1T2 Chimera (free)', openrouter: 'tngtech/deepseek-r1t2-chimera:free' },
-      { name: 'LiquidAI: LFM2.5-1.2B-Thinking (free)', openrouter: 'liquid/lfm-2.5-1.2b-thinking:free' },
+      {
+        name: "StepFun: Step 3.5 Flash (free)",
+        openrouter: "stepfun/step-3.5-flash:free",
+      },
+      {
+        name: "TNG: DeepSeek R1T2 Chimera (free)",
+        openrouter: "tngtech/deepseek-r1t2-chimera:free",
+      },
+      {
+        name: "LiquidAI: LFM2.5-1.2B-Thinking (free)",
+        openrouter: "liquid/lfm-2.5-1.2b-thinking:free",
+      },
     ];
   }
 
@@ -53,7 +65,11 @@ export class Evaluator {
    * @param role - The role of the message (default: "user")
    * @returns Object with model name and response content
    */
-  async queryModel(modelName: string, query: string, role: 'system' | 'user' | 'assistant' = 'user'): Promise<ModelQueryResponse> {
+  async queryModel(
+    modelName: string,
+    query: string,
+    role: "system" | "user" | "assistant" = "user",
+  ): Promise<ModelQueryResponse> {
     const modelDict = this.candidateModels.find((m) => m.name === modelName);
     if (!modelDict) {
       return {
@@ -71,7 +87,7 @@ export class Evaluator {
       const content = response.choices[0].message.content;
       return {
         model: modelName,
-        response: content || '',
+        response: content || "",
       };
     } catch (e) {
       return {
@@ -88,8 +104,14 @@ export class Evaluator {
    * @param role - The role of the message (default: "user")
    * @returns Array of query responses
    */
-  async queryModels(modelNames: string[], queries: string[], role: 'system' | 'user' | 'assistant' = 'user'): Promise<ModelQueryResponse[]> {
-    const promises = modelNames.map((modelName, i) => this.queryModel(modelName, queries[i], role));
+  async queryModels(
+    modelNames: string[],
+    queries: string[],
+    role: "system" | "user" | "assistant" = "user",
+  ): Promise<ModelQueryResponse[]> {
+    const promises = modelNames.map((modelName, i) =>
+      this.queryModel(modelName, queries[i], role),
+    );
     return Promise.all(promises);
   }
 
@@ -106,11 +128,11 @@ export class Evaluator {
 
     // Strip markdown code fences (``` or ```json)
     let s = text.trim();
-    if (s.startsWith('```')) {
-      const lines = s.split('\n');
+    if (s.startsWith("```")) {
+      const lines = s.split("\n");
       s = lines
-        .filter((line) => !line.trim().startsWith('```'))
-        .join('\n')
+        .filter((line) => !line.trim().startsWith("```"))
+        .join("\n")
         .trim();
     }
 
@@ -119,7 +141,7 @@ export class Evaluator {
     let inString = false;
     let escape = false;
 
-    const pairs: Record<string, string> = { '{': '}', '[': ']' };
+    const pairs: Record<string, string> = { "{": "}", "[": "]" };
 
     for (let i = 0; i < s.length; i++) {
       const ch = s[i];
@@ -129,7 +151,7 @@ export class Evaluator {
         continue;
       }
 
-      if (ch === '\\') {
+      if (ch === "\\") {
         escape = true;
         continue;
       }
@@ -143,12 +165,12 @@ export class Evaluator {
         continue;
       }
 
-      if (ch === '{' || ch === '[') {
+      if (ch === "{" || ch === "[") {
         if (stack.length === 0) {
           start = i;
         }
         stack.push(ch);
-      } else if (ch === '}' || ch === ']') {
+      } else if (ch === "}" || ch === "]") {
         if (stack.length === 0) {
           continue;
         }
@@ -160,9 +182,21 @@ export class Evaluator {
             try {
               return JSON.parse(candidate);
             } catch {
-              // if this block isn't valid JSON, keep scanning
-              start = null;
-              continue;
+              // JSON.parse may fail if the string contains invalid escape
+              // sequences (e.g. LaTeX \( \) \[ \] produced by LLMs).
+              // Replace any backslash NOT followed by a recognised JSON
+              // escape character with a double-backslash and retry.
+              try {
+                const sanitized = candidate.replace(
+                  /\\(?!["\\\/bfnrt]|u[0-9a-fA-F]{4})/g,
+                  "\\\\",
+                );
+                return JSON.parse(sanitized);
+              } catch {
+                // Still not valid JSON — keep scanning for the next candidate
+                start = null;
+                continue;
+              }
             }
           }
         } else {

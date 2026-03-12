@@ -44,7 +44,7 @@ export function ModelResponseCard({
           <h4 className="text-base font-semibold text-foreground truncate">
             {label}
           </h4>
-          {score !== undefined && (
+          {typeof score === "number" && Number.isFinite(score) && (
             <div className="flex items-center gap-2 mt-1">
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-20 bg-muted rounded-full overflow-hidden">
