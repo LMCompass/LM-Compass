@@ -289,7 +289,6 @@ export function MessagesDisplay({
             const hasEvaluation = hasMultipleResults && evaluationMetadata;
             const hasNoWinner = evaluationMetadata?.winnerModel === null;
             const userSelectedWinner = message.userSelectedWinner;
-            const tiedModels = evaluationMetadata?.tiedModels || [];
 
             // displayModel will be decided after we know if phase2 has completed (may override winner)
             let displayModel: string | null =
@@ -608,17 +607,21 @@ export function MessagesDisplay({
             onOpenChange={(open) => !open && closeDetail()}
           >
             <DialogContent
-              className="max-w-4xl backdrop-blur-2xl p-0"
+              className="max-w-4xl backdrop-blur-2xl p-4 sm:p-6 border border-border"
               aria-describedby={undefined}
             >
-              <DialogHeader>
-                <DialogTitle className="text-xl">{detail?.label}</DialogTitle>
+              <DialogHeader className="pb-3 sm:pb-4">
+                <DialogTitle className="text-lg sm:text-xl">
+                  {detail?.label}
+                </DialogTitle>
               </DialogHeader>
-              <div className="max-h-[70vh] overflow-y-auto p-0">
+              <div className="max-h-[70vh] overflow-y-auto -mx-1 sm:-mx-1.5">
                 {detail && (
-                  <Markdown className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0">
-                    {detail.content}
-                  </Markdown>
+                  <div className="px-1 sm:px-1.5">
+                    <Markdown className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0">
+                      {detail.content}
+                    </Markdown>
+                  </div>
                 )}
               </div>
             </DialogContent>
