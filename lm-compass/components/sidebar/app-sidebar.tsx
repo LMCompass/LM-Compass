@@ -302,15 +302,6 @@ export function AppSidebar() {
               <FlaskConical className="h-4 w-4" />
               Experiments
             </SidebarMenuButton>
-            <SignedIn>
-              <SidebarMenuButton
-                className="hover:bg-sidebar-accent/60"
-                onClick={() => startTour()}
-              >
-                <CirclePlay className="h-4 w-4" />
-                Replay Demo
-              </SidebarMenuButton>
-            </SignedIn>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
@@ -342,6 +333,11 @@ export function AppSidebar() {
                       label="OpenRouter Key"
                       labelIcon={<Settings className="w-4 h-4" />}
                       onClick={() => setIsSettingsOpen(true)}
+                    />
+                    <UserButton.Action
+                      label="Replay Demo"
+                      labelIcon={<CirclePlay className="w-4 h-4" />}
+                      onClick={() => startTour()}
                     />
                   </UserButton.MenuItems>
                 </UserButton>
