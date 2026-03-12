@@ -5,6 +5,19 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { ArrowLeft } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 import { useSupabaseClient } from "@/utils/supabase/client";
 import {
   ExperimentItemStatus,
@@ -51,6 +64,11 @@ type ModelEntry = {
 };
 
 const POLL_INTERVAL_MS = 2000;
+
+const CHART_COLORS = [
+  "#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6",
+  "#ec4899", "#14b8a6", "#f97316", "#06b6d4", "#84cc16",
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -370,6 +388,49 @@ export default function ExperimentDetailPage() {
     });
   }, [items]);
 
+  const isExperimentDone = experiment?.status === ExperimentStatus.COMPLETED;
+
+  const chartData = useMemo(() => {
+    const scoreSums: Record<string, number> = {};
+    const scoreCounts: Record<string, number> = {};
+    const winCounts: Record<string, number> = {};
+
+    for (const item of items) {
+      if (item.status !== ExperimentItemStatus.COMPLETED) continue;
+      const { summary } = parseResultPayload(item.result);
+      if (!summary) continue;
+
+      if (summary.meanScores) {
+        for (const [model, score] of Object.entries(summary.meanScores)) {
+          if (typeof score !== "number") continue;
+          scoreSums[model] = (scoreSums[model] ?? 0) + score;
+          scoreCounts[model] = (scoreCounts[model] ?? 0) + 1;
+        }
+      }
+
+      if (summary.winnerModel) {
+        winCounts[summary.winnerModel] =
+          (winCounts[summary.winnerModel] ?? 0) + 1;
+      }
+    }
+
+    const avgScores = Object.entries(scoreSums).map(([model, sum], i) => ({
+      model,
+      avgScore: +(sum / scoreCounts[model]).toFixed(2),
+      fill: CHART_COLORS[i % CHART_COLORS.length],
+    }));
+    avgScores.sort((a, b) => b.avgScore - a.avgScore);
+
+    const wins = Object.entries(winCounts).map(([model, count], i) => ({
+      name: model,
+      value: count,
+      fill: CHART_COLORS[i % CHART_COLORS.length],
+    }));
+    wins.sort((a, b) => b.value - a.value);
+
+    return { avgScores, wins };
+  }, [items]);
+
   if (!experimentId) {
     return (
       <SidebarInset>
@@ -455,6 +516,97 @@ export default function ExperimentDetailPage() {
               <Button size="sm" variant="outline" onClick={() => refreshData(true)}>
                 Retry
               </Button>
+            </div>
+          )}
+
+          {isExperimentDone && chartData.avgScores.length > 0 && (
+            <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
+                <h3 className="text-sm font-semibold text-foreground mb-4">
+                  Average Score by Model
+                </h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart
+                    data={chartData.avgScores}
+                    margin={{ top: 8, right: 12, bottom: 40, left: 12 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--color-border)"
+                      opacity={0.4}
+                    />
+                    <XAxis
+                      dataKey="model"
+                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                      angle={-25}
+                      textAnchor="end"
+                      interval={0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value) => [Number(value).toFixed(2), "Avg Score"]}
+                    />
+                    <Bar dataKey="avgScore" radius={[6, 6, 0, 0]} maxBarSize={56}>
+                      {chartData.avgScores.map((entry, index) => (
+                        <Cell key={`bar-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {chartData.wins.length > 0 && (
+                <div className="rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-4">
+                    Queries Won by Model
+                  </h3>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={chartData.wins}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        innerRadius={50}
+                        paddingAngle={3}
+                        label={({ name, value }) => `${String(name ?? "").split("/").pop()} (${value})`}
+                        labelLine={{ stroke: "var(--color-muted-foreground)", strokeWidth: 1 }}
+                        style={{ fontSize: "11px" }}
+                      >
+                        {chartData.wins.map((entry, index) => (
+                          <Cell key={`pie-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "var(--color-card)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
+                        formatter={(value, name) => [value, name]}
+                      />
+                      <Legend
+                        verticalAlign="bottom"
+                        iconType="circle"
+                        iconSize={8}
+                        wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           )}
 
