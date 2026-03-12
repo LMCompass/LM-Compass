@@ -1,3 +1,6 @@
+import "server-only";
+
+import { unstable_cache } from "next/cache";
 import type { ModelPricing, ModelPricingMap } from "../cost/types";
 
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
@@ -119,7 +122,7 @@ function parseModelPricing(model: RawModel): { modelId: string; pricing: ModelPr
   return { modelId, pricing };
 }
 
-export async function fetchModelPricingMap(): Promise<ModelPricingMap> {
+async function fetchModelPricingMapUncached(): Promise<ModelPricingMap> {
   let response: Response;
   try {
     response = await fetch(OPENROUTER_MODELS_URL, {
@@ -127,7 +130,6 @@ export async function fetchModelPricingMap(): Promise<ModelPricingMap> {
       headers: {
         Accept: "application/json",
       },
-      cache: "no-store",
       signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
     });
   } catch (error) {
@@ -185,4 +187,16 @@ export async function fetchModelPricingMap(): Promise<ModelPricingMap> {
   }
 
   return pricingMap;
+}
+
+const getCachedModelPricingMap = unstable_cache(
+  async (): Promise<ModelPricingMap> => fetchModelPricingMapUncached(),
+  ["openrouter-model-pricing-map"],
+  {
+    revalidate: 60 * 60, // Revalidate every hour
+  }
+);
+
+export async function fetchModelPricingMap(): Promise<ModelPricingMap> {
+  return getCachedModelPricingMap();
 }

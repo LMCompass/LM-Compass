@@ -1,3 +1,5 @@
+import "server-only";
+
 import { estimateWorkloadCost } from "./estimate-engine";
 import type { EstimateProfile, WorkUnitsByModel } from "./types";
 import { normalizeAndValidateRows } from "../experiments";
