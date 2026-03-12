@@ -486,7 +486,10 @@ export default function NewExperimentPage() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="max-w-3xl mx-auto space-y-8">
+          <div
+            className="max-w-3xl mx-auto space-y-8"
+            data-tour-id="experiment-create-flow"
+          >
             {submitError && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {submitError}
