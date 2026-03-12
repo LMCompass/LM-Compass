@@ -4,6 +4,7 @@ import * as React from "react";
 
 import {
   BookOpen,
+  CirclePlay,
   ChevronRight,
   Compass,
   FlaskConical,
@@ -52,6 +53,7 @@ import {
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useChat } from "@/contexts/chat-context";
+import { useOnboarding } from "@/contexts/onboarding-context";
 
 import {
   SignInButton,
@@ -65,6 +67,7 @@ import {
 export function AppSidebar() {
   const router = useRouter();
   const { user } = useUser();
+  const { startTour } = useOnboarding();
   const { handleNewChat, chatHistory, loadChat, deleteChat, updateChatTitle } =
     useChat();
   const { toggleSidebar, state } = useSidebar();
@@ -144,6 +147,7 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuButton
               className="hover:bg-sidebar-accent/60"
+              data-tour-id="nav-to-chat"
               onClick={() => {
                 handleNewChat();
                 router.push("/chat");
@@ -284,6 +288,7 @@ export function AppSidebar() {
             ))}
             <SidebarMenuButton
               className="hover:bg-sidebar-accent/60"
+              data-tour-id="nav-to-rubrics"
               onClick={() => router.push("/rubric/view")}
             >
               <BookOpen className="h-4 w-4" />
@@ -291,11 +296,21 @@ export function AppSidebar() {
             </SidebarMenuButton>
             <SidebarMenuButton
               className="hover:bg-sidebar-accent/60"
+              data-tour-id="nav-to-experiments"
               onClick={() => router.push("/experiments")}
             >
               <FlaskConical className="h-4 w-4" />
               Experiments
             </SidebarMenuButton>
+            <SignedIn>
+              <SidebarMenuButton
+                className="hover:bg-sidebar-accent/60"
+                onClick={() => startTour()}
+              >
+                <CirclePlay className="h-4 w-4" />
+                Replay Demo
+              </SidebarMenuButton>
+            </SignedIn>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
