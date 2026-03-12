@@ -69,6 +69,7 @@ export default function Home() {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [checkingKey, setCheckingKey] = useState(true);
   const [pendingSettingsPrompt, setPendingSettingsPrompt] = useState(false);
+  const shouldSuppressRef = useRef(shouldSuppressBlockingDialogs);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -132,6 +133,10 @@ export default function Home() {
 
   // Check if user has API key when signed in
   useEffect(() => {
+    shouldSuppressRef.current = shouldSuppressBlockingDialogs;
+  }, [shouldSuppressBlockingDialogs]);
+
+  useEffect(() => {
     const checkApiKey = async () => {
       if (!userLoaded) {
         return;
@@ -150,7 +155,7 @@ export default function Home() {
 
         // If user is signed in but doesn't have a key, show settings dialog
         if (!result.hasKey) {
-          if (shouldSuppressBlockingDialogs) {
+          if (shouldSuppressRef.current) {
             setPendingSettingsPrompt(true);
           } else {
             setIsSettingsOpen(true);
@@ -168,7 +173,7 @@ export default function Home() {
     };
 
     checkApiKey();
-  }, [shouldSuppressBlockingDialogs, user, userLoaded]);
+  }, [user, userLoaded]);
 
   useEffect(() => {
     if (

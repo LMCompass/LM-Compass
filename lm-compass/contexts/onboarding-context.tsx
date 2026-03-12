@@ -37,6 +37,19 @@ function clampStepIndex(index: number) {
   );
 }
 
+function areRectsEqual(a: DOMRect | null, b: DOMRect | null) {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+
+  const epsilon = 0.5;
+  return (
+    Math.abs(a.top - b.top) < epsilon &&
+    Math.abs(a.left - b.left) < epsilon &&
+    Math.abs(a.width - b.width) < epsilon &&
+    Math.abs(a.height - b.height) < epsilon
+  );
+}
+
 type StepCardProps = {
   currentStep: OnboardingStep;
   currentStepIndex: number;
@@ -139,6 +152,7 @@ function TourOverlay({
   const [targetRect, setTargetRect] = React.useState<DOMRect | null>(null);
   const [viewport, setViewport] = React.useState({ width: 0, height: 0 });
   const [isSmallViewport, setIsSmallViewport] = React.useState(false);
+  const rafRefreshRef = React.useRef<number | null>(null);
 
   const currentStep = ONBOARDING_STEPS[currentStepIndex];
   const isRouteTransition = isTourActive && !!currentStep && pathname !== currentStep.path;
@@ -146,22 +160,31 @@ function TourOverlay({
     ? currentStep?.transitionTargetId
     : currentStep?.targetId;
 
+  const updateViewport = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const nextWidth = window.innerWidth;
+    const nextHeight = window.innerHeight;
+    const nextSmall = nextWidth < 768;
+
+    setViewport((prev) =>
+      prev.width === nextWidth && prev.height === nextHeight
+        ? prev
+        : { width: nextWidth, height: nextHeight }
+    );
+    setIsSmallViewport((prev) => (prev === nextSmall ? prev : nextSmall));
+  }, []);
+
   const refreshTargetRect = React.useCallback(() => {
     if (!isTourActive || typeof window === "undefined") {
-      setTargetRect(null);
+      setTargetRect((prev) => (prev == null ? prev : null));
       return;
     }
 
-    setViewport({
-      width: window.innerWidth,
-      height: window.innerHeight,
-    });
-
     const smallViewport = window.innerWidth < 768;
-    setIsSmallViewport(smallViewport);
 
     if (smallViewport || !activeTargetId) {
-      setTargetRect(null);
+      setTargetRect((prev) => (prev == null ? prev : null));
       return;
     }
 
@@ -170,13 +193,13 @@ function TourOverlay({
     );
 
     if (!element) {
-      setTargetRect(null);
+      setTargetRect((prev) => (prev == null ? prev : null));
       return;
     }
 
     const rect = element.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) {
-      setTargetRect(null);
+      setTargetRect((prev) => (prev == null ? prev : null));
       return;
     }
 
@@ -194,30 +217,57 @@ function TourOverlay({
       });
     }
 
-    setTargetRect(element.getBoundingClientRect());
+    const nextRect = element.getBoundingClientRect();
+    setTargetRect((prev) => (areRectsEqual(prev, nextRect) ? prev : nextRect));
   }, [activeTargetId, isTourActive]);
+
+  const scheduleRefresh = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (rafRefreshRef.current != null) return;
+
+    rafRefreshRef.current = window.requestAnimationFrame(() => {
+      rafRefreshRef.current = null;
+      refreshTargetRect();
+    });
+  }, [refreshTargetRect]);
 
   React.useEffect(() => {
     if (!isTourActive) {
-      setTargetRect(null);
+      setTargetRect((prev) => (prev == null ? prev : null));
+      if (rafRefreshRef.current != null) {
+        window.cancelAnimationFrame(rafRefreshRef.current);
+        rafRefreshRef.current = null;
+      }
       return;
     }
 
-    refreshTargetRect();
-    const animationFrameId = window.requestAnimationFrame(refreshTargetRect);
-    const timeoutId = window.setTimeout(refreshTargetRect, 250);
-    const handleViewportChange = () => refreshTargetRect();
+    updateViewport();
+    scheduleRefresh();
+    const timeoutId = window.setTimeout(scheduleRefresh, 250);
+    const handleResize = () => {
+      updateViewport();
+      scheduleRefresh();
+    };
+    const handleScroll = () => {
+      scheduleRefresh();
+    };
 
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("scroll", handleViewportChange, true);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleScroll, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
-      window.cancelAnimationFrame(animationFrameId);
       window.clearTimeout(timeoutId);
-      window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener("scroll", handleViewportChange, true);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleScroll, true);
+      if (rafRefreshRef.current != null) {
+        window.cancelAnimationFrame(rafRefreshRef.current);
+        rafRefreshRef.current = null;
+      }
     };
-  }, [currentStepIndex, isTourActive, pathname, refreshTargetRect]);
+  }, [currentStepIndex, isTourActive, pathname, scheduleRefresh, updateViewport]);
 
   if (!isTourActive || !currentStep) {
     return null;
