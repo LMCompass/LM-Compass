@@ -1,8 +1,4 @@
-import type {
-  ExperimentCostEstimate,
-  ExperimentEvaluationMethod,
-  MappedRow,
-} from "@/lib/types";
+import type { ExperimentEvaluationMethod, MappedRow } from "./types";
 
 export const MIN_EXPERIMENT_MODELS = 2;
 export const MAX_EXPERIMENT_MODELS = 4;
@@ -13,7 +9,6 @@ export const ALLOWED_EXPERIMENT_EVAL_METHODS: readonly ExperimentEvaluationMetho
   "n-prompt-based",
   "rl4f",
 ];
-export const PRICE_PER_TOKEN_USD = 5 / 1_000_000;
 export const BATCH_INSERT_SIZE = 500;
 
 export function normalizeAndValidateRows(rows: MappedRow[]) {
@@ -31,32 +26,6 @@ export function normalizeAndValidateRows(rows: MappedRow[]) {
   const skippedRows = rows.length - validRows.length;
 
   return { validRows, skippedRows };
-}
-
-export function calculateExperimentEstimate(
-  validRows: MappedRow[],
-  skippedRows: number,
-  selectedModelCount: number
-): ExperimentCostEstimate {
-  const totalChars = validRows.reduce(
-    (sum, row) => sum + row.query.length + (row.ground_truth?.length ?? 0),
-    0
-  );
-  const avgChars = validRows.length > 0 ? totalChars / validRows.length : 0;
-  const estTokensPerPrompt = avgChars / 4;
-  const multiplier = selectedModelCount + 1;
-  const totalTokens = estTokensPerPrompt * multiplier * validRows.length;
-  const estimatedUsd = totalTokens * PRICE_PER_TOKEN_USD;
-
-  return {
-    avgChars,
-    estTokensPerPrompt,
-    multiplier,
-    totalTokens,
-    estimatedUsd,
-    validRows: validRows.length,
-    skippedRows,
-  };
 }
 
 export function isExperimentEvaluationMethod(
