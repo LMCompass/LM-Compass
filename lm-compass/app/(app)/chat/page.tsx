@@ -213,6 +213,7 @@ export default function Home() {
             <RubricSelector
               value={selectedRubricId}
               onChange={setSelectedRubricId}
+              evaluationMethod={selectedRubric}
             />
             {selectedRubric === "rl4f" && (
               <IterationsSelector

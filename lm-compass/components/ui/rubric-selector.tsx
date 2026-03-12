@@ -28,14 +28,24 @@ import {
 type RubricRow = {
   id: string;
   rubric_title: string | null;
+  category: string | null;
 };
 
 type RubricSelectorProps = {
   value: string;
   onChange: (value: string) => void;
+  /**
+   * Evaluation method selected in the chat header,
+   * e.g. "prompt-based", "rl4f", "hitl".
+   */
+  evaluationMethod?: string;
 };
 
-export function RubricSelector({ value, onChange }: RubricSelectorProps) {
+export function RubricSelector({
+  value,
+  onChange,
+  evaluationMethod,
+}: RubricSelectorProps) {
   const supabase = useSupabaseClient();
   const { user } = useUser();
   const [rubrics, setRubrics] = React.useState<RubricRow[]>([]);
@@ -55,7 +65,7 @@ export function RubricSelector({ value, onChange }: RubricSelectorProps) {
       try {
         const { data, error } = await supabase
           .from("rubrics")
-          .select("id, rubric_title")
+          .select("id, rubric_title, category")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -83,6 +93,33 @@ export function RubricSelector({ value, onChange }: RubricSelectorProps) {
   }, [supabase, user?.id]);
 
   const effectiveValue = value || "default";
+
+  const filteredRubrics = React.useMemo(() => {
+    if (!evaluationMethod) return rubrics;
+    let method = evaluationMethod.trim();
+    if (!method) return rubrics;
+
+    // Treat one-shot prompt-based as using the same rubrics
+    // as regular prompt-based evaluations.
+    if (method === "n-prompt-based") {
+      method = "prompt-based";
+    }
+
+    return rubrics.filter((rubric) => {
+      if (!rubric.category) {
+        // If a rubric has no category, treat it as not matching
+        // when a specific evaluation method is selected.
+        return false;
+      }
+      const categories = rubric.category
+        .split(",")
+        .map((c) => c.trim())
+        .filter(Boolean);
+      if (categories.length === 0) return false;
+      return categories.includes(method);
+    });
+  }, [rubrics, evaluationMethod]);
+
   const selectedRubric =
     effectiveValue === "default"
       ? { id: "default", rubric_title: "Default rubric" }
@@ -138,7 +175,7 @@ export function RubricSelector({ value, onChange }: RubricSelectorProps) {
                 />
                 <span>Default rubric</span>
               </CommandItem>
-              {rubrics.map((rubric) => (
+              {filteredRubrics.map((rubric) => (
                 <CommandItem
                   key={rubric.id}
                   value={rubric.id}
