@@ -27,6 +27,7 @@ type RunItemResult = {
   model: string;
   message?: { content?: string | null };
   error?: string;
+  latencyMs?: number;
 };
 
 type RunItemResponse = {
@@ -177,6 +178,7 @@ export function ExperimentsProvider({
             finalResult[r.model] = {
               output: r.message?.content || r.error || "",
               status: r.error ? "error" : "success",
+              latencyMs: typeof r.latencyMs === "number" ? r.latencyMs : undefined,
             };
           });
         }

@@ -122,47 +122,43 @@ export async function POST(req: Request) {
       },
     ];
 
-    // Query all models
-    const settled = await Promise.allSettled(
+    // Query all models and capture execution time per model
+    const allResults = await Promise.all(
       modelsToQuery.map(async (modelId: string) => {
-        const completion = await llmClient.chat.completions.create({
-          model: modelId,
-          messages: messages,
-        });
-        return {
-          model: modelId,
-          message: completion.choices[0].message,
-        };
+        const startedAtMs = Date.now();
+        try {
+          const completion = await llmClient.chat.completions.create({
+            model: modelId,
+            messages: messages,
+          });
+
+          return {
+            model: modelId,
+            message: completion.choices[0].message,
+            latencyMs: Date.now() - startedAtMs,
+          };
+        } catch (error) {
+          let errorMessage = error instanceof Error ? error.message : 'Request failed';
+
+          const errorMessageLower = errorMessage.toLowerCase();
+          if (
+            errorMessageLower.includes('401') ||
+            errorMessageLower.includes('user not found') ||
+            errorMessageLower.includes('invalid api key') ||
+            errorMessageLower.includes('authentication failed') ||
+            (error instanceof Error && 'status' in error && (error as Error & { status: number }).status === 401)
+          ) {
+            errorMessage = 'The OpenRouter API key is invalid. Please update with a valid key in settings.';
+          }
+
+          return {
+            model: modelId,
+            error: errorMessage,
+            latencyMs: Date.now() - startedAtMs,
+          };
+        }
       })
     );
-
-    // Process results
-    const allResults = settled.map((res, idx) => {
-      const modelId = modelsToQuery[idx];
-      if (res.status === 'fulfilled') {
-        return { model: modelId, message: res.value.message };
-      }
-
-      // Extract error message
-      let errorMessage = res.reason instanceof Error ? res.reason.message : 'Request failed';
-
-      // Check if error is related to invalid API key
-      const errorMessageLower = errorMessage.toLowerCase();
-      if (
-        errorMessageLower.includes('401') ||
-        errorMessageLower.includes('user not found') ||
-        errorMessageLower.includes('invalid api key') ||
-        errorMessageLower.includes('authentication failed') ||
-        (res.reason instanceof Error && 'status' in res.reason && (res.reason as Error & { status: number }).status === 401)
-      ) {
-        errorMessage = 'The OpenRouter API key is invalid. Please update with a valid key in settings.';
-      }
-
-      return {
-        model: modelId,
-        error: errorMessage,
-      };
-    });
 
     // Filter successful responses for evaluation
     const successfulResults: ModelResponse[] = allResults

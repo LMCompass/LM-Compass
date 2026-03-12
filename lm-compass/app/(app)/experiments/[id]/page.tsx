@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import {
   BarChart,
   Bar,
+  LabelList,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -69,6 +70,46 @@ const CHART_COLORS = [
   "#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6",
   "#ec4899", "#14b8a6", "#f97316", "#06b6d4", "#84cc16",
 ];
+
+function calculateMedian(values: number[]) {
+  if (values.length === 0) return 0;
+  const sortedValues = [...values].sort((a, b) => a - b);
+  const middleIndex = Math.floor(sortedValues.length / 2);
+  if (sortedValues.length % 2 === 0) {
+    return (sortedValues[middleIndex - 1] + sortedValues[middleIndex]) / 2;
+  }
+  return sortedValues[middleIndex];
+}
+
+function calculateStandardDeviation(values: number[]) {
+  if (values.length === 0) return 0;
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance =
+    values.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) /
+    values.length;
+  return Math.sqrt(variance);
+}
+
+function formatScore(value: number) {
+  if (Number.isInteger(value)) return value.toString();
+  return value.toFixed(1);
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value)}%`;
+}
+
+function formatDurationMs(value: number) {
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(2)}s`;
+  }
+  return `${Math.round(value)}ms`;
+}
+
+function formatModelLabel(model: string) {
+  const shortName = model.split("/").pop() || model;
+  return shortName.length > 22 ? `${shortName.slice(0, 22)}…` : shortName;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -145,9 +186,10 @@ function parseResultPayload(raw: unknown): {
 
     const output = typeof value.output === "string" ? value.output : "";
     const score = typeof value.score === "number" ? value.score : undefined;
+    const latencyMs = typeof value.latencyMs === "number" ? value.latencyMs : undefined;
     const status = value.status === "error" ? "error" : value.status === "success" ? "success" : undefined;
 
-    const modelData: ExperimentItemModelResult = { output, score, status };
+    const modelData: ExperimentItemModelResult = { output, score, latencyMs, status };
     payload[key] = modelData;
     modelEntries.push({ model: key, data: modelData });
   });
@@ -414,22 +456,193 @@ export default function ExperimentDetailPage() {
       }
     }
 
-    const avgScores = Object.entries(scoreSums).map(([model, sum], i) => ({
+    const configuredModels = experiment?.configuration?.selected_models ?? [];
+    const discoveredModels = Array.from(
+      new Set([...Object.keys(scoreSums), ...Object.keys(winCounts)])
+    );
+    const orderedModels = configuredModels.length
+      ? [
+          ...configuredModels.filter((model) => discoveredModels.includes(model)),
+          ...discoveredModels.filter((model) => !configuredModels.includes(model)),
+        ]
+      : discoveredModels;
+
+    const modelColors = Object.fromEntries(
+      orderedModels.map((model, index) => [
+        model,
+        CHART_COLORS[index % CHART_COLORS.length],
+      ])
+    ) as Record<string, string>;
+
+    const avgScores = Object.entries(scoreSums).map(([model, sum]) => ({
       model,
       avgScore: +(sum / scoreCounts[model]).toFixed(2),
-      fill: CHART_COLORS[i % CHART_COLORS.length],
+      fill: modelColors[model] ?? CHART_COLORS[0],
     }));
     avgScores.sort((a, b) => b.avgScore - a.avgScore);
 
-    const wins = Object.entries(winCounts).map(([model, count], i) => ({
+    const wins = Object.entries(winCounts).map(([model, count]) => ({
       name: model,
       value: count,
-      fill: CHART_COLORS[i % CHART_COLORS.length],
+      fill: modelColors[model] ?? CHART_COLORS[0],
     }));
     wins.sort((a, b) => b.value - a.value);
 
     return { avgScores, wins };
-  }, [items]);
+  }, [experiment?.configuration?.selected_models, items]);
+
+  const barChartDomain = useMemo<[number, number]>(() => {
+    if (chartData.avgScores.length < 2) {
+      return [0, 100];
+    }
+
+    const values = chartData.avgScores.map((entry) => entry.avgScore);
+    const minScore = Math.min(...values);
+    const maxScore = Math.max(...values);
+
+    if (minScore === maxScore) {
+      const lower = Math.max(0, minScore - 1);
+      const upper = Math.min(100, maxScore + 1);
+      return [lower, upper];
+    }
+
+    const spread = maxScore - minScore;
+    const padding = Math.max(0.4, spread * 0.35);
+    let lower = Math.max(0, Math.floor((minScore - padding) * 10) / 10);
+    let upper = Math.min(100, Math.ceil((maxScore + padding) * 10) / 10);
+
+    if (upper - lower < 1) {
+      lower = Math.max(0, lower - 0.5);
+      upper = Math.min(100, upper + 0.5);
+    }
+
+    return [lower, upper];
+  }, [chartData.avgScores]);
+
+  const performanceSummary = useMemo(() => {
+    const configuredModels = experiment?.configuration?.selected_models ?? [];
+    const scoreListsByModel: Record<string, number[]> = {};
+    const executionTimeByModel: Record<string, number[]> = {};
+    const winCountsByModel: Record<string, number> = {};
+    let completedCount = 0;
+    let tieCount = 0;
+
+    for (const item of items) {
+      if (item.status !== ExperimentItemStatus.COMPLETED) continue;
+      const { summary, modelEntries } = parseResultPayload(item.result);
+      if (!summary) continue;
+
+      completedCount += 1;
+
+      for (const [model, score] of Object.entries(summary.meanScores ?? {})) {
+        if (typeof score !== "number") continue;
+        if (!scoreListsByModel[model]) {
+          scoreListsByModel[model] = [];
+        }
+        scoreListsByModel[model].push(score);
+      }
+
+      for (const entry of modelEntries) {
+        if (typeof entry.data.latencyMs !== "number") continue;
+        if (!executionTimeByModel[entry.model]) {
+          executionTimeByModel[entry.model] = [];
+        }
+        executionTimeByModel[entry.model].push(entry.data.latencyMs);
+      }
+
+      if (summary.winnerModel) {
+        winCountsByModel[summary.winnerModel] =
+          (winCountsByModel[summary.winnerModel] ?? 0) + 1;
+      } else {
+        tieCount += 1;
+      }
+    }
+
+    const discoveredModels = Object.keys(scoreListsByModel);
+    const orderedModels = configuredModels.length
+      ? [
+          ...configuredModels.filter((model) => discoveredModels.includes(model)),
+          ...discoveredModels.filter((model) => !configuredModels.includes(model)),
+        ]
+      : discoveredModels;
+
+    if (orderedModels.length === 0 || completedCount === 0) {
+      return null;
+    }
+
+    const buildMetric = (
+      label: string,
+      rawValues: number[],
+      formatter: (value: number) => string,
+      winnerDirection: "max" | "min" = "max"
+    ) => {
+      const validValues = rawValues.filter((value) => Number.isFinite(value));
+
+      let winnerIndexes: number[] = [];
+      if (validValues.length > 0) {
+        const targetValue = validValues.reduce((best, current) => {
+          if (winnerDirection === "max") {
+            return current > best ? current : best;
+          }
+          return current < best ? current : best;
+        }, winnerDirection === "max" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY);
+
+        winnerIndexes = rawValues
+          .map((value, index) => ({ value, index }))
+          .filter((entry) => Number.isFinite(entry.value) && entry.value === targetValue)
+          .map((entry) => entry.index);
+      }
+
+      return {
+        label,
+        values: rawValues.map((value) => (Number.isFinite(value) ? formatter(value) : "—")),
+        winnerIndexes,
+      };
+    };
+
+    const averageScoreValues = orderedModels.map((model) => {
+      const scores = scoreListsByModel[model] ?? [];
+      return scores.length > 0
+        ? scores.reduce((sum, value) => sum + value, 0) / scores.length
+        : 0;
+    });
+
+    const medianScoreValues = orderedModels.map((model) =>
+      calculateMedian(scoreListsByModel[model] ?? [])
+    );
+
+    const winRateValues = orderedModels.map(
+      (model) => ((winCountsByModel[model] ?? 0) / completedCount) * 100
+    );
+
+    const tieRateValue = (tieCount / completedCount) * 100;
+    const tieRateValues = orderedModels.map(() => tieRateValue);
+
+    const stdDeviationValues = orderedModels.map((model) =>
+      calculateStandardDeviation(scoreListsByModel[model] ?? [])
+    );
+
+    const executionTimeValues = orderedModels.map((model) => {
+      const latencies = executionTimeByModel[model] ?? [];
+      return latencies.length > 0
+        ? latencies.reduce((sum, value) => sum + value, 0) / latencies.length
+        : Number.NaN;
+    });
+
+    const metrics = [
+      buildMetric("Average Score", averageScoreValues, formatScore),
+      buildMetric("Median Score", medianScoreValues, formatScore),
+      buildMetric("Win Rate", winRateValues, formatPercent),
+      buildMetric("Tie Rate", tieRateValues, formatPercent),
+      buildMetric("Std Deviation", stdDeviationValues, formatScore, "min"),
+      buildMetric("Time to Execute", executionTimeValues, formatDurationMs, "min"),
+    ];
+
+    return {
+      models: orderedModels,
+      metrics,
+    };
+  }, [experiment?.configuration?.selected_models, items]);
 
   if (!experimentId) {
     return (
@@ -520,15 +733,56 @@ export default function ExperimentDetailPage() {
           )}
 
           {isExperimentDone && chartData.avgScores.length > 0 && (
-            <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <>
+              {performanceSummary && (
+                <div className="mb-6 rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-4">
+                    Model Performance Summary
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-2.5 text-sm">
+                      <TableHeader className="[&_tr]:border-border/50 bg-muted/30">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="font-semibold">Metric</TableHead>
+                          {performanceSummary.models.map((model) => (
+                            <TableHead key={model} className="font-semibold">
+                              {model}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="[&_tr]:border-border/35">
+                        {performanceSummary.metrics.map((metric) => (
+                          <TableRow key={metric.label}>
+                            <TableCell className="font-medium">{metric.label}</TableCell>
+                            {metric.values.map((value, idx) => (
+                              <TableCell
+                                key={`${metric.label}-${performanceSummary.models[idx]}`}
+                                className={metric.winnerIndexes.includes(idx) ? "bg-primary/10 font-semibold" : ""}
+                              >
+                                {value}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
                 <h3 className="text-sm font-semibold text-foreground mb-4">
                   Average Score by Model
                 </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Y-axis is scaled to the current score range for easier comparison.
+                </p>
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart
                     data={chartData.avgScores}
-                    margin={{ top: 8, right: 12, bottom: 40, left: 12 }}
+                    margin={{ top: 8, right: 12, bottom: 64, left: 12 }}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -541,10 +795,12 @@ export default function ExperimentDetailPage() {
                       angle={-25}
                       textAnchor="end"
                       interval={0}
+                      tickMargin={8}
+                      tickFormatter={(value) => formatModelLabel(String(value ?? ""))}
                     />
                     <YAxis
                       tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                      domain={[0, 100]}
+                      domain={barChartDomain}
                     />
                     <Tooltip
                       contentStyle={{
@@ -559,6 +815,12 @@ export default function ExperimentDetailPage() {
                       {chartData.avgScores.map((entry, index) => (
                         <Cell key={`bar-${index}`} fill={entry.fill} />
                       ))}
+                      <LabelList
+                        dataKey="avgScore"
+                        position="top"
+                        formatter={(value) => Number(value ?? 0).toFixed(2)}
+                        style={{ fontSize: "11px", fill: "var(--color-foreground)" }}
+                      />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -577,10 +839,9 @@ export default function ExperimentDetailPage() {
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        outerRadius={100}
-                        innerRadius={50}
+                        outerRadius={90}
                         paddingAngle={3}
-                        label={({ name, value }) => `${String(name ?? "").split("/").pop()} (${value})`}
+                        label={({ name, value }) => `${formatModelLabel(String(name ?? ""))} (${value})`}
                         labelLine={{ stroke: "var(--color-muted-foreground)", strokeWidth: 1 }}
                         style={{ fontSize: "11px" }}
                       >
@@ -601,13 +862,15 @@ export default function ExperimentDetailPage() {
                         verticalAlign="bottom"
                         iconType="circle"
                         iconSize={8}
+                        formatter={(value) => formatModelLabel(String(value ?? ""))}
                         wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
               )}
-            </div>
+              </div>
+            </>
           )}
 
           <div className="overflow-hidden rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm">
