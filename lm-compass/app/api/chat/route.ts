@@ -129,10 +129,16 @@ export async function POST(req: Request) {
     let rubricTitle: string | null = null;
     let rubricMode: "weight-adjusted-default" | "custom" | null = null;
 
+    const normalizedEvaluationMethod =
+      typeof evaluationMethod === "string" &&
+      evaluationMethod.trim() === "n-prompt-based"
+        ? "prompt-based"
+        : evaluationMethod;
+
     if (rubricId && rubricId !== "default") {
       const { data: rubricRow, error: rubricError } = await supabase
         .from("rubrics")
-        .select("id, rubric_title, rubric_content, mode, user_id")
+        .select("id, rubric_title, rubric_content, mode, user_id, category")
         .eq("id", rubricId)
         .eq("user_id", userId)
         .single();
@@ -154,6 +160,26 @@ export async function POST(req: Request) {
       if (!content) {
         return NextResponse.json(
           { error: "Selected rubric has no content." },
+          { status: 400 },
+        );
+      }
+
+      const categoryString =
+        (rubricRow as { category?: string | null }).category?.trim() ?? "";
+      const categories = categoryString
+        .split(",")
+        .map((c) => c.trim())
+        .filter(Boolean);
+      if (
+        typeof normalizedEvaluationMethod === "string" &&
+        normalizedEvaluationMethod.trim().length > 0 &&
+        !categories.includes(normalizedEvaluationMethod.trim())
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Selected rubric is not compatible with the chosen evaluation method.",
+          },
           { status: 400 },
         );
       }

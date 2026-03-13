@@ -52,6 +52,13 @@ export function RubricSelector({
   const [isLoading, setIsLoading] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
+  const normalizedEvaluationMethod = React.useMemo(() => {
+    const raw = evaluationMethod?.trim() ?? "";
+    if (!raw) return undefined;
+    // Treat one-shot prompt-based as using the same rubrics as prompt-based evaluations.
+    return raw === "n-prompt-based" ? "prompt-based" : raw;
+  }, [evaluationMethod]);
+
   React.useEffect(() => {
     if (!user?.id) {
       setRubrics([]);
@@ -95,15 +102,8 @@ export function RubricSelector({
   const effectiveValue = value || "default";
 
   const filteredRubrics = React.useMemo(() => {
-    if (!evaluationMethod) return rubrics;
-    let method = evaluationMethod.trim();
-    if (!method) return rubrics;
-
-    // Treat one-shot prompt-based as using the same rubrics
-    // as regular prompt-based evaluations.
-    if (method === "n-prompt-based") {
-      method = "prompt-based";
-    }
+    if (!normalizedEvaluationMethod) return rubrics;
+    const method = normalizedEvaluationMethod;
 
     return rubrics.filter((rubric) => {
       if (!rubric.category) {
@@ -118,7 +118,23 @@ export function RubricSelector({
       if (categories.length === 0) return false;
       return categories.includes(method);
     });
-  }, [rubrics, evaluationMethod]);
+  }, [rubrics, normalizedEvaluationMethod]);
+
+  const isRubricSelectable = !!user && !isLoading;
+
+  React.useEffect(() => {
+    // If the evaluation method changes, ensure the selected rubric is valid for it.
+    // Otherwise reset to Default rubric to avoid ambiguous state.
+    if (!normalizedEvaluationMethod) return;
+    if (effectiveValue === "default") return;
+    const isValidForMethod = filteredRubrics.some(
+      (r) => r.id === effectiveValue,
+    );
+    if (!isValidForMethod) {
+      onChange("default");
+    }
+    // Intentionally depend on `filteredRubrics` so the reset happens after rubrics load.
+  }, [normalizedEvaluationMethod, effectiveValue, filteredRubrics, onChange]);
 
   const selectedRubric =
     effectiveValue === "default"
@@ -135,7 +151,7 @@ export function RubricSelector({
               role="combobox"
               aria-expanded={open}
               className="min-w-[220px] max-w-fit justify-between"
-              disabled={isLoading || !user}
+              disabled={!isRubricSelectable}
             >
               <div className="flex items-center gap-2">
                 <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />
