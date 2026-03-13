@@ -335,8 +335,27 @@ export async function POST(req: Request) {
               let iterationResults: RL4FIterationResult[] | undefined;
 
               if (isHITL) {
-                // HITL: one example (user query + first model response), phase1 only in this request
-                const rubric = GradeHITLEvaluator.getDefaultRubric();
+                // HITL: one example (user query + first model response), phase1 only in this request.
+                const usingCustomRubric =
+                  !!rubricId && rubricId !== "default" && !!rubricText;
+
+                console.log("[HITL] Starting phase1 with rubric choice:", {
+                  evaluationMethod,
+                  rubricId,
+                  usingCustomRubric,
+                });
+
+                // Use user-selected rubric content when provided; otherwise fall back to the default HITL rubric.
+                const rubric = usingCustomRubric
+                  ? (rubricText as string)
+                  : GradeHITLEvaluator.getDefaultRubric();
+
+                if (!usingCustomRubric && rubricId && rubricId !== "default") {
+                  console.warn(
+                    "[HITL] Expected custom rubricText but none was available. Falling back to default HITL rubric.",
+                  );
+                }
+
                 const example = {
                   prompt: userQuery,
                   response: successfulResults[0].content,
