@@ -63,6 +63,7 @@ export interface ExperimentItemModelResult {
   output: string;
   score?: number;
   status?: ExperimentModelResultStatus;
+  latencyMs?: number;
 }
 
 export interface ExperimentEvaluationScore {
