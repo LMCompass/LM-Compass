@@ -7,18 +7,23 @@ import {
   loadDefaultRubricText,
   parseDefaultRubric,
 } from "@/lib/rubrics";
-import type { RubricCategory } from "@/lib/rubrics";
+import type {
+  RubricCategory,
+  RubricEvaluationMethod,
+} from "@/lib/rubrics";
 
 type CreateRubricFromDefaultPayload = {
   mode: "weight-adjusted-default";
   title: string;
   weights: Record<string, number>;
+  evaluationMethods: RubricEvaluationMethod[];
 };
 
 type CreateCustomRubricPayload = {
   mode: "custom";
   title: string;
   content: string;
+  evaluationMethods: RubricEvaluationMethod[];
 };
 
 type LegacyCreateRubricPayload = {
@@ -43,11 +48,16 @@ export async function createRubric(
     let title: string;
     let content: string;
     let weightsJson: Record<string, number> | null = null;
+    let evaluationMethods: RubricEvaluationMethod[] = ["prompt-based"];
 
     if ("mode" in input) {
       title = input.title?.trim() ?? "";
       if (!title) {
         return { error: "Name is required", success: false };
+      }
+
+      if (Array.isArray(input.evaluationMethods) && input.evaluationMethods.length > 0) {
+        evaluationMethods = input.evaluationMethods;
       }
 
       if (input.mode === "weight-adjusted-default") {
@@ -123,7 +133,10 @@ export async function createRubric(
           success: false,
         };
       }
+      evaluationMethods = ["prompt-based"];
     }
+
+    const evaluationCategoryString = evaluationMethods.join(",");
 
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -134,6 +147,7 @@ export async function createRubric(
         user_id: userId,
         mode,
         weights_json: weightsJson,
+        category: evaluationCategoryString,
       })
       .select()
       .single();

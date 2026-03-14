@@ -9,6 +9,11 @@ export type RubricCategory = {
   defaultPoints: number;
 };
 
+export type RubricEvaluationMethod =
+  | "prompt-based"
+  | "rl4f"
+  | "hitl";
+
 const DEFAULT_RUBRIC_PATHS = [
   join(process.cwd(), "app", "(app)", "rubric", "types", "default.txt"),
   join(process.cwd(), "app", "rubric", "types", "default.txt"),
