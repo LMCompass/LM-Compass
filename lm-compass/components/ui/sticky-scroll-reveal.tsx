@@ -26,15 +26,15 @@ export function StickyScroll({
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
-    offset: ["start start", "end start"],
+    offset: ["start center", "end center"],
   });
 
   const cardLength = content.length;
   // Switch earlier so right panel stays in sync with left text (responsive thresholds)
-  const switchThresholds =
-    cardLength === 3
-      ? [0.16, 0.48]
-      : Array.from({ length: cardLength - 1 }, (_, i) => (i + 1) / cardLength);
+  const switchThresholds = Array.from(
+    { length: cardLength - 1 },
+    (_, i) => (i + 1) / cardLength,
+  );
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
     let index = 0;
@@ -79,18 +79,17 @@ export function StickyScroll({
               contentClassName,
             )}
           >
-            <AnimatePresence mode="wait">
+            {/* Render all cards stacked, crossfade via opacity only */}
+            {content.map((item, index) => (
               <motion.div
-                key={activeCard}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="h-full w-full rounded-2xl bg-gradient-to-br from-primary/20 via-chart-2/20 to-chart-3/20 backdrop-blur-sm shadow-[0_4px_24px_-6px_rgba(0,0,0,0.3),0_8px_32px_-12px_rgba(0,0,0,0.2)]"
+                key={index}
+                animate={{ opacity: activeCard === index ? 1 : 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/20 via-chart-2/20 to-chart-3/20 backdrop-blur-sm shadow-[0_4px_24px_-6px_rgba(0,0,0,0.3),0_8px_32px_-12px_rgba(0,0,0,0.2)]"
               >
-                {content[activeCard].content ?? null}
+                {item.content ?? null}
               </motion.div>
-            </AnimatePresence>
+            ))}
           </div>
         </div>
       </div>
