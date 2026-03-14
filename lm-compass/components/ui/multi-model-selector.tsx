@@ -27,6 +27,32 @@ interface MultiModelSelectorProps {
   popoverClassName?: string
 }
 
+type ModelPricing = {
+  prompt: number
+  completion: number
+  request: number
+}
+
+type PricingResponse = {
+  pricingStatus: "live" | "unavailable"
+  pricingByModel: Record<string, ModelPricing | null>
+  pricingError?: string
+}
+
+function formatUsdPerMillionTokens(perTokenUsd: number) {
+  if (!Number.isFinite(perTokenUsd)) return "—"
+  const perMillion = perTokenUsd * 1_000_000
+  if (perMillion >= 1) {
+    return `$${perMillion.toFixed(2)}`
+  }
+  return `$${perMillion.toFixed(4)}`
+}
+
+function formatModelPrice(pricing: ModelPricing | null | undefined) {
+  if (!pricing) return "—"
+  return `${formatUsdPerMillionTokens(pricing.prompt)} / ${formatUsdPerMillionTokens(pricing.completion)}`
+}
+
 export function MultiModelSelector({
   values,
   onChange,
@@ -34,10 +60,44 @@ export function MultiModelSelector({
   popoverClassName,
 }: MultiModelSelectorProps) {
   const [open, setOpen] = React.useState(false)
+  const [pricingByModel, setPricingByModel] = React.useState<Record<string, ModelPricing | null>>({})
+  const [pricingStatus, setPricingStatus] = React.useState<"live" | "unavailable">("unavailable")
 
   const selected = models.filter((m) => values.includes(m.value))
   const selectedLabels = selected.map((m) => m.label)
   const selectedCount = values.length
+
+  React.useEffect(() => {
+    let isMounted = true
+
+    const loadPricing = async () => {
+      try {
+        const response = await fetch("/api/models/pricing")
+        const data = (await response.json()) as PricingResponse
+
+        if (!isMounted) return
+
+        if (!response.ok) {
+          setPricingStatus("unavailable")
+          setPricingByModel({})
+          return
+        }
+
+        setPricingStatus(data.pricingStatus)
+        setPricingByModel(data.pricingByModel ?? {})
+      } catch {
+        if (!isMounted) return
+        setPricingStatus("unavailable")
+        setPricingByModel({})
+      }
+    }
+
+    loadPricing()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // Sort models by selected status, so the selected models are at the top
   const sortedModels = React.useMemo(() => {
@@ -101,6 +161,11 @@ export function MultiModelSelector({
           <CommandInput placeholder="Search models..." />
           <CommandList>
             <CommandEmpty>No model found.</CommandEmpty>
+            {pricingStatus === "live" && (
+              <div className="sticky top-0 z-10 px-3 py-2 text-[11px] text-muted-foreground border-b border-border/60 bg-popover">
+                Prices shown as input / output ($ per 1M tokens)
+              </div>
+            )}
             <CommandGroup>
               {sortedModels.map((model) => (
                   <CommandItem
@@ -114,9 +179,17 @@ export function MultiModelSelector({
                         values.includes(model.value) ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    <div className="flex flex-col">
-                      <span className="font-medium">{model.label}</span>
-                      <span className="text-xs text-muted-foreground">{model.provider}</span>
+                    <div className="flex w-full items-center justify-between gap-3">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate">{model.label}</span>
+                        <span className="text-xs text-muted-foreground">{model.provider}</span>
+                      </div>
+                      <div
+                        className="text-xs text-muted-foreground text-right whitespace-nowrap"
+                        title={`${model.label}: ${formatModelPrice(pricingByModel[model.value])} (input/output $ per 1M tokens)`}
+                      >
+                        {formatModelPrice(pricingByModel[model.value])}
+                      </div>
                     </div>
                   </CommandItem>
                 ))}
