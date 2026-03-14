@@ -64,6 +64,14 @@ type ModelEntry = {
   data: ExperimentItemModelResult;
 };
 
+type KendallRow = {
+  judgeA: string;
+  judgeB: string;
+  tauB: number;
+  comparedPairs: number;
+  queryCount: number;
+};
+
 const POLL_INTERVAL_MS = 2000;
 
 const CHART_COLORS = [
@@ -109,6 +117,26 @@ function formatDurationMs(value: number) {
 function formatModelLabel(model: string) {
   const shortName = model.split("/").pop() || model;
   return shortName.length > 22 ? `${shortName.slice(0, 22)}…` : shortName;
+}
+
+function compareScores(first: number, second: number) {
+  if (first > second) return 1;
+  if (first < second) return -1;
+  return 0;
+}
+
+function formatTau(value: number) {
+  if (!Number.isFinite(value)) return "—";
+  return value.toFixed(3);
+}
+
+function getTauLabel(value: number) {
+  const absolute = Math.abs(value);
+  if (absolute >= 0.8) return "Very strong";
+  if (absolute >= 0.6) return "Strong";
+  if (absolute >= 0.4) return "Moderate";
+  if (absolute >= 0.2) return "Weak";
+  return "Very weak";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -525,7 +553,6 @@ export default function ExperimentDetailPage() {
     const executionTimeByModel: Record<string, number[]> = {};
     const winCountsByModel: Record<string, number> = {};
     let completedCount = 0;
-    let tieCount = 0;
 
     for (const item of items) {
       if (item.status !== ExperimentItemStatus.COMPLETED) continue;
@@ -553,8 +580,6 @@ export default function ExperimentDetailPage() {
       if (summary.winnerModel) {
         winCountsByModel[summary.winnerModel] =
           (winCountsByModel[summary.winnerModel] ?? 0) + 1;
-      } else {
-        tieCount += 1;
       }
     }
 
@@ -615,9 +640,6 @@ export default function ExperimentDetailPage() {
       (model) => ((winCountsByModel[model] ?? 0) / completedCount) * 100
     );
 
-    const tieRateValue = (tieCount / completedCount) * 100;
-    const tieRateValues = orderedModels.map(() => tieRateValue);
-
     const stdDeviationValues = orderedModels.map((model) =>
       calculateStandardDeviation(scoreListsByModel[model] ?? [])
     );
@@ -633,7 +655,6 @@ export default function ExperimentDetailPage() {
       buildMetric("Average Score", averageScoreValues, formatScore),
       buildMetric("Median Score", medianScoreValues, formatScore),
       buildMetric("Win Rate", winRateValues, formatPercent),
-      buildMetric("Tie Rate", tieRateValues, formatPercent),
       buildMetric("Std Deviation", stdDeviationValues, formatScore, "min"),
       buildMetric("Time to Execute", executionTimeValues, formatDurationMs, "min"),
     ];
@@ -643,6 +664,147 @@ export default function ExperimentDetailPage() {
       metrics,
     };
   }, [experiment?.configuration?.selected_models, items]);
+
+  const kendallTauSummary = useMemo(() => {
+    type PairAccumulator = {
+      judgeA: string;
+      judgeB: string;
+      concordant: number;
+      discordant: number;
+      tiesAOnly: number;
+      tiesBOnly: number;
+      queryCount: number;
+    };
+
+    const pairAccumulators = new Map<string, PairAccumulator>();
+
+    for (const item of items) {
+      if (item.status !== ExperimentItemStatus.COMPLETED) continue;
+      const { summary } = parseResultPayload(item.result);
+      if (!summary?.scores?.length) continue;
+
+      const scoresByJudge = new Map<string, Map<string, number>>();
+
+      for (const score of summary.scores) {
+        if (typeof score.score !== "number") continue;
+        if (!scoresByJudge.has(score.judgeModel)) {
+          scoresByJudge.set(score.judgeModel, new Map<string, number>());
+        }
+        scoresByJudge.get(score.judgeModel)?.set(score.evaluatedModel, score.score);
+      }
+
+      const judgeModels = Array.from(scoresByJudge.keys());
+      if (judgeModels.length < 2) continue;
+
+      for (let i = 0; i < judgeModels.length; i += 1) {
+        for (let j = i + 1; j < judgeModels.length; j += 1) {
+          const judgeA = judgeModels[i];
+          const judgeB = judgeModels[j];
+          const judgeAScores = scoresByJudge.get(judgeA);
+          const judgeBScores = scoresByJudge.get(judgeB);
+          if (!judgeAScores || !judgeBScores) continue;
+
+          const commonModels = Array.from(judgeAScores.keys()).filter((model) =>
+            judgeBScores.has(model)
+          );
+
+          if (commonModels.length < 2) continue;
+
+          let concordant = 0;
+          let discordant = 0;
+          let tiesAOnly = 0;
+          let tiesBOnly = 0;
+
+          for (let m = 0; m < commonModels.length; m += 1) {
+            for (let n = m + 1; n < commonModels.length; n += 1) {
+              const left = commonModels[m];
+              const right = commonModels[n];
+
+              const leftA = judgeAScores.get(left);
+              const rightA = judgeAScores.get(right);
+              const leftB = judgeBScores.get(left);
+              const rightB = judgeBScores.get(right);
+
+              if (
+                typeof leftA !== "number" ||
+                typeof rightA !== "number" ||
+                typeof leftB !== "number" ||
+                typeof rightB !== "number"
+              ) {
+                continue;
+              }
+
+              const comparisonA = compareScores(leftA, rightA);
+              const comparisonB = compareScores(leftB, rightB);
+
+              if (comparisonA === 0 && comparisonB === 0) continue;
+              if (comparisonA === comparisonB) {
+                concordant += 1;
+              } else if (comparisonA === 0) {
+                tiesAOnly += 1;
+              } else if (comparisonB === 0) {
+                tiesBOnly += 1;
+              } else {
+                discordant += 1;
+              }
+            }
+          }
+
+          const comparedPairs = concordant + discordant + tiesAOnly + tiesBOnly;
+          if (comparedPairs === 0) continue;
+
+          const orderedPair = [judgeA, judgeB].sort();
+          const key = `${orderedPair[0]}||${orderedPair[1]}`;
+          const existing = pairAccumulators.get(key);
+
+          if (existing) {
+            existing.concordant += concordant;
+            existing.discordant += discordant;
+            existing.tiesAOnly += tiesAOnly;
+            existing.tiesBOnly += tiesBOnly;
+            existing.queryCount += 1;
+          } else {
+            pairAccumulators.set(key, {
+              judgeA: orderedPair[0],
+              judgeB: orderedPair[1],
+              concordant,
+              discordant,
+              tiesAOnly,
+              tiesBOnly,
+              queryCount: 1,
+            });
+          }
+        }
+      }
+    }
+
+    const rows: KendallRow[] = Array.from(pairAccumulators.values())
+      .map((entry) => {
+        const numerator = entry.concordant - entry.discordant;
+        const denominator = Math.sqrt(
+          (entry.concordant + entry.discordant + entry.tiesAOnly) *
+          (entry.concordant + entry.discordant + entry.tiesBOnly)
+        );
+        const tauB = denominator > 0 ? numerator / denominator : Number.NaN;
+        return {
+          judgeA: entry.judgeA,
+          judgeB: entry.judgeB,
+          tauB,
+          comparedPairs:
+            entry.concordant + entry.discordant + entry.tiesAOnly + entry.tiesBOnly,
+          queryCount: entry.queryCount,
+        };
+      })
+      .sort((left, right) => {
+        if (!Number.isFinite(left.tauB) && Number.isFinite(right.tauB)) return 1;
+        if (Number.isFinite(left.tauB) && !Number.isFinite(right.tauB)) return -1;
+        return Math.abs(right.tauB) - Math.abs(left.tauB);
+      });
+
+    return {
+      rows,
+    };
+  }, [items]);
 
   if (!experimentId) {
     return (
@@ -763,6 +925,43 @@ export default function ExperimentDetailPage() {
                                 {value}
                               </TableCell>
                             ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {kendallTauSummary.rows.length > 0 && (
+                <div className="mb-6 rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-2">
+                    Judge Agreement (Kendall&apos;s Tau-b)
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Measures pairwise agreement between judges across model rankings per query.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-2.5 text-sm">
+                      <TableHeader className="[&_tr]:border-border/50 bg-muted/30">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="font-semibold">Judge A</TableHead>
+                          <TableHead className="font-semibold">Judge B</TableHead>
+                          <TableHead className="font-semibold">Tau-b</TableHead>
+                          <TableHead className="font-semibold">Agreement</TableHead>
+                          <TableHead className="font-semibold">Pairs</TableHead>
+                          <TableHead className="font-semibold">Queries</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="[&_tr]:border-border/35">
+                        {kendallTauSummary.rows.map((row) => (
+                          <TableRow key={`${row.judgeA}-${row.judgeB}`}>
+                            <TableCell title={row.judgeA}>{formatModelLabel(row.judgeA)}</TableCell>
+                            <TableCell title={row.judgeB}>{formatModelLabel(row.judgeB)}</TableCell>
+                            <TableCell className="font-medium">{formatTau(row.tauB)}</TableCell>
+                            <TableCell>{Number.isFinite(row.tauB) ? getTauLabel(row.tauB) : "—"}</TableCell>
+                            <TableCell>{row.comparedPairs}</TableCell>
+                            <TableCell>{row.queryCount}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
