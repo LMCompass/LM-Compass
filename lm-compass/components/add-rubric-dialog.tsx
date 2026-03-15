@@ -13,19 +13,22 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { RubricCategory } from "@/lib/rubrics";
+import type { RubricCategory, RubricEvaluationMethod } from "@/lib/rubrics";
 import { getDefaultRubricCategories } from "@/app/(app)/rubric/actions";
+import { cn } from "@/lib/utils";
 
 type CreateRubricFromDefaultPayload = {
   mode: "weight-adjusted-default";
   title: string;
   weights: Record<string, number>;
+  evaluationMethods: RubricEvaluationMethod[];
 };
 
 type CreateCustomRubricPayload = {
   mode: "custom";
   title: string;
   content: string;
+  evaluationMethods: RubricEvaluationMethod[];
 };
 
 export type NewRubricInput =
@@ -46,6 +49,9 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [evaluationMethods, setEvaluationMethods] = useState<
+    RubricEvaluationMethod[]
+  >(["prompt-based"]);
 
   // Clear form when dialog is closed (handles ESC, click outside, etc.)
   useEffect(() => {
@@ -57,6 +63,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
       setWeights({});
       setIsLoadingCategories(false);
       setCategoriesError(null);
+      setEvaluationMethods(["prompt-based"]);
     }
   }, [open]);
 
@@ -104,6 +111,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
     setCategories(null);
     setWeights({});
     setCategoriesError(null);
+    setEvaluationMethods(["prompt-based"]);
     onOpenChange(false);
   };
 
@@ -112,8 +120,12 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
       ? Object.values(weights).reduce((sum, v) => sum + (Number.isFinite(v) ? v : 0), 0)
       : 0;
 
+  const hasAtLeastOneMethod = evaluationMethods.length > 0;
+
   const isCustomValid =
-    rubricName.trim() !== "" && rubricDescription.trim() !== "";
+    rubricName.trim() !== "" &&
+    rubricDescription.trim() !== "" &&
+    hasAtLeastOneMethod;
 
   const isDefaultModeValid =
     rubricName.trim() !== "" &&
@@ -121,7 +133,16 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
     categories.length > 0 &&
     Object.keys(weights).length === categories.length &&
     Object.values(weights).every((v) => Number.isFinite(v) && v > 0) &&
-    totalPoints === 100;
+    totalPoints === 100 &&
+    hasAtLeastOneMethod;
+
+  const toggleEvaluationMethod = (method: RubricEvaluationMethod) => {
+    setEvaluationMethods((prev) =>
+      prev.includes(method)
+        ? prev.filter((m) => m !== method)
+        : [...prev, method],
+    );
+  };
 
   const handleSave = async () => {
     if (!onSave) {
@@ -150,6 +171,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
         mode: "custom",
         title: rubricName.trim(),
         content: rubricDescription.trim(),
+        evaluationMethods,
       });
     } else {
       if (!isDefaultModeValid) return;
@@ -157,6 +179,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
         mode: "weight-adjusted-default",
         title: rubricName.trim(),
         weights,
+        evaluationMethods,
       });
     }
 
@@ -177,7 +200,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
           </DialogDescription>
         </DialogHeader>
         {/* Mode toggle */}
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           <Button
             type="button"
             variant={mode === "custom" ? "default" : "outline"}
@@ -209,6 +232,64 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
               onChange={(e) => setRubricName(e.target.value)}
               aria-required={true}
             />
+          </div>
+
+          {/* Common: evaluation methods/categories */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Applies to evaluation methods
+            </label>
+
+            {evaluationMethods.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {evaluationMethods.map((method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20"
+                    onClick={() => toggleEvaluationMethod(method)}
+                  >
+                    <span>
+                      {method === "prompt-based" && "Prompt-based scoring"}
+                      {method === "rl4f" &&
+                        "Rationale Based Self Critique Loops"}
+                      {method === "hitl" &&
+                        "Human-in-the-loop (HITL) rubric refinement"}
+                    </span>
+                    <span aria-hidden="true">×</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {(["prompt-based", "rl4f", "hitl"] as RubricEvaluationMethod[]).map(
+                (method) => {
+                  const isSelected = evaluationMethods.includes(method);
+                  const label =
+                    method === "prompt-based"
+                      ? "Prompt-based"
+                      : method === "rl4f"
+                        ? "RL4F"
+                        : "HITL";
+                  return (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => toggleEvaluationMethod(method)}
+                      className={cn(
+                        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input bg-background text-foreground hover:bg-accent",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                },
+              )}
+            </div>
           </div>
 
           {mode === "custom" ? (

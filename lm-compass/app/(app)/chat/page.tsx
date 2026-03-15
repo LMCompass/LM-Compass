@@ -206,6 +206,11 @@ export default function Home() {
     setSelectedModels(newModels);
   };
 
+  const handleEvaluationMethodChange = (method: string) => {
+    setSelectedRubric(method);
+    setSelectedRubricId("default");
+  };
+
   const confirmModelChange = () => {
     if (pendingModels && pendingModels.length > 0) {
       setSelectedModels(pendingModels);
@@ -241,9 +246,18 @@ export default function Home() {
                 onChange={setSelectedRubric}
               />
             </div>
+            <MultiModelSelector
+              values={selectedModels}
+              onChange={handleMultiModelChange}
+            />
+            <EvaluationMethodSelector
+              value={selectedRubric}
+              onChange={handleEvaluationMethodChange}
+            />
             <RubricSelector
               value={selectedRubricId}
               onChange={setSelectedRubricId}
+              evaluationMethod={selectedRubric}
             />
             {selectedRubric === "rl4f" && (
               <IterationsSelector

@@ -22,6 +22,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 
 type ExperimentListRow = Pick<
   Experiment,
@@ -81,6 +92,11 @@ export default function ExperimentsIndexPage() {
   const [itemRows, setItemRows] = useState<ExperimentItemStatusRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [experimentIdPendingDelete, setExperimentIdPendingDelete] = useState<
+    string | null
+  >(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const refreshData = useCallback(async () => {
     if (!userLoaded) return;
@@ -134,6 +150,38 @@ export default function ExperimentsIndexPage() {
       setIsLoading(false);
     }
   }, [supabase, user?.id, userLoaded]);
+
+  const handleDeleteExperiment = useCallback(
+    async (id: string) => {
+      if (!user?.id || isDeleting) return;
+
+      setIsDeleting(true);
+      setError(null);
+
+      try {
+        const { error: experimentError } = await supabase
+          .from("experiments")
+          .delete()
+          .eq("id", id)
+          .eq("user_id", user.id);
+
+        if (experimentError) {
+          throw experimentError;
+        }
+
+        await refreshData();
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to delete experiment.";
+        setError(message);
+      } finally {
+        setIsDeleting(false);
+        setExperimentIdPendingDelete(null);
+        setIsDeleteDialogOpen(false);
+      }
+    },
+    [isDeleting, refreshData, supabase, user?.id],
+  );
 
   useEffect(() => {
     refreshData();
@@ -214,6 +262,9 @@ export default function ExperimentsIndexPage() {
                   <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Progress
                   </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-right">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="[&_tr]:border-border/35">
@@ -235,12 +286,15 @@ export default function ExperimentsIndexPage() {
                       <TableCell>
                         <div className="h-4 w-12 rounded bg-muted animate-pulse" />
                       </TableCell>
+                      <TableCell>
+                        <div className="h-6 w-6 rounded-full bg-muted animate-pulse ml-auto" />
+                      </TableCell>
                     </TableRow>
                   ))}
 
                 {!isLoading && !error && experiments.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-10 text-center">
+                    <TableCell colSpan={5} className="py-10 text-center">
                       <p className="text-muted-foreground mb-3">
                         You have no experiments yet.
                       </p>
@@ -301,6 +355,22 @@ export default function ExperimentsIndexPage() {
                             </div>
                           </div>
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExperimentIdPendingDelete(experiment.id);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            aria-label="Delete experiment"
+                            disabled={isDeleting}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -309,6 +379,45 @@ export default function ExperimentsIndexPage() {
           </div>
         </div>
       </div>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open);
+          if (!open) {
+            setExperimentIdPendingDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete experiment</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this experiment and its items. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setExperimentIdPendingDelete(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (experimentIdPendingDelete) {
+                  await handleDeleteExperiment(experimentIdPendingDelete);
+                }
+              }}
+              disabled={isDeleting}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarInset>
   );
 }
