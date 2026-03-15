@@ -12,6 +12,9 @@ export type ChatHistoryItem = {
 export type ChatMetadata = {
   evaluationMethod?: string;
   iterations?: number;
+  rubricId?: string | null;
+  rubricTitle?: string | null;
+  rubricMode?: "weight-adjusted-default" | "custom" | null;
 };
 
 type DatabaseMessage = {
@@ -80,13 +83,31 @@ export async function saveChat(
       updated_at: new Date().toISOString(),
     };
 
-    if (chatMetadata && (chatMetadata.evaluationMethod != null || chatMetadata.iterations != null)) {
+    if (
+      chatMetadata &&
+      (
+        chatMetadata.evaluationMethod != null ||
+        chatMetadata.iterations != null ||
+        chatMetadata.rubricId != null ||
+        chatMetadata.rubricTitle != null ||
+        chatMetadata.rubricMode != null
+      )
+    ) {
       chatRow.metadata = {
         ...(chatMetadata.evaluationMethod != null && {
           evaluationMethod: chatMetadata.evaluationMethod,
         }),
         ...(chatMetadata.iterations != null && {
           iterations: chatMetadata.iterations,
+        }),
+        ...(chatMetadata.rubricId != null && {
+          rubricId: chatMetadata.rubricId,
+        }),
+        ...(chatMetadata.rubricTitle != null && {
+          rubricTitle: chatMetadata.rubricTitle,
+        }),
+        ...(chatMetadata.rubricMode != null && {
+          rubricMode: chatMetadata.rubricMode,
         }),
       };
     }

@@ -31,7 +31,7 @@ const SELECTED_RUBRIC = loadRubric();
 /**
  * Creates a scoring query prompt for evaluation (system prompt is currently designed for default rubric but should be generalized)
  */
-function createScoringQuery(userQuery: string, candidateAnswer: string, rubric: string): string {
+export function createScoringQuery(userQuery: string, candidateAnswer: string, rubric: string): string {
   return `You are an expert evaluator for a large language model comparison tool. Your role is to provide an objective, rubric-based score for the candidate's response to a user's query.
 
 QUERY:

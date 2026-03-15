@@ -19,8 +19,7 @@ import type {
 } from "@/lib/types";
 import { ExperimentStatus, ExperimentItemStatus } from "@/lib/types";
 import {
-  calculateExperimentEstimate,
-  normalizeAndValidateRows,
+  DEFAULT_EVAL_METHOD,
 } from "@/lib/experiments";
 
 type RunItemResult = {
@@ -40,13 +39,18 @@ type RunItemResponse = {
 };
 
 type StartExperimentApiResponse = Partial<StartExperimentResult> & { error?: string };
+type EstimateExperimentApiResponse = Partial<ExperimentCostEstimate> & { error?: string };
 
 interface ExperimentsContextType {
   activeExperimentId: string | null;
   setActiveExperimentId: (id: string | null) => void;
   isProcessing: boolean;
   progress: { completed: number; total: number };
-  estimateExperimentCost: (rows: MappedRow[]) => ExperimentCostEstimate;
+  estimateExperimentCost: (
+    rows: MappedRow[],
+    selectedModels: string[],
+    evaluationMethod: StartExperimentInput["evaluationMethod"]
+  ) => Promise<ExperimentCostEstimate>;
   startExperiment: (input: StartExperimentInput) => Promise<StartExperimentResult>;
 }
 
@@ -67,10 +71,67 @@ export function ExperimentsProvider({
   const processingRef = useRef(false);
   const supabase = useSupabaseClient();
 
-  const estimateExperimentCost = useCallback((rows: MappedRow[]) => {
-    const { validRows, skippedRows } = normalizeAndValidateRows(rows);
-    return calculateExperimentEstimate(validRows, skippedRows);
-  }, []);
+  const estimateExperimentCost = useCallback(
+    async (
+      rows: MappedRow[],
+      selectedModels: string[],
+      evaluationMethod: StartExperimentInput["evaluationMethod"]
+    ): Promise<ExperimentCostEstimate> => {
+      const response = await fetch("/api/experiments/estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rows,
+          selectedModels,
+          evaluationMethod,
+        }),
+      });
+
+      const result: EstimateExperimentApiResponse = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to estimate experiment cost.");
+      }
+
+      if (
+        typeof result.avgChars !== "number" ||
+        typeof result.estTokensPerPrompt !== "number" ||
+        typeof result.multiplier !== "number" ||
+        typeof result.totalTokens !== "number" ||
+        typeof result.totalInputTokens !== "number" ||
+        typeof result.totalOutputTokens !== "number" ||
+        typeof result.totalRequests !== "number" ||
+        typeof result.validRows !== "number" ||
+        typeof result.skippedRows !== "number" ||
+        !Array.isArray(result.perModelEstimates) ||
+        (result.pricingStatus !== "live" && result.pricingStatus !== "unavailable")
+      ) {
+        throw new Error("Invalid response from estimate experiment API.");
+      }
+
+      return {
+        avgChars: result.avgChars,
+        estTokensPerPrompt: result.estTokensPerPrompt,
+        multiplier: result.multiplier,
+        totalTokens: result.totalTokens,
+        totalInputTokens: result.totalInputTokens,
+        totalOutputTokens: result.totalOutputTokens,
+        totalRequests: result.totalRequests,
+        estimatedUsd: typeof result.estimatedUsd === "number" ? result.estimatedUsd : null,
+        perModelEstimates: result.perModelEstimates,
+        validRows: result.validRows,
+        skippedRows: result.skippedRows,
+        pricingStatus: result.pricingStatus,
+        pricingError: typeof result.pricingError === "string" ? result.pricingError : undefined,
+        profile:
+          result.profile === "aggressive" ||
+          result.profile === "conservative" ||
+          result.profile === "balanced"
+            ? result.profile
+            : "balanced",
+      };
+    },
+    []
+  );
 
   const startExperiment = useCallback(
     async (input: StartExperimentInput): Promise<StartExperimentResult> => {
@@ -80,6 +141,9 @@ export function ExperimentsProvider({
         body: JSON.stringify({
           title: input.title,
           rows: input.rows,
+          selectedModels: input.selectedModels,
+          rubricId: input.rubricId,
+          evaluationMethod: input.evaluationMethod,
         }),
       });
 
@@ -98,7 +162,7 @@ export function ExperimentsProvider({
         insertedRows: result.insertedRows ?? 0,
         skippedRows: result.skippedRows ?? 0,
         status: ExperimentStatus.RUNNING,
-        estimatedUsd: result.estimatedUsd ?? 0,
+        estimatedUsd: typeof result.estimatedUsd === "number" ? result.estimatedUsd : null,
       };
 
       setActiveExperimentId(finalResult.experimentId);
@@ -153,9 +217,9 @@ export function ExperimentsProvider({
             input_query: item.input_query,
             expected_output: item.expected_output,
             models: experiment.configuration?.selected_models,
-            rubric: experiment.configuration?.rubric_id,
+            rubric: experiment.configuration?.rubric_content,
             evaluationMethod:
-              experiment.configuration?.eval_method || "prompt-based",
+              experiment.configuration?.eval_method || DEFAULT_EVAL_METHOD,
           }),
         });
 

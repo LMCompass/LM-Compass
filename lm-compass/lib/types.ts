@@ -1,5 +1,6 @@
 import type { EvaluationMetadata } from './evaluation/types';
 import type { RL4FIterationResult } from './evaluation/rl4f-evaluator';
+import type { CostBreakdownByModel, EstimateProfile, PricingStatus } from './cost/types';
 
 export type Message = {
   role: 'user' | 'assistant' | 'system';
@@ -36,7 +37,8 @@ export interface Experiment {
   configuration: {
     selected_models: string[];
     rubric_id: string;
-    eval_method: string;
+    eval_method: ExperimentEvaluationMethod;
+    rubric_content?: string;
   } | null;
 }
 
@@ -95,20 +97,35 @@ export interface ExperimentCostEstimate {
   estTokensPerPrompt: number;
   multiplier: number;
   totalTokens: number;
-  estimatedUsd: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalRequests: number;
+  estimatedUsd: number | null;
+  perModelEstimates: CostBreakdownByModel[];
   validRows: number;
   skippedRows: number;
+  pricingStatus: PricingStatus;
+  pricingError?: string;
+  profile: EstimateProfile;
 }
 
 export interface StartExperimentInput {
   title?: string;
   rows: MappedRow[];
+  selectedModels: string[];
+  rubricId: string;
+  evaluationMethod: ExperimentEvaluationMethod;
 }
+
+export type ExperimentEvaluationMethod =
+  | "prompt-based"
+  | "n-prompt-based"
+  | "rl4f";
 
 export interface StartExperimentResult {
   experimentId: string;
   insertedRows: number;
   skippedRows: number;
   status: ExperimentStatus.RUNNING;
-  estimatedUsd: number;
+  estimatedUsd: number | null;
 }

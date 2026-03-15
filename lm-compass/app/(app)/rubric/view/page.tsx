@@ -40,6 +40,7 @@ type RubricRow = {
   rubric_title: string | null;
   rubric_content: string | null;
   created_at: string | null;
+  category: string | null;
 };
 
 function formatDate(dateString: string) {
@@ -86,7 +87,7 @@ export default function ViewRubricsPage() {
     try {
       const response = await supabase
         .from("rubrics")
-        .select("id, rubric_title, rubric_content, created_at")
+        .select("id, rubric_title, rubric_content, created_at, category")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -153,7 +154,10 @@ export default function ViewRubricsPage() {
               </div>
             )}
 
-            <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2">
+            <div
+              className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2"
+              data-tour-id="rubrics-overview"
+            >
               {/* Left: list */}
               <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-background">
                 <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
@@ -161,6 +165,7 @@ export default function ViewRubricsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    data-tour-id="rubric-add-button"
                     onClick={() => setShowAddRubricDialog(true)}
                   >
                     <Plus className="size-4 mr-2" />
@@ -210,6 +215,11 @@ export default function ViewRubricsPage() {
                         const isSelected = rubric.id === selectedRubricId;
                         const createdLabel =
                           rubric.created_at != null ? formatDate(rubric.created_at) : null;
+                        const categories =
+                          rubric.category
+                            ?.split(",")
+                            .map((c) => c.trim())
+                            .filter(Boolean) ?? [];
 
                         return (
                           <div key={rubric.id}>
@@ -243,6 +253,18 @@ export default function ViewRubricsPage() {
                                     </span>
                                   )}
                                 </ItemHeader>
+                                {categories.length > 0 && (
+                                  <div className="mt-1 flex flex-wrap gap-1.5">
+                                    {categories.map((cat) => (
+                                      <span
+                                        key={cat}
+                                        className="inline-flex items-center rounded-full bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary"
+                                      >
+                                        {cat.toUpperCase()}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                                 <ItemDescription>
                                   {rubric.rubric_content?.trim() ||
                                     "No rubric content provided."}
@@ -270,6 +292,22 @@ export default function ViewRubricsPage() {
                     {selectedRubric?.created_at && (
                       <div className="mt-0.5 text-xs text-muted-foreground">
                         Created {formatDate(selectedRubric.created_at) ?? selectedRubric.created_at}
+                      </div>
+                    )}
+                    {selectedRubric?.category && (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {selectedRubric.category
+                          .split(",")
+                          .map((c) => c.trim())
+                          .filter(Boolean)
+                          .map((cat) => (
+                            <span
+                              key={cat}
+                              className="inline-flex items-center rounded-full bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary"
+                            >
+                              {cat.toUpperCase()}
+                            </span>
+                          ))}
                       </div>
                     )}
                   </div>

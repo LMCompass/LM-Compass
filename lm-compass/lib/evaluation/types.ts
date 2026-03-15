@@ -2,6 +2,8 @@
  * Type definitions for the evaluation system
  */
 
+import type { HITLPhase1Result } from './grade-hitl-evaluator';
+
 /**
  * Represents a response from an LLM model
  */
@@ -41,6 +43,10 @@ export type EvaluationMetadata = {
   meanScores: Record<string, number>;
   modelReasoning: Record<string, string[]>; // Aggregated reasoning for each model
   tiedModels: string[];
+  /** Present when evaluation method is HITL; includes phase1 result and optional pending state for phase2 */
+  hitlPhase1?: HITLPhase1Result;
+  /** Rubric used for HITL (so frontend can call phase2 without re-loading) */
+  hitlRubric?: string;
 };
 
 /**

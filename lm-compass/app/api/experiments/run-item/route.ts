@@ -3,32 +3,9 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
-import { PromptBasedEvaluator, NPromptBasedEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
-
-/**
- * Loads the default rubric from the file system
- */
-async function loadDefaultRubric(): Promise<string> {
-  const rubricPathCandidates = [
-    join(process.cwd(), 'app', '(app)', 'rubric', 'types', 'default.txt'),
-    join(process.cwd(), 'app', 'rubric', 'types', 'default.txt'),
-  ];
-
-  for (const rubricPath of rubricPathCandidates) {
-    try {
-      const rubricContent = await readFile(rubricPath, 'utf-8');
-      return rubricContent;
-    } catch {
-      // Try next candidate path.
-    }
-  }
-
-  throw new Error(
-    `Default rubric not found in expected paths: ${rubricPathCandidates.join(', ')}`
-  );
-}
+import { PromptBasedEvaluator, NPromptBasedEvaluator, RL4FEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
+import { DEFAULT_EVAL_METHOD, isExperimentEvaluationMethod } from '@/lib/experiments';
+import { loadDefaultRubricText } from '@/lib/rubrics';
 
 /**
  * Adjusts the rubric to include the expected output as the ground truth
@@ -73,7 +50,7 @@ export async function POST(req: Request) {
     let apiKey;
     try {
       apiKey = decrypt(userSettings.openrouter_api_key);
-    } catch (e) {
+    } catch {
       return NextResponse.json(
         { error: 'Failed to decrypt API key. Please try again.' },
         { status: 500 }
@@ -183,8 +160,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // Load the base rubric (from provided rubric or default file)
-    const baseRubric = rubric || await loadDefaultRubric();
+    const resolvedEvaluationMethod = (() => {
+      if (evaluationMethod == null || evaluationMethod === '') {
+        return DEFAULT_EVAL_METHOD;
+      }
+
+      if (!isExperimentEvaluationMethod(evaluationMethod)) {
+        return null;
+      }
+
+      return evaluationMethod;
+    })();
+
+    if (!resolvedEvaluationMethod) {
+      return NextResponse.json(
+        { error: 'Unsupported evaluationMethod. Allowed values: prompt-based, n-prompt-based, rl4f.' },
+        { status: 400 }
+      );
+    }
+
+    // Load the base rubric (from provided rubric text or default file)
+    const baseRubric =
+      typeof rubric === 'string' && rubric.trim().length > 0
+        ? rubric
+        : loadDefaultRubricText();
 
     // Adjust rubric if expected_output is provided
     const finalRubric = expected_output
@@ -193,8 +192,10 @@ export async function POST(req: Request) {
 
     // Create evaluator based on selected method
     let evaluator;
-    if (evaluationMethod === 'n-prompt-based') {
+    if (resolvedEvaluationMethod === 'n-prompt-based') {
       evaluator = new NPromptBasedEvaluator(llmClient);
+    } else if (resolvedEvaluationMethod === 'rl4f') {
+      evaluator = new RL4FEvaluator(llmClient);
     } else {
       // Default to n^2 prompt-based
       evaluator = new PromptBasedEvaluator(llmClient);
