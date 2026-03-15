@@ -224,7 +224,10 @@ export default function ExperimentsIndexPage() {
                 View your experiments and open any dashboard.
               </p>
             </div>
-            <Button onClick={() => router.push("/experiments/upload")}>
+            <Button
+              data-tour-id="experiments-create-button"
+              onClick={() => router.push("/experiments/upload")}
+            >
               Create Experiment
             </Button>
           </div>
@@ -240,7 +243,10 @@ export default function ExperimentsIndexPage() {
             </div>
           )}
 
-          <div className="overflow-hidden rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm">
+          <div
+            className="overflow-hidden rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm"
+            data-tour-id="experiments-overview"
+          >
             <Table className="[&_td]:px-4 [&_td]:py-4 [&_th]:px-4 [&_th]:py-3">
               <TableHeader className="[&_tr]:border-border/50 bg-muted/30">
                 <TableRow className="hover:bg-transparent">

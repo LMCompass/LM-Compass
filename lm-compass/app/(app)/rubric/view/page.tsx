@@ -154,7 +154,10 @@ export default function ViewRubricsPage() {
               </div>
             )}
 
-            <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2">
+            <div
+              className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2"
+              data-tour-id="rubrics-overview"
+            >
               {/* Left: list */}
               <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-background">
                 <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
@@ -162,6 +165,7 @@ export default function ViewRubricsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    data-tour-id="rubric-add-button"
                     onClick={() => setShowAddRubricDialog(true)}
                   >
                     <Plus className="size-4 mr-2" />

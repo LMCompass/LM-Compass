@@ -11,6 +11,7 @@ import { Sun, Moon, KeyRound, LogIn } from "lucide-react";
 import { SidebarInset, SidebarTrigger } from "@/components/sidebar/sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import { useChat } from "@/contexts/chat-context";
+import { useOnboarding } from "@/contexts/onboarding-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +51,7 @@ export default function Home() {
     clearChatMetadataFromLoadedChat,
   } = useChat();
   const { user, isLoaded: userLoaded } = useUser();
+  const { shouldSuppressBlockingDialogs } = useOnboarding();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<"querying" | "evaluating" | "refining">(
     "querying",
@@ -66,6 +68,8 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [checkingKey, setCheckingKey] = useState(true);
+  const [pendingSettingsPrompt, setPendingSettingsPrompt] = useState(false);
+  const shouldSuppressRef = useRef(shouldSuppressBlockingDialogs);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -129,6 +133,10 @@ export default function Home() {
 
   // Check if user has API key when signed in
   useEffect(() => {
+    shouldSuppressRef.current = shouldSuppressBlockingDialogs;
+  }, [shouldSuppressBlockingDialogs]);
+
+  useEffect(() => {
     const checkApiKey = async () => {
       if (!userLoaded) {
         return;
@@ -147,7 +155,14 @@ export default function Home() {
 
         // If user is signed in but doesn't have a key, show settings dialog
         if (!result.hasKey) {
-          setIsSettingsOpen(true);
+          if (shouldSuppressRef.current) {
+            setPendingSettingsPrompt(true);
+          } else {
+            setIsSettingsOpen(true);
+            setPendingSettingsPrompt(false);
+          }
+        } else {
+          setPendingSettingsPrompt(false);
         }
       } catch (error) {
         console.error("Failed to check API key:", error);
@@ -159,6 +174,18 @@ export default function Home() {
 
     checkApiKey();
   }, [user, userLoaded]);
+
+  useEffect(() => {
+    if (
+      !shouldSuppressBlockingDialogs &&
+      pendingSettingsPrompt &&
+      user &&
+      hasKey === false
+    ) {
+      setIsSettingsOpen(true);
+      setPendingSettingsPrompt(false);
+    }
+  }, [hasKey, pendingSettingsPrompt, shouldSuppressBlockingDialogs, user]);
 
   // Refresh API key status when settings dialog closes
   const handleSettingsClose = async (open: boolean) => {
@@ -207,6 +234,18 @@ export default function Home() {
         <header className="flex-shrink-0 flex flex-col gap-2 border-b border-border">
           <div className="flex items-center gap-4 p-4 sm:p-6">
             <SidebarTrigger className="md:hidden -ml-1 shrink-0" />
+            <div data-tour-id="chat-model-selector">
+              <MultiModelSelector
+                values={selectedModels}
+                onChange={handleMultiModelChange}
+              />
+            </div>
+            <div data-tour-id="chat-evaluation-method-selector">
+              <EvaluationMethodSelector
+                value={selectedRubric}
+                onChange={setSelectedRubric}
+              />
+            </div>
             <MultiModelSelector
               values={selectedModels}
               onChange={handleMultiModelChange}
