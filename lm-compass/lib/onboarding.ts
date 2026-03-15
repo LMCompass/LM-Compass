@@ -24,28 +24,28 @@ export type OnboardingStep = {
 
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   {
-    id: "chat-evaluation-methods",
+    id: "chat-model-selection",
     path: "/chat",
     pageLabel: "Chat",
     navigationHint: "Use the sidebar and open New Chat.",
     transitionTargetId: "nav-to-chat",
     transitionInstruction: "Click New Chat in the sidebar to go to Chat.",
-    targetId: "chat-evaluation-method-selector",
-    title: "Choose Evaluation Methods",
+    targetId: "chat-model-selector",
+    title: "Select Models",
     description:
-      "Pick how responses are judged. Different methods trade off speed, rigor, and reasoning depth.",
+      "Compare multiple models side by side. The app ranks outputs using your selected evaluation method and rubric.",
   },
   {
-    id: "chat-model-selection",
+    id: "chat-evaluation-methods",
     path: "/chat",
     pageLabel: "Chat",
     navigationHint: "Stay on the Chat page.",
     transitionTargetId: "nav-to-chat",
     transitionInstruction: "Click New Chat in the sidebar to return to Chat.",
-    targetId: "chat-model-selector",
-    title: "Select Models",
+    targetId: "chat-evaluation-method-selector",
+    title: "Choose Evaluation Methods",
     description:
-      "Compare multiple models side by side. The app ranks outputs using your selected evaluation method and rubric.",
+      "Pick how responses are judged. Different methods trade off speed, rigor, and reasoning depth.",
   },
   {
     id: "rubrics-overview",

@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { useChat } from "@/contexts/chat-context";
 import {
   CURRENT_TOUR_VERSION,
   ONBOARDING_STEPS,
@@ -436,8 +437,10 @@ export function OnboardingProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const pathname = usePathname();
   const { user, isLoaded: userLoaded } = useUser();
+  const { handleNewChat } = useChat();
 
   const [isTourActive, setIsTourActive] = React.useState(false);
   const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
@@ -468,8 +471,12 @@ export function OnboardingProvider({
       setIsTourActive(false);
       setAutoStartEligible(false);
       await persistState(status);
+      handleNewChat();
+      if (pathname !== "/chat") {
+        router.push("/chat");
+      }
     },
-    [persistState]
+    [handleNewChat, pathname, persistState, router]
   );
 
   const startTour = React.useCallback(
