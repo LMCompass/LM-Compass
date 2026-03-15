@@ -28,19 +28,36 @@ import {
 type RubricRow = {
   id: string;
   rubric_title: string | null;
+  category: string | null;
 };
 
 type RubricSelectorProps = {
   value: string;
   onChange: (value: string) => void;
+  /**
+   * Evaluation method selected in the chat header,
+   * e.g. "prompt-based", "rl4f", "hitl".
+   */
+  evaluationMethod?: string;
 };
 
-export function RubricSelector({ value, onChange }: RubricSelectorProps) {
+export function RubricSelector({
+  value,
+  onChange,
+  evaluationMethod,
+}: RubricSelectorProps) {
   const supabase = useSupabaseClient();
   const { user } = useUser();
   const [rubrics, setRubrics] = React.useState<RubricRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [open, setOpen] = React.useState(false);
+
+  const normalizedEvaluationMethod = React.useMemo(() => {
+    const raw = evaluationMethod?.trim() ?? "";
+    if (!raw) return undefined;
+    // Treat one-shot prompt-based as using the same rubrics as prompt-based evaluations.
+    return raw === "n-prompt-based" ? "prompt-based" : raw;
+  }, [evaluationMethod]);
 
   React.useEffect(() => {
     if (!user?.id) {
@@ -55,7 +72,7 @@ export function RubricSelector({ value, onChange }: RubricSelectorProps) {
       try {
         const { data, error } = await supabase
           .from("rubrics")
-          .select("id, rubric_title")
+          .select("id, rubric_title, category")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -83,6 +100,42 @@ export function RubricSelector({ value, onChange }: RubricSelectorProps) {
   }, [supabase, user?.id]);
 
   const effectiveValue = value || "default";
+
+  const filteredRubrics = React.useMemo(() => {
+    if (!normalizedEvaluationMethod) return rubrics;
+    const method = normalizedEvaluationMethod;
+
+    return rubrics.filter((rubric) => {
+      if (!rubric.category) {
+        // If a rubric has no category, treat it as not matching
+        // when a specific evaluation method is selected.
+        return false;
+      }
+      const categories = rubric.category
+        .split(",")
+        .map((c) => c.trim())
+        .filter(Boolean);
+      if (categories.length === 0) return false;
+      return categories.includes(method);
+    });
+  }, [rubrics, normalizedEvaluationMethod]);
+
+  const isRubricSelectable = !!user && !isLoading;
+
+  React.useEffect(() => {
+    // If the evaluation method changes, ensure the selected rubric is valid for it.
+    // Otherwise reset to Default rubric to avoid ambiguous state.
+    if (!normalizedEvaluationMethod) return;
+    if (effectiveValue === "default") return;
+    const isValidForMethod = filteredRubrics.some(
+      (r) => r.id === effectiveValue,
+    );
+    if (!isValidForMethod) {
+      onChange("default");
+    }
+    // Intentionally depend on `filteredRubrics` so the reset happens after rubrics load.
+  }, [normalizedEvaluationMethod, effectiveValue, filteredRubrics, onChange]);
+
   const selectedRubric =
     effectiveValue === "default"
       ? { id: "default", rubric_title: "Default rubric" }
@@ -98,7 +151,7 @@ export function RubricSelector({ value, onChange }: RubricSelectorProps) {
               role="combobox"
               aria-expanded={open}
               className="min-w-[220px] max-w-fit justify-between"
-              disabled={isLoading || !user}
+              disabled={!isRubricSelectable}
             >
               <div className="flex items-center gap-2">
                 <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -138,7 +191,7 @@ export function RubricSelector({ value, onChange }: RubricSelectorProps) {
                 />
                 <span>Default rubric</span>
               </CommandItem>
-              {rubrics.map((rubric) => (
+              {filteredRubrics.map((rubric) => (
                 <CommandItem
                   key={rubric.id}
                   value={rubric.id}
