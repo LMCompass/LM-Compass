@@ -157,38 +157,38 @@ function parseEvaluationSummary(value: unknown): ExperimentEvaluationSummary | n
 
   const meanScores = isRecord(value.meanScores)
     ? Object.fromEntries(
-        Object.entries(value.meanScores)
-          .filter(([, score]) => typeof score === "number")
-          .map(([model, score]) => [model, score as number])
-      )
+      Object.entries(value.meanScores)
+        .filter(([, score]) => typeof score === "number")
+        .map(([model, score]) => [model, score as number])
+    )
     : {};
 
   const scores = Array.isArray(value.scores)
     ? value.scores
-        .map((score) => {
-          if (!isRecord(score)) return null;
-          const judgeModel =
-            typeof score.judgeModel === "string" ? score.judgeModel : null;
-          const evaluatedModel =
-            typeof score.evaluatedModel === "string" ? score.evaluatedModel : null;
-          const numericScore =
-            typeof score.score === "number" || score.score === null
-              ? score.score
-              : null;
-          const reasoning =
-            typeof score.reasoning === "string" || score.reasoning === null
-              ? score.reasoning
-              : null;
+      .map((score) => {
+        if (!isRecord(score)) return null;
+        const judgeModel =
+          typeof score.judgeModel === "string" ? score.judgeModel : null;
+        const evaluatedModel =
+          typeof score.evaluatedModel === "string" ? score.evaluatedModel : null;
+        const numericScore =
+          typeof score.score === "number" || score.score === null
+            ? score.score
+            : null;
+        const reasoning =
+          typeof score.reasoning === "string" || score.reasoning === null
+            ? score.reasoning
+            : null;
 
-          if (!judgeModel || !evaluatedModel) return null;
-          return {
-            judgeModel,
-            evaluatedModel,
-            score: numericScore,
-            reasoning,
-          };
-        })
-        .filter((score): score is NonNullable<typeof score> => score !== null)
+        if (!judgeModel || !evaluatedModel) return null;
+        return {
+          judgeModel,
+          evaluatedModel,
+          score: numericScore,
+          reasoning,
+        };
+      })
+      .filter((score): score is NonNullable<typeof score> => score !== null)
     : [];
 
   return {
@@ -495,9 +495,9 @@ export default function ExperimentDetailPage() {
     );
     const orderedModels = configuredModels.length
       ? [
-          ...configuredModels.filter((model) => discoveredModels.includes(model)),
-          ...discoveredModels.filter((model) => !configuredModels.includes(model)),
-        ]
+        ...configuredModels.filter((model) => discoveredModels.includes(model)),
+        ...discoveredModels.filter((model) => !configuredModels.includes(model)),
+      ]
       : discoveredModels;
 
     const modelColors = Object.fromEntries(
@@ -591,9 +591,9 @@ export default function ExperimentDetailPage() {
     const discoveredModels = Object.keys(scoreListsByModel);
     const orderedModels = configuredModels.length
       ? [
-          ...configuredModels.filter((model) => discoveredModels.includes(model)),
-          ...discoveredModels.filter((model) => !configuredModels.includes(model)),
-        ]
+        ...configuredModels.filter((model) => discoveredModels.includes(model)),
+        ...discoveredModels.filter((model) => !configuredModels.includes(model)),
+      ]
       : discoveredModels;
 
     if (orderedModels.length === 0 || completedCount === 0) {
@@ -661,7 +661,7 @@ export default function ExperimentDetailPage() {
       buildMetric("Median Score", medianScoreValues, formatScore),
       buildMetric("Win Rate", winRateValues, formatPercent),
       buildMetric("Std Deviation", stdDeviationValues, formatScore, "min"),
-      buildMetric("Time to Execute", executionTimeValues, formatDurationMs, "min"),
+      buildMetric("Avg Time to Execute", executionTimeValues, formatDurationMs, "min"),
     ];
 
     return {
@@ -912,8 +912,8 @@ export default function ExperimentDetailPage() {
                         <TableRow className="hover:bg-transparent">
                           <TableHead className="font-semibold">Metric</TableHead>
                           {performanceSummary.models.map((model) => (
-                            <TableHead key={model} className="font-semibold">
-                              {model}
+                            <TableHead key={model} className="font-semibold" title={model}>
+                              {formatModelLabel(model)}
                             </TableHead>
                           ))}
                         </TableRow>
@@ -1002,83 +1002,36 @@ export default function ExperimentDetailPage() {
               )}
 
               <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
-                <h3 className="text-sm font-semibold text-foreground mb-4">
-                  Average Score by Model
-                </h3>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Y-axis is scaled to the current score range for easier comparison.
-                </p>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart
-                    data={chartData.avgScores}
-                    margin={{ top: 8, right: 12, bottom: 64, left: 12 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="var(--color-border)"
-                      opacity={0.4}
-                    />
-                    <XAxis
-                      dataKey="model"
-                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                      angle={-25}
-                      textAnchor="end"
-                      interval={0}
-                      tickMargin={8}
-                      tickFormatter={(value) => formatModelLabel(String(value ?? ""))}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                      domain={barChartDomain}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--color-card)",
-                        border: "1px solid var(--color-border)",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                      }}
-                      formatter={(value) => [Number(value).toFixed(2), "Avg Score"]}
-                    />
-                    <Bar dataKey="avgScore" radius={[6, 6, 0, 0]} maxBarSize={56}>
-                      {chartData.avgScores.map((entry, index) => (
-                        <Cell key={`bar-${index}`} fill={entry.fill} />
-                      ))}
-                      <LabelList
-                        dataKey="avgScore"
-                        position="top"
-                        formatter={(value) => Number(value ?? 0).toFixed(2)}
-                        style={{ fontSize: "11px", fill: "var(--color-foreground)" }}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {chartData.wins.length > 0 && (
                 <div className="rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
                   <h3 className="text-sm font-semibold text-foreground mb-4">
-                    Queries Won by Model
+                    Average Score by Model
                   </h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Y-axis is scaled to the current score range for easier comparison.
+                  </p>
                   <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie
-                        data={chartData.wins}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={90}
-                        paddingAngle={3}
-                        label={({ name, value }) => `${formatModelLabel(String(name ?? ""))} (${value})`}
-                        labelLine={{ stroke: "var(--color-muted-foreground)", strokeWidth: 1 }}
-                        style={{ fontSize: "11px" }}
-                      >
-                        {chartData.wins.map((entry, index) => (
-                          <Cell key={`pie-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
+                    <BarChart
+                      data={chartData.avgScores}
+                      margin={{ top: 8, right: 12, bottom: 64, left: 12 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--color-border)"
+                        opacity={0.4}
+                      />
+                      <XAxis
+                        dataKey="model"
+                        tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                        angle={-25}
+                        textAnchor="end"
+                        interval={0}
+                        tickMargin={8}
+                        tickFormatter={(value) => formatModelLabel(String(value ?? ""))}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                        domain={barChartDomain}
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "var(--color-card)",
@@ -1086,37 +1039,84 @@ export default function ExperimentDetailPage() {
                           borderRadius: "8px",
                           fontSize: "12px",
                         }}
-                        formatter={(value, name) => [value, name]}
+                        formatter={(value) => [Number(value).toFixed(2), "Avg Score"]}
                       />
-                      <Legend
-                        verticalAlign="bottom"
-                        iconType="circle"
-                        iconSize={8}
-                        formatter={(value) => formatModelLabel(String(value ?? ""))}
-                        wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }}
-                      />
-                    </PieChart>
+                      <Bar dataKey="avgScore" radius={[6, 6, 0, 0]} maxBarSize={56}>
+                        {chartData.avgScores.map((entry, index) => (
+                          <Cell key={`bar-${index}`} fill={entry.fill} />
+                        ))}
+                        <LabelList
+                          dataKey="avgScore"
+                          position="top"
+                          formatter={(value) => Number(value ?? 0).toFixed(2)}
+                          style={{ fontSize: "11px", fill: "var(--color-foreground)" }}
+                        />
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
-              )}
+
+                {chartData.wins.length > 0 && (
+                  <div className="rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
+                    <h3 className="text-sm font-semibold text-foreground mb-4">
+                      Queries Won by Model
+                    </h3>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <PieChart>
+                        <Pie
+                          data={chartData.wins}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={90}
+                          paddingAngle={3}
+                          label={({ name, value }) => `${formatModelLabel(String(name ?? ""))} (${value})`}
+                          labelLine={{ stroke: "var(--color-muted-foreground)", strokeWidth: 1 }}
+                          style={{ fontSize: "11px" }}
+                        >
+                          {chartData.wins.map((entry, index) => (
+                            <Cell key={`pie-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "var(--color-card)",
+                            border: "1px solid var(--color-border)",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                          }}
+                          formatter={(value, name) => [value, name]}
+                        />
+                        <Legend
+                          verticalAlign="bottom"
+                          iconType="circle"
+                          iconSize={8}
+                          formatter={(value) => formatModelLabel(String(value ?? ""))}
+                          wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
             </>
           )}
 
           <div className="overflow-hidden rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm">
-            <Table className="[&_td]:px-4 [&_td]:py-4 [&_th]:px-4 [&_th]:py-3">
+            <Table className="table-fixed [&_td]:px-4 [&_td]:py-4 [&_th]:px-4 [&_th]:py-3">
               <TableHeader className="[&_tr]:border-border/50 bg-muted/30">
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[45%] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <TableHead className="w-[40%] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Query
                   </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <TableHead className="w-[30%] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Winner Model
                   </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <TableHead className="w-[10%] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Score
                   </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <TableHead className="w-[20%] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Status
                   </TableHead>
                 </TableRow>
@@ -1163,7 +1163,11 @@ export default function ExperimentDetailPage() {
                         {item.input_query || "—"}
                       </span>
                     </TableCell>
-                    <TableCell>{winner}</TableCell>
+                    <TableCell>
+                      <span className="block truncate" title={winner}>
+                        {formatModelLabel(winner)}
+                      </span>
+                    </TableCell>
                     <TableCell>{score}</TableCell>
                     <TableCell>
                       <span
@@ -1192,7 +1196,7 @@ export default function ExperimentDetailPage() {
               <div className="space-y-5 text-sm">
                 <section>
                   <h3 className="font-semibold mb-1">Query</h3>
-                  <p className="rounded-md border border-border bg-muted/20 p-3 whitespace-pre-wrap">
+                  <p className="rounded-md border border-border bg-muted/20 p-3 whitespace-pre-wrap break-words overflow-hidden">
                     {selectedItem.input_query || "—"}
                   </p>
                 </section>
@@ -1200,7 +1204,7 @@ export default function ExperimentDetailPage() {
                 {selectedItem.expected_output && (
                   <section>
                     <h3 className="font-semibold mb-1">Expected Output</h3>
-                    <p className="rounded-md border border-border bg-muted/20 p-3 whitespace-pre-wrap">
+                    <p className="rounded-md border border-border bg-muted/20 p-3 whitespace-pre-wrap break-words overflow-hidden">
                       {selectedItem.expected_output}
                     </p>
                   </section>
@@ -1215,12 +1219,12 @@ export default function ExperimentDetailPage() {
                     <p className="mt-1">
                       Score: <strong>
                         {selectedItemDetails?.summary?.winnerModel &&
-                        typeof selectedItemDetails.summary.meanScores[
+                          typeof selectedItemDetails.summary.meanScores[
                           selectedItemDetails.summary.winnerModel
-                        ] === "number"
+                          ] === "number"
                           ? selectedItemDetails.summary.meanScores[
-                              selectedItemDetails.summary.winnerModel
-                            ].toFixed(1)
+                            selectedItemDetails.summary.winnerModel
+                          ].toFixed(1)
                           : "—"}
                       </strong>
                     </p>
@@ -1248,7 +1252,7 @@ export default function ExperimentDetailPage() {
                           </div>
                           <div className="rounded-md bg-muted/20 p-3">
                             {entry.data.output ? (
-                              <Markdown className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                              <Markdown className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 break-words overflow-hidden">
                                 {entry.data.output}
                               </Markdown>
                             ) : (
