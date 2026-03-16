@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -49,6 +49,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Markdown } from "@/components/ui/markdown";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type ExperimentItemRow = {
   id: string;
@@ -938,9 +943,35 @@ export default function ExperimentDetailPage() {
                   <h3 className="text-sm font-semibold text-foreground mb-2">
                     Judge Agreement (Kendall&apos;s Tau-b)
                   </h3>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Measures pairwise agreement between judges across model rankings per query.
-                  </p>
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 group">
+                      <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                      What does this measure?
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mb-4 rounded-md border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground space-y-2">
+                        <p>
+                          <strong className="text-foreground">Kendall&apos;s Tau-b</strong> is a statistical measure of
+                          agreement between two rankings. In this context, it measures how consistently different judge
+                          models rank the evaluated models for each query.
+                        </p>
+                        <p>
+                          A value of <strong>+1</strong> means perfect agreement (both judges rank models identically),
+                          {" "}<strong>0</strong> means no correlation, and <strong>-1</strong> means complete disagreement
+                          (opposite rankings). The &quot;Agreement&quot; column provides a human-readable interpretation.
+                        </p>
+                        <p>
+                          <strong>High agreement</strong> across judge pairs indicates the evaluation results are reliable.
+                          {" "}<strong>Low or negative agreement</strong> suggests judges disagree on model quality, and
+                          the winner determination may be less trustworthy.
+                        </p>
+                        <div className="pt-1 border-t border-border/40 text-[11px]">
+                          <span className="font-medium text-foreground">Scale:</span>{" "}
+                          Very strong (≥0.8) · Strong (≥0.6) · Moderate (≥0.4) · Weak (≥0.2) · Very weak (&lt;0.2)
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                   <div className="overflow-x-auto">
                     <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-2.5 text-sm">
                       <TableHeader className="[&_tr]:border-border/50 bg-muted/30">

@@ -680,6 +680,15 @@ export default function NewExperimentPage() {
                     >
                       Select between {MIN_EXPERIMENT_MODELS} and {MAX_EXPERIMENT_MODELS} models.
                     </p>
+                    {selectedModels.length < 4 ? (
+                      <p className="text-xs text-muted-foreground/70">
+                        Tip: Select 4+ models to enable Kendall&apos;s Tau-b judge agreement analysis.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                        ✓ Kendall&apos;s Tau-b judge agreement analysis enabled.
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
