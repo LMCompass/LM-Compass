@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronDown, Bot, ClipboardList, Zap } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -54,6 +54,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip as ShadcnTooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type ExperimentItemRow = {
   id: string;
@@ -291,6 +297,7 @@ export default function ExperimentDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isAccessBlocked, setIsAccessBlocked] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ExperimentItemRow | null>(null);
+  const [rubricTitle, setRubricTitle] = useState<string | null>(null);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isRefreshingRef = useRef(false);
@@ -299,6 +306,36 @@ export default function ExperimentDetailPage() {
   useEffect(() => {
     latestExperimentRef.current = experiment;
   }, [experiment]);
+
+  useEffect(() => {
+    const config = experiment?.configuration;
+    if (!config?.rubric_id) return;
+    
+    if (config.rubric_id === "default") {
+      setRubricTitle("Default Rubric");
+      return;
+    }
+
+    const fetchRubric = async () => {
+      try {
+        const { data } = await supabase
+          .from("rubrics")
+          .select("rubric_title")
+          .eq("id", config.rubric_id)
+          .maybeSingle();
+        
+        if (data?.rubric_title) {
+          setRubricTitle(data.rubric_title);
+        } else {
+          setRubricTitle(config.rubric_id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch rubric title:", err);
+      }
+    };
+
+    fetchRubric();
+  }, [experiment?.configuration?.rubric_id, supabase]);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
@@ -857,7 +894,51 @@ export default function ExperimentDetailPage() {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
                 {experiment?.title || "Experiment"}
               </h1>
-              <div className="flex items-center gap-2 mt-2">
+              
+              {experiment?.configuration && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-muted-foreground">
+                  <TooltipProvider delayDuration={100}>
+                    <ShadcnTooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-1.5 cursor-help">
+                          <Bot className="size-3.5 text-primary/70" />
+                          <span className="font-medium text-foreground/80">Models:</span>
+                          <span className="font-semibold text-primary/80">
+                            {experiment.configuration.selected_models?.length || 0}
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent showArrow={false} side="bottom" className="max-w-[300px] p-3 shadow-xl border-border/50 bg-card/95 backdrop-blur-md text-foreground">
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Selected Models</p>
+                          <div className="flex flex-col gap-1.5">
+                            {experiment.configuration.selected_models?.map((model) => (
+                              <div key={model} className="flex items-center gap-2 text-xs">
+                                <div className="size-1.5 rounded-full bg-primary/60 shrink-0" />
+                                <span className="break-all font-medium text-foreground">{model}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </ShadcnTooltip>
+                  </TooltipProvider>
+                  
+                  <div className="flex items-center gap-1.5 sm:border-l sm:border-border/50 sm:pl-4">
+                    <ClipboardList className="size-3.5 text-primary/70" />
+                    <span className="font-medium text-foreground/80">Rubric:</span>
+                    <span className="truncate">{rubricTitle || "Loading..."}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5 sm:border-l sm:border-border/50 sm:pl-4">
+                    <Zap className="size-3.5 text-primary/70" />
+                    <span className="font-medium text-foreground/80">Method:</span>
+                    <span className="capitalize">{experiment.configuration.eval_method?.replace(/-/g, " ")}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 mt-3">
                 <span
                   className={`inline-flex min-w-[84px] items-center justify-center rounded-md px-2.5 py-1 text-xs font-bold ${statusBadgeClass(experiment?.status)}`}
                 >
