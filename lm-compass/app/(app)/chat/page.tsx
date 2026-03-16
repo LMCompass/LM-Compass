@@ -243,17 +243,9 @@ export default function Home() {
             <div data-tour-id="chat-evaluation-method-selector">
               <EvaluationMethodSelector
                 value={selectedRubric}
-                onChange={setSelectedRubric}
+                onChange={handleEvaluationMethodChange}
               />
             </div>
-            <MultiModelSelector
-              values={selectedModels}
-              onChange={handleMultiModelChange}
-            />
-            <EvaluationMethodSelector
-              value={selectedRubric}
-              onChange={handleEvaluationMethodChange}
-            />
             <RubricSelector
               value={selectedRubricId}
               onChange={setSelectedRubricId}
