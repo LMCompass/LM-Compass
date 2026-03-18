@@ -50,6 +50,13 @@ export interface HITLPhase2Result {
   updatedRubric: string;
   graderResults: Record<string, GradeResult>;
   crossEvalResults: Record<string, Record<string, number>>;
+  /**
+   * Optional metadata added by API layer when the updated rubric
+   * is persisted for later reuse.
+   */
+  savedRubricId?: string;
+  savedRubricTitle?: string;
+  saveRubricError?: string;
 }
 
 /**

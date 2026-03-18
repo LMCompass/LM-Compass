@@ -54,6 +54,8 @@ export async function POST(req: Request) {
       questionsAndDrafts,
       humanAnswers,
       modelNames,
+      saveRubric,
+      rubricTitle,
     } = body as {
       example: HITLExample;
       rubric: string;
@@ -62,6 +64,8 @@ export async function POST(req: Request) {
       questionsAndDrafts: QuestionsAndDrafts;
       humanAnswers: Record<string, string>;
       modelNames: string[];
+      saveRubric?: boolean;
+      rubricTitle?: string;
     };
 
     if (
@@ -90,6 +94,41 @@ export async function POST(req: Request) {
       questionsAndDrafts,
       humanAnswers
     );
+
+    // Optionally persist the updated rubric for later reuse.
+    if (saveRubric) {
+      const titleFromUser = typeof rubricTitle === "string" ? rubricTitle.trim() : "";
+      const title =
+        titleFromUser.length > 0
+          ? titleFromUser
+          : `HITL rubric ${new Date().toISOString()}`;
+
+      const { data: saved, error: saveError } = await supabase
+        .from("rubrics")
+        .insert({
+          rubric_title: title,
+          rubric_content: result.updatedRubric,
+          user_id: userId,
+          mode: "custom",
+          category: "hitl",
+        })
+        .select("id, rubric_title")
+        .single();
+
+      if (saveError) {
+        return NextResponse.json({
+          ...result,
+          saveRubricError: saveError.message,
+        });
+      }
+
+      return NextResponse.json({
+        ...result,
+        savedRubricId: saved?.id ? String(saved.id) : undefined,
+        savedRubricTitle:
+          typeof saved?.rubric_title === "string" ? saved.rubric_title : title,
+      });
+    }
 
     return NextResponse.json(result);
   } catch (error) {
