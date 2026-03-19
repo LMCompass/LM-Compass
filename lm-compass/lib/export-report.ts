@@ -83,13 +83,9 @@ function formatDate(iso: string): string {
   }
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace("#", "");
-  return [
-    parseInt(h.substring(0, 2), 16),
-    parseInt(h.substring(2, 4), 16),
-    parseInt(h.substring(4, 6), 16),
-  ];
+function getLastAutoTableY(doc: jsPDF): number {
+  const prev = (doc as jsPDF & { lastAutoTable?: { finalY?: number } }).lastAutoTable;
+  return prev?.finalY ?? 0;
 }
 
 function addPageFooters(doc: jsPDF) {
@@ -487,7 +483,7 @@ export function generateExperimentReport(input: ExperimentReportInput) {
       },
     });
 
-    y = (doc as any).lastAutoTable.finalY + 10;
+    y = getLastAutoTableY(doc) + 10;
   }
 
   // 6. Kendall's Tau-b table
@@ -532,7 +528,7 @@ export function generateExperimentReport(input: ExperimentReportInput) {
       },
     });
 
-    y = (doc as any).lastAutoTable.finalY + 10;
+    y = getLastAutoTableY(doc) + 10;
   }
 
   // 7. Per-item results table
