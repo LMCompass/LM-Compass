@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ArrowLeft, ChevronDown, Bot, ClipboardList, Zap } from "lucide-react";
+import { ArrowLeft, ChevronDown, Bot, ClipboardList, Zap, Download } from "lucide-react";
+import {
+  generateExperimentReport,
+  type ExperimentReportInput,
+} from "@/lib/export-report";
 import {
   BarChart,
   Bar,
@@ -947,6 +951,56 @@ export default function ExperimentDetailPage() {
                 <span className="text-xs text-muted-foreground">
                   {progress.done} / {progress.total} completed
                 </span>
+
+                {isExperimentDone && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto gap-1.5"
+                    onClick={() => {
+                      const reportInput: ExperimentReportInput = {
+                        meta: {
+                          title: experiment?.title || "Untitled Experiment",
+                          authorName: user?.fullName || user?.username || "Unknown",
+                          createdAt: experiment?.created_at || new Date().toISOString(),
+                          queryCount: items.length,
+                          models: experiment?.configuration?.selected_models || [],
+                          rubricName: rubricTitle || "Default Rubric",
+                          evalMethod: experiment?.configuration?.eval_method || "prompt-based",
+                        },
+                        performanceSummary: performanceSummary ?? null,
+                        kendallRows: kendallTauSummary.rows.map((row) => ({
+                          judgeA: row.judgeA,
+                          judgeB: row.judgeB,
+                          tauB: row.tauB,
+                          agreement: Number.isFinite(row.tauB) ? getTauLabel(row.tauB) : "—",
+                          comparedPairs: row.comparedPairs,
+                          queryCount: row.queryCount,
+                        })),
+                        itemRows: tableRows.map(({ item, winner, score }, idx) => ({
+                          index: idx + 1,
+                          query: item.input_query || "—",
+                          winnerModel: winner,
+                          score,
+                        })),
+                        chartData: {
+                          avgScores: chartData.avgScores.map((d) => ({
+                            model: d.model,
+                            avgScore: d.avgScore,
+                          })),
+                          wins: chartData.wins.map((d) => ({
+                            name: d.name,
+                            value: d.value,
+                          })),
+                        },
+                      };
+                      generateExperimentReport(reportInput);
+                    }}
+                  >
+                    <Download className="size-3.5" />
+                    Export Report
+                  </Button>
+                )}
               </div>
             </div>
           </div>
