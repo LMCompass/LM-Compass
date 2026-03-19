@@ -1,3 +1,5 @@
+"use client";
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -586,6 +588,6 @@ export function generateExperimentReport(input: ExperimentReportInput) {
   const safeName = (meta.title || "experiment")
     .replace(/[^a-zA-Z0-9 ]/g, "")
     .replace(/\s+/g, "_")
-    .toLowerCase();
+    .toLowerCase() || "experiment";
   doc.save(`${safeName}_report.pdf`);
 }

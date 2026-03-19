@@ -5,10 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { ArrowLeft, ChevronDown, Bot, ClipboardList, Info, Zap, Download } from "lucide-react";
-import {
-  generateExperimentReport,
-  type ExperimentReportInput,
-} from "@/lib/export-report";
+import type { ExperimentReportInput } from "@/lib/export-report";
 import {
   BarChart,
   Bar,
@@ -966,7 +963,7 @@ export default function ExperimentDetailPage() {
                     variant="outline"
                     size="sm"
                     className="ml-auto gap-1.5"
-                    onClick={() => {
+                    onClick={async () => {
                       const reportInput: ExperimentReportInput = {
                         meta: {
                           title: experiment?.title || "Untitled Experiment",
@@ -1003,6 +1000,7 @@ export default function ExperimentDetailPage() {
                           })),
                         },
                       };
+                      const { generateExperimentReport } = await import("@/lib/export-report");
                       generateExperimentReport(reportInput);
                     }}
                   >
