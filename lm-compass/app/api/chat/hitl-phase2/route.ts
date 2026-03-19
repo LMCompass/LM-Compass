@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai';
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 import { decrypt } from '@/lib/encryption';
 import { NextResponse } from 'next/server';
 import { GradeHITLEvaluator, type GradeResult, type HITLExample, type QuestionsAndDrafts } from '@/lib/evaluation';
@@ -102,8 +102,9 @@ export async function POST(req: Request) {
         titleFromUser.length > 0
           ? titleFromUser
           : `HITL rubric ${new Date().toISOString()}`;
-
-      const { data: saved, error: saveError } = await supabase
+      
+      const adminSupabase = createAdminClient();
+      const { data: saved, error: saveError } = await adminSupabase
         .from("rubrics")
         .insert({
           rubric_title: title,
