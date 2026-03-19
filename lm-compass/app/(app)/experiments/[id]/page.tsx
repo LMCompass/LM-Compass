@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ArrowLeft, ChevronDown, Bot, ClipboardList, Zap, Download } from "lucide-react";
+import { ArrowLeft, ChevronDown, Bot, ClipboardList, Info, Zap, Download } from "lucide-react";
 import {
   generateExperimentReport,
   type ExperimentReportInput,
@@ -323,7 +323,7 @@ export default function ExperimentDetailPage() {
   useEffect(() => {
     const config = experiment?.configuration;
     if (!config?.rubric_id) return;
-    
+
     if (config.rubric_id === "default") {
       setRubricTitle("Default Rubric");
       return;
@@ -336,7 +336,7 @@ export default function ExperimentDetailPage() {
           .select("rubric_title")
           .eq("id", config.rubric_id)
           .maybeSingle();
-        
+
         if (data?.rubric_title) {
           setRubricTitle(data.rubric_title);
         } else {
@@ -907,7 +907,7 @@ export default function ExperimentDetailPage() {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
                 {experiment?.title || "Experiment"}
               </h1>
-              
+
               {experiment?.configuration && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-muted-foreground">
                   <TooltipProvider delayDuration={100}>
@@ -936,13 +936,13 @@ export default function ExperimentDetailPage() {
                       </TooltipContent>
                     </ShadcnTooltip>
                   </TooltipProvider>
-                  
+
                   <div className="flex items-center gap-1.5 sm:border-l sm:border-border/50 sm:pl-4">
                     <ClipboardList className="size-3.5 text-primary/70" />
                     <span className="font-medium text-foreground/80">Rubric:</span>
                     <span className="truncate">{rubricTitle || "Loading..."}</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-1.5 sm:border-l sm:border-border/50 sm:pl-4">
                     <Zap className="size-3.5 text-primary/70" />
                     <span className="font-medium text-foreground/80">Method:</span>
