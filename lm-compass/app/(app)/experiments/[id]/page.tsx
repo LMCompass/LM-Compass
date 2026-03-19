@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ArrowLeft, ChevronDown, Bot, ClipboardList, Zap } from "lucide-react";
+import { ArrowLeft, ChevronDown, Bot, ClipboardList, Info, Zap } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -60,6 +60,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type ExperimentItemRow = {
   id: string;
@@ -89,6 +90,14 @@ const CHART_COLORS = [
   "#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6",
   "#ec4899", "#14b8a6", "#f97316", "#06b6d4", "#84cc16",
 ];
+
+const METRIC_EXPLANATIONS: Record<string, string> = {
+  "Average Score": "Average score across all completed queries for this model.",
+  "Median Score": "Middle score across completed queries, so extreme highs or lows affect it less.",
+  "Win Rate": "Percentage of completed queries where this model had the highest score.",
+  "Std Deviation": "How spread out the model's scores are. Lower means more consistent performance.",
+  "Avg Time to Execute": "Average model response time across completed queries.",
+};
 
 function calculateMedian(values: number[]) {
   if (values.length === 0) return 0;
@@ -982,106 +991,6 @@ export default function ExperimentDetailPage() {
 
           {isExperimentDone && chartData.avgScores.length > 0 && (
             <>
-              {performanceSummary && (
-                <div className="mb-6 rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
-                  <h3 className="text-sm font-semibold text-foreground mb-4">
-                    Model Performance Summary
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-2.5 text-sm">
-                      <TableHeader className="[&_tr]:border-border/50 bg-muted/30">
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead className="font-semibold">Metric</TableHead>
-                          {performanceSummary.models.map((model) => (
-                            <TableHead key={model} className="font-semibold" title={model}>
-                              {formatModelLabel(model)}
-                            </TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody className="[&_tr]:border-border/35">
-                        {performanceSummary.metrics.map((metric) => (
-                          <TableRow key={metric.label}>
-                            <TableCell className="font-medium">{metric.label}</TableCell>
-                            {metric.values.map((value, idx) => (
-                              <TableCell
-                                key={`${metric.label}-${performanceSummary.models[idx]}`}
-                                className={metric.winnerIndexes.includes(idx) ? "bg-primary/10 font-semibold" : ""}
-                              >
-                                {value}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
-
-              {kendallTauSummary.rows.length > 0 && (
-                <div className="mb-6 rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
-                  <h3 className="text-sm font-semibold text-foreground mb-2">
-                    Judge Agreement (Kendall&apos;s Tau-b)
-                  </h3>
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 group">
-                      <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
-                      What does this measure?
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mb-4 rounded-md border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground space-y-2">
-                        <p>
-                          <strong className="text-foreground">Kendall&apos;s Tau-b</strong> is a statistical measure of
-                          agreement between two rankings. In this context, it measures how consistently different judge
-                          models rank the evaluated models for each query.
-                        </p>
-                        <p>
-                          A value of <strong>+1</strong> means perfect agreement (both judges rank models identically),
-                          {" "}<strong>0</strong> means no correlation, and <strong>-1</strong> means complete disagreement
-                          (opposite rankings). The &quot;Agreement&quot; column provides a human-readable interpretation.
-                        </p>
-                        <p>
-                          <strong>High agreement</strong> across judge pairs indicates the evaluation results are reliable.
-                          {" "}<strong>Low or negative agreement</strong> suggests judges disagree on model quality, and
-                          the winner determination may be less trustworthy.
-                        </p>
-                        <div className="pt-1 border-t border-border/40 text-[11px]">
-                          <span className="font-medium text-foreground">Scale:</span>{" "}
-                          Very strong (≥0.8) · Strong (≥0.6) · Moderate (≥0.4) · Weak (≥0.2) · Very weak (&lt;0.2)
-                        </div>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                  <div className="overflow-x-auto">
-                    <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-2.5 text-sm">
-                      <TableHeader className="[&_tr]:border-border/50 bg-muted/30">
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead className="font-semibold">Judge A</TableHead>
-                          <TableHead className="font-semibold">Judge B</TableHead>
-                          <TableHead className="font-semibold">Tau-b</TableHead>
-                          <TableHead className="font-semibold">Agreement</TableHead>
-                          <TableHead className="font-semibold">Pairs</TableHead>
-                          <TableHead className="font-semibold">Queries</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody className="[&_tr]:border-border/35">
-                        {kendallTauSummary.rows.map((row) => (
-                          <TableRow key={`${row.judgeA}-${row.judgeB}`}>
-                            <TableCell title={row.judgeA}>{formatModelLabel(row.judgeA)}</TableCell>
-                            <TableCell title={row.judgeB}>{formatModelLabel(row.judgeB)}</TableCell>
-                            <TableCell className="font-medium">{formatTau(row.tauB)}</TableCell>
-                            <TableCell>{Number.isFinite(row.tauB) ? getTauLabel(row.tauB) : "—"}</TableCell>
-                            <TableCell>{row.comparedPairs}</TableCell>
-                            <TableCell>{row.queryCount}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
-
               <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
                   <h3 className="text-sm font-semibold text-foreground mb-4">
@@ -1181,6 +1090,190 @@ export default function ExperimentDetailPage() {
                   </div>
                 )}
               </div>
+
+              {performanceSummary && (
+                <div className="mb-6 rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-4">
+                    Model Performance Summary
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-2.5 text-sm">
+                      <TableHeader className="[&_tr]:border-border/50 bg-muted/30">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="font-semibold">Metric</TableHead>
+                          {performanceSummary.models.map((model) => (
+                            <TableHead key={model} className="font-semibold" title={model}>
+                              {formatModelLabel(model)}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="[&_tr]:border-border/35">
+                        {performanceSummary.metrics.map((metric) => (
+                          <TableRow key={metric.label}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-1.5">
+                                <span>{metric.label}</span>
+                                {METRIC_EXPLANATIONS[metric.label] && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button
+                                        type="button"
+                                        aria-label={`Explain ${metric.label}`}
+                                        className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                      >
+                                        <Info className="size-3" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="start" className="w-64 p-3 text-xs leading-relaxed">
+                                      {METRIC_EXPLANATIONS[metric.label]}
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
+                              </div>
+                            </TableCell>
+                            {metric.values.map((value, idx) => (
+                              <TableCell
+                                key={`${metric.label}-${performanceSummary.models[idx]}`}
+                                className={metric.winnerIndexes.includes(idx) ? "bg-primary/10 font-semibold" : ""}
+                              >
+                                {value}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {kendallTauSummary.rows.length > 0 && (
+                <div className="mb-6 rounded-xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-sm p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-2">
+                    Judge Agreement (Kendall&apos;s Tau-b)
+                  </h3>
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 group">
+                      <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                      What does this measure?
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mb-4 rounded-md border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground space-y-2">
+                        <p>
+                          <strong className="text-foreground">Kendall&apos;s Tau-b</strong> is a statistical measure of
+                          agreement between two rankings. In this context, it measures how consistently different judge
+                          models rank the evaluated models for each query.
+                        </p>
+                        <p>
+                          A value of <strong>+1</strong> means perfect agreement (both judges rank models identically),
+                          {" "}<strong>0</strong> means no correlation, and <strong>-1</strong> means complete disagreement
+                          (opposite rankings). The &quot;Agreement&quot; column provides a human-readable interpretation.
+                        </p>
+                        <p>
+                          <strong>High agreement</strong> across judge pairs indicates the evaluation results are reliable.
+                          {" "}<strong>Low or negative agreement</strong> suggests judges disagree on model quality, and
+                          the winner determination may be less trustworthy.
+                        </p>
+                        <div className="pt-1 border-t border-border/40 text-[11px]">
+                          <span className="font-medium text-foreground">Strength scale (|tau-b|):</span>{" "}
+                          Very strong (≥0.8) · Strong (≥0.6) · Moderate (≥0.4) · Weak (≥0.2) · Very weak (&lt;0.2).
+                          Sign indicates direction: positive = agreement, negative = disagreement.
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 group">
+                      <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                      Example calculation
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mb-4 rounded-md border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground space-y-2">
+                        <div>
+                          <p className="mb-1">General formula:</p>
+                          <div className="inline-flex items-center gap-2 rounded border border-border/50 bg-background/40 px-2 py-1 text-foreground">
+                            <span className="font-medium">tau-b =</span>
+                            <span className="inline-flex flex-col items-stretch leading-tight text-center">
+                              <span className="w-full border-b border-foreground/40 px-1 pb-0.5">C - D</span>
+                              <span className="px-1 pt-0.5">sqrt((C + D + T<sub>a</sub>) * (C + D + T<sub>b</sub>))</span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p><strong className="text-foreground">C</strong> = number of concordant pairs (judges agree on pair order)</p>
+                          <p><strong className="text-foreground">D</strong> = number of discordant pairs (judges disagree on pair order)</p>
+                          <p><strong className="text-foreground">T_a</strong> = pairs tied only by Judge A</p>
+                          <p><strong className="text-foreground">T_b</strong> = pairs tied only by Judge B</p>
+                        </div>
+                        <p>
+                          Example with three models (A, B, C) scored by two judges for one query:
+                        </p>
+                        <p>
+                          Judge 1 ranking: <strong className="text-foreground">A &gt; B &gt; C</strong>
+                          {" "}and Judge 2 ranking: <strong className="text-foreground">B &gt; A &gt; C</strong>.
+                        </p>
+                        <p>
+                          Model pairs are <strong>A vs B</strong>, <strong>A vs C</strong>, and <strong>B vs C</strong>.
+                          Here, A vs B is <strong>discordant</strong> (judges disagree), while A vs C and B vs C are
+                          <strong> concordant</strong> (judges agree).
+                        </p>
+                        <div className="space-y-1">
+                          <p>
+                            So we get <strong>C = 2</strong>, <strong>D = 1</strong>, and no ties
+                            (<strong>T<sub>a</sub> = 0</strong>, <strong>T<sub>b</sub> = 0</strong>).
+                          </p>
+                          <div className="inline-flex items-center gap-2 rounded border border-border/50 bg-background/40 px-2 py-1 text-foreground">
+                            <span className="font-medium">tau-b =</span>
+                            <span className="inline-flex flex-col items-stretch leading-tight text-center">
+                              <span className="w-full border-b border-foreground/40 px-1 pb-0.5">2 - 1</span>
+                              <span className="px-1 pt-0.5">sqrt((2 + 1 + 0) * (2 + 1 + 0))</span>
+                            </span>
+                            <span>=</span>
+                            <span className="inline-flex flex-col items-stretch leading-tight text-center">
+                              <span className="w-full border-b border-foreground/40 px-1 pb-0.5">1</span>
+                              <span className="px-1 pt-0.5">3</span>
+                            </span>
+                            <span>= 0.333</span>
+                          </div>
+                          <p>That indicates weak-to-moderate agreement.</p>
+                        </div>
+                        <p className="pt-1 border-t border-border/40 text-[11px]">
+                          If both judges had exactly the same ranking, tau-b would be <strong>+1</strong>. If rankings
+                          were exact opposites, tau-b would be <strong>-1</strong>.
+                        </p>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  <div className="overflow-x-auto">
+                    <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-2.5 text-sm">
+                      <TableHeader className="[&_tr]:border-border/50 bg-muted/30">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="font-semibold">Judge A</TableHead>
+                          <TableHead className="font-semibold">Judge B</TableHead>
+                          <TableHead className="font-semibold">Tau-b</TableHead>
+                          <TableHead className="font-semibold">Agreement</TableHead>
+                          <TableHead className="font-semibold">Pairs</TableHead>
+                          <TableHead className="font-semibold">Queries</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="[&_tr]:border-border/35">
+                        {kendallTauSummary.rows.map((row) => (
+                          <TableRow key={`${row.judgeA}-${row.judgeB}`}>
+                            <TableCell title={row.judgeA}>{formatModelLabel(row.judgeA)}</TableCell>
+                            <TableCell title={row.judgeB}>{formatModelLabel(row.judgeB)}</TableCell>
+                            <TableCell className="font-medium">{formatTau(row.tauB)}</TableCell>
+                            <TableCell>{Number.isFinite(row.tauB) ? getTauLabel(row.tauB) : "—"}</TableCell>
+                            <TableCell>{row.comparedPairs}</TableCell>
+                            <TableCell>{row.queryCount}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
             </>
           )}
 
