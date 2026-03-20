@@ -332,23 +332,26 @@ export function generateExperimentReport(input: ExperimentReportInput) {
   doc.roundedRect(20, y, pageW - 40, 36, 3, 3, "F");
 
   doc.setTextColor(...TEXT_DARK);
-  doc.setFontSize(14);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text(meta.title || "Untitled Experiment", 28, y + 10);
+  doc.text("DATASET", 28, y + 8);
+
+  doc.setFontSize(14);
+  doc.text(meta.title || "Untitled Experiment", 28, y + 14);
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...TEXT_MUTED);
 
   const infoLine1 = `By ${meta.authorName}  •  ${formatDate(meta.createdAt)}`;
-  doc.text(infoLine1, 28, y + 18);
+  doc.text(infoLine1, 28, y + 21);
 
   const infoLine2 = `${meta.queryCount} queries  •  ${meta.models.length} model${meta.models.length !== 1 ? "s" : ""}  •  Rubric: ${meta.rubricName}  •  Method: ${meta.evalMethod.replace(/-/g, " ")}`;
-  doc.text(infoLine2, 28, y + 25);
+  doc.text(infoLine2, 28, y + 27);
 
   const modelsList = `Models: ${meta.models.map(formatModelLabel).join(", ")}`;
   doc.setFontSize(8);
-  doc.text(modelsList, 28, y + 31, { maxWidth: pageW - 56 });
+  doc.text(modelsList, 28, y + 33, { maxWidth: pageW - 56 });
 
   y += 44;
 
@@ -370,11 +373,15 @@ export function generateExperimentReport(input: ExperimentReportInput) {
         : null;
 
       doc.setFillColor(...PRIMARY_RGB);
-      doc.roundedRect(20, y, pageW - 40, 20, 3, 3, "F");
+      doc.roundedRect(20, y, pageW - 40, 24, 3, 3, "F");
 
       doc.setTextColor(...WHITE);
-      doc.setFontSize(10);
+      doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
+      doc.text("KEY INSIGHT OF THIS REPORT", 28, y + 8);
+
+      doc.setFontSize(10.5);
+      doc.setFont("helvetica", "normal");
 
       let highlight = `${formatModelLabel(winnerModel)} answered your queries correctly most often with a ${winRate} win rate`;
       if (avgScore) {
@@ -382,8 +389,8 @@ export function generateExperimentReport(input: ExperimentReportInput) {
       }
       highlight += ".";
 
-      doc.text(highlight, 28, y + 12, { maxWidth: pageW - 56 });
-      y += 28;
+      doc.text(highlight, 28, y + 15, { maxWidth: pageW - 56 });
+      y += 32;
     }
   }
 
