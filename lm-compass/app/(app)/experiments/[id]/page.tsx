@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ArrowLeft, ChevronDown, Bot, ClipboardList, Info, Zap } from "lucide-react";
+import { ArrowLeft, ChevronDown, Bot, ClipboardList, Info, Zap, Download } from "lucide-react";
+import type { ExperimentReportInput } from "@/lib/export-report";
 import {
   BarChart,
   Bar,
@@ -319,7 +320,7 @@ export default function ExperimentDetailPage() {
   useEffect(() => {
     const config = experiment?.configuration;
     if (!config?.rubric_id) return;
-    
+
     if (config.rubric_id === "default") {
       setRubricTitle("Default Rubric");
       return;
@@ -332,7 +333,7 @@ export default function ExperimentDetailPage() {
           .select("rubric_title")
           .eq("id", config.rubric_id)
           .maybeSingle();
-        
+
         if (data?.rubric_title) {
           setRubricTitle(data.rubric_title);
         } else {
@@ -903,7 +904,7 @@ export default function ExperimentDetailPage() {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
                 {experiment?.title || "Experiment"}
               </h1>
-              
+
               {experiment?.configuration && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-muted-foreground">
                   <TooltipProvider delayDuration={100}>
@@ -932,13 +933,13 @@ export default function ExperimentDetailPage() {
                       </TooltipContent>
                     </ShadcnTooltip>
                   </TooltipProvider>
-                  
+
                   <div className="flex items-center gap-1.5 sm:border-l sm:border-border/50 sm:pl-4">
                     <ClipboardList className="size-3.5 text-primary/70" />
                     <span className="font-medium text-foreground/80">Rubric:</span>
                     <span className="truncate">{rubricTitle || "Loading..."}</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-1.5 sm:border-l sm:border-border/50 sm:pl-4">
                     <Zap className="size-3.5 text-primary/70" />
                     <span className="font-medium text-foreground/80">Method:</span>
@@ -956,6 +957,57 @@ export default function ExperimentDetailPage() {
                 <span className="text-xs text-muted-foreground">
                   {progress.done} / {progress.total} completed
                 </span>
+
+                {isExperimentDone && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto gap-1.5"
+                    onClick={async () => {
+                      const reportInput: ExperimentReportInput = {
+                        meta: {
+                          title: experiment?.title || "Untitled Experiment",
+                          authorName: user?.fullName || user?.username || "Unknown",
+                          createdAt: experiment?.created_at || new Date().toISOString(),
+                          queryCount: items.length,
+                          models: experiment?.configuration?.selected_models || [],
+                          rubricName: rubricTitle || "Default Rubric",
+                          evalMethod: experiment?.configuration?.eval_method || "prompt-based",
+                        },
+                        performanceSummary: performanceSummary ?? null,
+                        kendallRows: kendallTauSummary.rows.map((row) => ({
+                          judgeA: row.judgeA,
+                          judgeB: row.judgeB,
+                          tauB: row.tauB,
+                          agreement: Number.isFinite(row.tauB) ? getTauLabel(row.tauB) : "—",
+                          comparedPairs: row.comparedPairs,
+                          queryCount: row.queryCount,
+                        })),
+                        itemRows: tableRows.map(({ item, winner, score }, idx) => ({
+                          index: idx + 1,
+                          query: item.input_query || "—",
+                          winnerModel: winner,
+                          score,
+                        })),
+                        chartData: {
+                          avgScores: chartData.avgScores.map((d) => ({
+                            model: d.model,
+                            avgScore: d.avgScore,
+                          })),
+                          wins: chartData.wins.map((d) => ({
+                            name: d.name,
+                            value: d.value,
+                          })),
+                        },
+                      };
+                      const { generateExperimentReport } = await import("@/lib/export-report");
+                      generateExperimentReport(reportInput);
+                    }}
+                  >
+                    <Download className="size-3.5" />
+                    Export Report
+                  </Button>
+                )}
               </div>
             </div>
           </div>
