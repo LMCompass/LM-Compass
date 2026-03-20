@@ -367,7 +367,7 @@ export async function POST(req: Request) {
                 const phase1Result = await hitlEvaluator.phase1(
                   example,
                   rubric,
-                  1,
+                  20,
                 );
 
                 const modelReasoning: Record<string, string[]> = {};
