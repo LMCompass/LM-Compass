@@ -34,6 +34,8 @@ export interface Experiment {
   title: string | null;
   status: ExperimentStatus | null;
   created_at: string | null;
+  start_time: string | null;
+  end_time: string | null;
   configuration: {
     selected_models: string[];
     rubric_id: string;

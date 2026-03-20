@@ -129,10 +129,23 @@ function formatPercent(value: number) {
 }
 
 function formatDurationMs(value: number) {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(2)}s`;
+  if (!Number.isFinite(value) || value < 0) return "—";
+  if (value < 1000) {
+    return `${Math.round(value)}ms`;
   }
-  return `${Math.round(value)}ms`;
+  const totalSeconds = value / 1000;
+  if (totalSeconds <= 60) {
+    return `${totalSeconds.toFixed(2)}s`;
+  }
+  const totalSecs = Math.round(totalSeconds);
+  const hours = Math.floor(totalSecs / 3600);
+  const minutes = Math.floor((totalSecs % 3600) / 60);
+  const seconds = totalSecs % 60;
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+  return parts.join(" ");
 }
 
 function formatModelLabel(model: string) {
@@ -357,7 +370,7 @@ export default function ExperimentDetailPage() {
   const fetchExperiment = useCallback(async (id: string, userId: string) => {
     const { data, error: fetchError } = await supabase
       .from("experiments")
-      .select("id, title, status, created_at, configuration")
+      .select("id, title, status, created_at, start_time, end_time, configuration")
       .eq("id", id)
       .eq("user_id", userId)
       .maybeSingle();
@@ -511,6 +524,19 @@ export default function ExperimentDetailPage() {
   }, [items]);
 
   const isExperimentDone = experiment?.status === ExperimentStatus.COMPLETED;
+
+  const totalRunMsAfterCompletion = useMemo(() => {
+    if (!isExperimentDone) return null;
+    if (!experiment?.start_time || !experiment?.end_time) return null;
+
+    const startMs = Date.parse(experiment.start_time);
+    const endMs = Date.parse(experiment.end_time);
+
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
+
+    const delta = endMs - startMs;
+    return delta >= 0 ? delta : null;
+  }, [experiment?.start_time, experiment?.end_time, isExperimentDone]);
 
   const chartData = useMemo(() => {
     const scoreSums: Record<string, number> = {};
@@ -957,6 +983,15 @@ export default function ExperimentDetailPage() {
                 <span className="text-xs text-muted-foreground">
                   {progress.done} / {progress.total} completed
                 </span>
+
+                {isExperimentDone && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    Total time:{" "}
+                    {totalRunMsAfterCompletion != null
+                      ? formatDurationMs(totalRunMsAfterCompletion)
+                      : "—"}
+                  </span>
+                )}
 
                 {isExperimentDone && (
                   <Button
