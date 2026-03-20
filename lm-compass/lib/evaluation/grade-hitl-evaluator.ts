@@ -50,6 +50,13 @@ export interface HITLPhase2Result {
   updatedRubric: string;
   graderResults: Record<string, GradeResult>;
   crossEvalResults: Record<string, Record<string, number>>;
+  /**
+   * Optional metadata added by API layer when the updated rubric
+   * is persisted for later reuse.
+   */
+  savedRubricId?: string;
+  savedRubricTitle?: string;
+  saveRubricError?: string;
 }
 
 /**
@@ -228,10 +235,30 @@ Do not include any text before or after the JSON object. Return ONLY the JSON.`;
     grade: GradeResult
   ): Promise<QuestionsAndDrafts> {
     const systemPrompt = `You are helping an educator refine a grading rubric.
-Given the rubric, an example, and the grader's decision, identify why the
-case is ambiguous and propose 1–3 concise questions for the educator.
-Also propose concrete rubric tweaks that would resolve similar cases
-consistently in the future.
+You MUST generate 1–3 standardized clarification questions for THIS specific ambiguous case.
+Each question MUST be answerable with exactly one constrained token.
+
+Rules:
+- Output ONLY a JSON object (no extra text).
+- "questions" must be an array of 1–3 strings.
+- Each question string MUST be exactly one line and MUST follow this format:
+  "<DIMENSION>: <question text> Answer with exactly one of: <OPTION1>, <OPTION2>, ..."
+
+Allowed dimensions + options (use only these tokens):
+- Correctness: HIGH, MID, LOW
+- Clarity: CLEAR, UNCLEAR
+- Uncertainty: CONFIDENT, UNCERTAIN
+
+Question content rules:
+- Do not ask vague "how/should" questions.
+- The question text must be self-contained and refer to the ambiguity implied by:
+  (rubric + example prompt/response + grader reasoning + grader score).
+- Keep each question short and decision-focused.
+
+Also produce:
+- "draft_rubric_changes": a concise description of the exact rubric edge-case rule(s)
+  to add, using the bucket meanings above.
+
 
 RUBRIC:
 ${rubric}`;
@@ -247,12 +274,22 @@ ${grade.reasoning}
 
 Grader score: ${grade.score}
 
-Your output must be ONLY a JSON object with these exact fields:
-- "questions": a list of strings (1-3 concise questions for the educator)
-- "draft_rubric_changes": a string describing proposed rubric tweaks
+Task:
+Generate 1–3 standardized clarification questions using the required format and allowed tokens.
 
-Example format:
-{"questions": ["Should partially correct answers receive partial credit?", "Is mentioning specific examples required?"], "draft_rubric_changes": "Clarify that partial credit applies when reasoning is correct but execution has minor errors."}
+Your output must be ONLY a JSON object with these exact fields:
+- "questions": an array of 1–3 strings (each one line and matching the required pattern)
+- "draft_rubric_changes": a string describing the specific rubric edge-case rule(s)
+  implied by the bucket meanings
+
+Example format (illustrative):
+{
+  "questions": [
+    "Correctness: For this case, should the final score bucket be HIGH, MID, or LOW? Answer with exactly one of: HIGH, MID, LOW",
+    "Clarity: Is the submission clearly understandable under the rubric? Answer with exactly one of: CLEAR, UNCLEAR"
+  ],
+  "draft_rubric_changes": "Add an explicit rule mapping this ambiguity to HIGH/MID/LOW and specify how uncertainty should be handled while keeping numeric scoring valid."
+}
 
 Do not include any text before or after the JSON object. Return ONLY the JSON.`;
 
@@ -285,7 +322,21 @@ rubric description that would lead to correct grading of this and
 similar cases. Keep it concise but explicit about edge cases.
 
 CURRENT RUBRIC:
-${rubric}`;
+${rubric}
+
+Important:
+The educator’s answers provided in the "Clarifications" section are decision tokens (not free-form explanations).
+Treat them deterministically. Convert them into explicit rubric edge-case rules and scoring/handling guidance.
+
+Interpretation:
+- Correctness: HIGH/MID/LOW
+- Clarity: CLEAR/UNCLEAR
+- Uncertainty: CONFIDENT/UNCERTAIN
+
+If the educator indicates UNCERTAIN, the rubric may instruct graders to use 'PENDING EXPERT REVIEW' in the reasoning text,
+while still outputting a valid numeric 0–100 score.
+
+If an educator answer does not match the allowed tokens, make a best-effort interpretation and document the uncertainty in the rubric rule. `;
 
     const userPrompt = `Example prompt:
 ${example.prompt}

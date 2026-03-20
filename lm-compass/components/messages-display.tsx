@@ -352,6 +352,13 @@ export function MessagesDisplay({
                         <pre className="text-xs whitespace-pre-wrap bg-background p-3 rounded overflow-auto max-h-60">
                           {phase2Result.updatedRubric}
                         </pre>
+                        {(phase2Result.savedRubricId || phase2Result.saveRubricError) && (
+                          <p className="text-xs text-muted-foreground">
+                            {phase2Result.saveRubricError
+                              ? `Could not save rubric: ${phase2Result.saveRubricError}`
+                              : `Saved rubric${phase2Result.savedRubricTitle ? `: ${phase2Result.savedRubricTitle}` : ""}.`}
+                          </p>
+                        )}
                         <div>
                           <p className="text-xs font-medium text-foreground mb-1">Updated model scores:</p>
                           <ul className="space-y-1.5 text-xs text-muted-foreground">
