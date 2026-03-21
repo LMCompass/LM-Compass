@@ -19,12 +19,16 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
+          cache-dependency-path: lm-compass/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+        working-directory: lm-compass
 
       - name: Run lint
         run: npm run lint
+        working-directory: lm-compass
 
       - name: Run tests
         run: npm run test
+        working-directory: lm-compass
