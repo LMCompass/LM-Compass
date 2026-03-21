@@ -39,6 +39,7 @@ export interface Experiment {
     rubric_id: string;
     eval_method: ExperimentEvaluationMethod;
     rubric_content?: string;
+    iterations?: number;
   } | null;
 }
 
@@ -115,6 +116,7 @@ export interface StartExperimentInput {
   selectedModels: string[];
   rubricId: string;
   evaluationMethod: ExperimentEvaluationMethod;
+  iterations?: number;
 }
 
 export type ExperimentEvaluationMethod =

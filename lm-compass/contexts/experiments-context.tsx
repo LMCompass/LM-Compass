@@ -49,7 +49,8 @@ interface ExperimentsContextType {
   estimateExperimentCost: (
     rows: MappedRow[],
     selectedModels: string[],
-    evaluationMethod: StartExperimentInput["evaluationMethod"]
+    evaluationMethod: StartExperimentInput["evaluationMethod"],
+    iterations?: StartExperimentInput["iterations"]
   ) => Promise<ExperimentCostEstimate>;
   startExperiment: (input: StartExperimentInput) => Promise<StartExperimentResult>;
 }
@@ -75,7 +76,8 @@ export function ExperimentsProvider({
     async (
       rows: MappedRow[],
       selectedModels: string[],
-      evaluationMethod: StartExperimentInput["evaluationMethod"]
+      evaluationMethod: StartExperimentInput["evaluationMethod"],
+      iterations?: StartExperimentInput["iterations"]
     ): Promise<ExperimentCostEstimate> => {
       const response = await fetch("/api/experiments/estimate", {
         method: "POST",
@@ -84,6 +86,7 @@ export function ExperimentsProvider({
           rows,
           selectedModels,
           evaluationMethod,
+          iterations,
         }),
       });
 
@@ -144,6 +147,7 @@ export function ExperimentsProvider({
           selectedModels: input.selectedModels,
           rubricId: input.rubricId,
           evaluationMethod: input.evaluationMethod,
+          iterations: input.iterations,
         }),
       });
 
@@ -220,6 +224,7 @@ export function ExperimentsProvider({
             rubric: experiment.configuration?.rubric_content,
             evaluationMethod:
               experiment.configuration?.eval_method || DEFAULT_EVAL_METHOD,
+            iterations: experiment.configuration?.iterations,
           }),
         });
 

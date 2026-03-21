@@ -37,6 +37,7 @@ import { useExperiments } from "@/contexts/experiments-context";
 import { useSupabaseClient } from "@/utils/supabase/client";
 import { useUser } from "@clerk/nextjs";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
+import { IterationsSelector } from "@/components/ui/iterations-selector";
 import type {
   ExperimentCostEstimate,
   ExperimentEvaluationMethod,
@@ -44,6 +45,7 @@ import type {
 } from "@/lib/types";
 import {
   ALLOWED_EXPERIMENT_EVAL_METHODS,
+  DEFAULT_EXPERIMENT_ITERATIONS,
   DEFAULT_EVAL_METHOD,
   DEFAULT_RUBRIC_ID,
   MAX_EXPERIMENT_MODELS,
@@ -106,6 +108,7 @@ export default function NewExperimentPage() {
   const [selectedRubricId, setSelectedRubricId] = useState<string>(DEFAULT_RUBRIC_ID);
   const [selectedEvaluationMethod, setSelectedEvaluationMethod] =
     useState<ExperimentEvaluationMethod>(DEFAULT_EVAL_METHOD);
+  const [iterations, setIterations] = useState<number>(DEFAULT_EXPERIMENT_ITERATIONS);
   const [customRubrics, setCustomRubrics] = useState<RubricOption[]>([]);
   const [isRubricsLoading, setIsRubricsLoading] = useState(false);
   const [rubricsError, setRubricsError] = useState<string | null>(null);
@@ -398,7 +401,8 @@ export default function NewExperimentPage() {
       const nextEstimate = await estimateExperimentCost(
         mappedData,
         selectedModels,
-        selectedEvaluationMethod
+        selectedEvaluationMethod,
+        iterations
       );
       setEstimate(nextEstimate);
       setSubmitError(null);
@@ -426,6 +430,7 @@ export default function NewExperimentPage() {
     selectedEvaluationMethod,
     selectedModels,
     selectedRubricId,
+    iterations,
   ]);
 
   const handleStartAction = useCallback(async () => {
@@ -443,6 +448,7 @@ export default function NewExperimentPage() {
         selectedModels,
         rubricId: selectedRubricId,
         evaluationMethod: selectedEvaluationMethod,
+        iterations,
       });
 
       setSubmitSuccess(
@@ -467,6 +473,7 @@ export default function NewExperimentPage() {
     selectedEvaluationMethod,
     selectedModels,
     selectedRubricId,
+    iterations,
     startExperiment,
   ]);
 
@@ -745,6 +752,18 @@ export default function NewExperimentPage() {
                       </p>
                     </div>
                   </div>
+
+                  {selectedEvaluationMethod === "rl4f" && (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">
+                        Refinement Iterations <span className="text-destructive">*</span>
+                      </label>
+                      <IterationsSelector value={iterations} onChange={setIterations} />
+                      <p className="text-xs text-muted-foreground">
+                        Number of self-critique loops per experiment item.
+                      </p>
+                    </div>
+                  )}
 
                   {isRubricsLoading && (
                     <p className="text-xs text-muted-foreground">Loading custom rubrics...</p>

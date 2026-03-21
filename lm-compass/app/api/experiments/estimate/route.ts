@@ -3,8 +3,11 @@ import { NextResponse } from "next/server";
 import { estimateExperimentCostLive } from "@/lib/cost";
 import {
   ALLOWED_EXPERIMENT_EVAL_METHODS,
+  MAX_EXPERIMENT_ITERATIONS,
+  MIN_EXPERIMENT_ITERATIONS,
   isExperimentEvaluationMethod,
   normalizeSelectedModels,
+  resolveExperimentIterations,
   validateSelectedModelsCount,
 } from "@/lib/experiments";
 import type { ExperimentCostEstimate, MappedRow } from "@/lib/types";
@@ -13,6 +16,7 @@ type EstimateExperimentRequest = {
   rows?: unknown;
   selectedModels?: unknown;
   evaluationMethod?: unknown;
+  iterations?: unknown;
 };
 
 function toMappedRows(rows: unknown): MappedRow[] {
@@ -63,10 +67,24 @@ export async function POST(req: Request) {
       );
     }
 
+    const { iterations, isValidForMethod } = resolveExperimentIterations(
+      evaluationMethod,
+      payload.iterations
+    );
+    if (!isValidForMethod) {
+      return NextResponse.json(
+        {
+          error: `For rl4f evaluation, iterations must be an integer between ${MIN_EXPERIMENT_ITERATIONS} and ${MAX_EXPERIMENT_ITERATIONS}.`,
+        },
+        { status: 400 }
+      );
+    }
+
     const estimate: ExperimentCostEstimate = await estimateExperimentCostLive({
       rows: mappedRows,
       selectedModels,
       evaluationMethod,
+      iterations,
       profile: "balanced",
     });
 
