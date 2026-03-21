@@ -2,6 +2,9 @@ import type { ExperimentEvaluationMethod, MappedRow } from "./types";
 
 export const MIN_EXPERIMENT_MODELS = 2;
 export const MAX_EXPERIMENT_MODELS = 4;
+export const MIN_EXPERIMENT_ITERATIONS = 1;
+export const MAX_EXPERIMENT_ITERATIONS = 4;
+export const DEFAULT_EXPERIMENT_ITERATIONS = 1;
 export const DEFAULT_EVAL_METHOD: ExperimentEvaluationMethod = "prompt-based";
 export const DEFAULT_RUBRIC_ID = "default";
 export const ALLOWED_EXPERIMENT_EVAL_METHODS: readonly ExperimentEvaluationMethod[] = [
@@ -54,4 +57,48 @@ export function validateSelectedModelsCount(models: string[]): boolean {
     models.length >= MIN_EXPERIMENT_MODELS &&
     models.length <= MAX_EXPERIMENT_MODELS
   );
+}
+
+export function normalizeExperimentIterations(value: unknown): number | null {
+  if (value == null || value === "") {
+    return DEFAULT_EXPERIMENT_ITERATIONS;
+  }
+
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return null;
+  }
+
+  if (
+    value < MIN_EXPERIMENT_ITERATIONS ||
+    value > MAX_EXPERIMENT_ITERATIONS
+  ) {
+    return null;
+  }
+
+  return value;
+}
+
+export function resolveExperimentIterations(
+  evaluationMethod: ExperimentEvaluationMethod,
+  value: unknown
+): { iterations: number; isValidForMethod: boolean } {
+  if (evaluationMethod !== "rl4f") {
+    return {
+      iterations: DEFAULT_EXPERIMENT_ITERATIONS,
+      isValidForMethod: true,
+    };
+  }
+
+  const normalizedIterations = normalizeExperimentIterations(value);
+  if (normalizedIterations == null) {
+    return {
+      iterations: DEFAULT_EXPERIMENT_ITERATIONS,
+      isValidForMethod: false,
+    };
+  }
+
+  return {
+    iterations: normalizedIterations,
+    isValidForMethod: true,
+  };
 }

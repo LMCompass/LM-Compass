@@ -4,7 +4,13 @@ import { createClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from 'next/server';
 import { PromptBasedEvaluator, NPromptBasedEvaluator, RL4FEvaluator, type ModelResponse, type EvaluationMetadata } from '@/lib/evaluation';
-import { DEFAULT_EVAL_METHOD, isExperimentEvaluationMethod } from '@/lib/experiments';
+import {
+  DEFAULT_EVAL_METHOD,
+  MAX_EXPERIMENT_ITERATIONS,
+  MIN_EXPERIMENT_ITERATIONS,
+  isExperimentEvaluationMethod,
+  resolveExperimentIterations,
+} from '@/lib/experiments';
 import { loadDefaultRubricText } from '@/lib/rubrics';
 
 /**
@@ -66,7 +72,7 @@ export async function POST(req: Request) {
       },
     });
 
-    const { input_query, expected_output, models, rubric, evaluationMethod } = await req.json();
+    const { input_query, expected_output, models, rubric, evaluationMethod, iterations } = await req.json();
 
     // Validate required inputs
     if (!input_query) {
@@ -179,6 +185,19 @@ export async function POST(req: Request) {
       );
     }
 
+    const {
+      iterations: resolvedIterations,
+      isValidForMethod,
+    } = resolveExperimentIterations(resolvedEvaluationMethod, iterations);
+    if (!isValidForMethod) {
+      return NextResponse.json(
+        {
+          error: `For rl4f evaluation, iterations must be an integer between ${MIN_EXPERIMENT_ITERATIONS} and ${MAX_EXPERIMENT_ITERATIONS}.`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Load the base rubric (from provided rubric text or default file)
     const baseRubric =
       typeof rubric === 'string' && rubric.trim().length > 0
@@ -205,6 +224,7 @@ export async function POST(req: Request) {
     const evaluationResult = await evaluator.evaluate(successfulResults, {
       userQuery: input_query,
       rubric: finalRubric,
+      iterations: resolvedIterations,
     });
 
     // Aggregate reasoning for each model

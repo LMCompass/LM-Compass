@@ -2,7 +2,11 @@ import "server-only";
 
 import { estimateWorkloadCost } from "./estimate-engine";
 import type { EstimateProfile, WorkUnitsByModel } from "./types";
-import { normalizeAndValidateRows } from "../experiments";
+import {
+  DEFAULT_EXPERIMENT_ITERATIONS,
+  normalizeAndValidateRows,
+  normalizeExperimentIterations,
+} from "../experiments";
 import type { ExperimentCostEstimate, ExperimentEvaluationMethod, MappedRow } from "../types";
 import { fetchModelPricingMap, PricingClientError } from "../openrouter/pricing-client";
 
@@ -12,14 +16,16 @@ const BASE_OUTPUT_RATIO = 0.3;
 
 function getPerModelRequestUnits(
   selectedModelCount: number,
-  evaluationMethod: ExperimentEvaluationMethod
+  evaluationMethod: ExperimentEvaluationMethod,
+  iterations: number
 ): number {
   if (evaluationMethod === "n-prompt-based") {
     return 2;
   }
 
   if (evaluationMethod === "rl4f") {
-    return (2 * selectedModelCount) - 1;
+    const pairwiseComparisonsPerModel = Math.max(selectedModelCount - 1, 0);
+    return selectedModelCount + (iterations * pairwiseComparisonsPerModel);
   }
 
   // prompt-based default: each model gets one generation + (n-1) evaluations
@@ -66,13 +72,15 @@ export type EstimateExperimentCostLiveInput = {
   rows: MappedRow[];
   selectedModels: string[];
   evaluationMethod: ExperimentEvaluationMethod;
+  iterations?: number;
   profile?: EstimateProfile;
 };
 
 export function buildExperimentWorkUnits(
   validRows: MappedRow[],
   selectedModels: string[],
-  evaluationMethod: ExperimentEvaluationMethod
+  evaluationMethod: ExperimentEvaluationMethod,
+  iterations: number = DEFAULT_EXPERIMENT_ITERATIONS
 ): {
   workUnits: WorkUnitsByModel;
   perModelRequestUnits: number;
@@ -80,7 +88,11 @@ export function buildExperimentWorkUnits(
   estTokensPerPrompt: number;
 } {
   const selectedModelCount = selectedModels.length;
-  const perModelRequestUnits = getPerModelRequestUnits(selectedModelCount, evaluationMethod);
+  const perModelRequestUnits = getPerModelRequestUnits(
+    selectedModelCount,
+    evaluationMethod,
+    iterations
+  );
 
   const base = createBaseEstimate(validRows, selectedModelCount, perModelRequestUnits);
 
@@ -111,7 +123,14 @@ export async function estimateExperimentCostLive(
   const { validRows, skippedRows } = normalizeAndValidateRows(input.rows);
   const selectedModelCount = input.selectedModels.length;
   const profile = input.profile ?? "balanced";
-  const perModelRequestUnits = getPerModelRequestUnits(selectedModelCount, input.evaluationMethod);
+  const resolvedIterations =
+    normalizeExperimentIterations(input.iterations) ??
+    DEFAULT_EXPERIMENT_ITERATIONS;
+  const perModelRequestUnits = getPerModelRequestUnits(
+    selectedModelCount,
+    input.evaluationMethod,
+    resolvedIterations
+  );
 
   const base = createBaseEstimate(
     validRows,
@@ -141,7 +160,8 @@ export async function estimateExperimentCostLive(
   const { workUnits } = buildExperimentWorkUnits(
     validRows,
     input.selectedModels,
-    input.evaluationMethod
+    input.evaluationMethod,
+    resolvedIterations
   );
 
   try {
