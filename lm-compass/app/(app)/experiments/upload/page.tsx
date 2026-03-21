@@ -156,7 +156,7 @@ export default function NewExperimentPage() {
         setCustomRubrics([]);
       } else {
         const nextRubrics = (response.data || []).map((rubric) => ({
-          id: rubric.id as string,
+          id: String(rubric.id),
           title:
             typeof rubric.rubric_title === "string" && rubric.rubric_title.trim().length > 0
               ? rubric.rubric_title.trim()
@@ -174,6 +174,7 @@ export default function NewExperimentPage() {
       isCancelled = true;
     };
   }, [supabase, user?.id, userLoaded]);
+
   const handleFile = useCallback((selectedFile: File) => {
     setParseError(null);
     setSubmitError(null);
@@ -703,13 +704,16 @@ export default function NewExperimentPage() {
                       <label className="block text-sm font-medium">
                         Rubric <span className="text-destructive">*</span>
                       </label>
-                      <Select value={selectedRubricId} onValueChange={setSelectedRubricId}>
+                      <Select
+                        value={selectedRubricId}
+                        onValueChange={(v) => setSelectedRubricId(String(v))}
+                      >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select rubric" />
                         </SelectTrigger>
                         <SelectContent>
                           {rubricOptions.map((rubric) => (
-                            <SelectItem key={rubric.id} value={rubric.id}>
+                            <SelectItem key={rubric.id} value={String(rubric.id)}>
                               {rubric.title}
                             </SelectItem>
                           ))}

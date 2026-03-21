@@ -23,6 +23,8 @@ export function HITLForm({
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [saveRubric, setSaveRubric] = React.useState(false);
+  const [rubricTitle, setRubricTitle] = React.useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +54,8 @@ export function HITLForm({
           questionsAndDrafts: hitl.questionsAndDrafts,
           humanAnswers: answers,
           modelNames: message.multiResults.map((r) => r.model),
+          saveRubric,
+          rubricTitle,
         }),
       });
       if (!res.ok) {
@@ -98,6 +102,30 @@ export function HITLForm({
           Suggested rubric change: {hitl.questionsAndDrafts.draft_rubric_changes}
         </p>
       )}
+      <div className="rounded-md border bg-background/40 p-3 space-y-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={saveRubric}
+            onChange={(e) => setSaveRubric(e.target.checked)}
+          />
+          Save updated rubric to my rubrics
+        </label>
+        {saveRubric && (
+          <div className="space-y-2">
+            <label htmlFor="hitl-rubric-title" className="text-xs font-medium text-muted-foreground">
+              Rubric title (optional)
+            </label>
+            <Input
+              id="hitl-rubric-title"
+              value={rubricTitle}
+              onChange={(e) => setRubricTitle(e.target.value)}
+              placeholder="e.g. HITL rubric - math tutoring"
+              className="bg-background"
+            />
+          </div>
+        )}
+      </div>
       {error && (
         <p className="text-sm text-destructive">{error}</p>
       )}
