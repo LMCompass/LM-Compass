@@ -21,6 +21,8 @@ class Evaluator:
 
         self.candidate_models = [
             # PAID
+            {"name": "Google: Gemini 3 Flash Preview", "openrouter": "google/gemini-3-flash-preview"},
+            {"name": "OpenAI: GPT-5.4", "openrouter": "openai/gpt-5.4"},
             {"name": "Anthropic: Claude Sonnet 4.5", "openrouter": "anthropic/claude-sonnet-4.5"},
             {"name": "OpenAI: GPT-4o", "openrouter": "openai/gpt-4o"},
             {"name": "OpenAI: GPT-4o Mini", "openrouter": "openai/gpt-4o-mini"},
