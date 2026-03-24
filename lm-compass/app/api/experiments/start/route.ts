@@ -188,7 +188,10 @@ export async function POST(req: Request) {
     } catch (error) {
       await supabase
         .from('experiments')
-        .update({ status: ExperimentStatus.ERROR })
+        .update({
+          status: ExperimentStatus.ERROR,
+          end_time: new Date().toISOString(),
+        })
         .eq('id', experiment.id);
 
       const message =
@@ -198,7 +201,10 @@ export async function POST(req: Request) {
 
     const { error: updateStatusError } = await supabase
       .from('experiments')
-      .update({ status: ExperimentStatus.RUNNING })
+      .update({
+        status: ExperimentStatus.RUNNING,
+        start_time: new Date().toISOString(),
+      })
       .eq('id', experiment.id);
 
     if (updateStatusError) {

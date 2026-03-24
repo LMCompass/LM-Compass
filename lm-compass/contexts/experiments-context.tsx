@@ -350,7 +350,10 @@ export function ExperimentsProvider({
               // Mark experiment as completed
               await supabase
                 .from("experiments")
-                .update({ status: ExperimentStatus.COMPLETED })
+                .update({
+                  status: ExperimentStatus.COMPLETED,
+                  end_time: new Date().toISOString(),
+                })
                 .eq("id", activeExperimentId);
 
               setActiveExperimentId(null);
