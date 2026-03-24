@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import { parquetReadObjects, parquetMetadataAsync, parquetSchema } from "hyparquet";
 import {
@@ -34,10 +34,9 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useExperiments } from "@/contexts/experiments-context";
-import { useSupabaseClient } from "@/utils/supabase/client";
-import { useUser } from "@clerk/nextjs";
 import { MultiModelSelector } from "@/components/ui/multi-model-selector";
 import { IterationsSelector } from "@/components/ui/iterations-selector";
+import { RubricSelector } from "@/components/ui/rubric-selector";
 import type {
   ExperimentCostEstimate,
   ExperimentEvaluationMethod,
@@ -93,8 +92,6 @@ function formatCurrency(value: number) {
 
 export default function NewExperimentPage() {
   const router = useRouter();
-  const supabase = useSupabaseClient();
-  const { user, isLoaded: userLoaded } = useUser();
   const { estimateExperimentCost, startExperiment } = useExperiments();
 
   const [file, setFile] = useState<File | null>(null);
@@ -109,9 +106,6 @@ export default function NewExperimentPage() {
   const [selectedEvaluationMethod, setSelectedEvaluationMethod] =
     useState<ExperimentEvaluationMethod>(DEFAULT_EVAL_METHOD);
   const [iterations, setIterations] = useState<number>(DEFAULT_EXPERIMENT_ITERATIONS);
-  const [customRubrics, setCustomRubrics] = useState<RubricOption[]>([]);
-  const [isRubricsLoading, setIsRubricsLoading] = useState(false);
-  const [rubricsError, setRubricsError] = useState<string | null>(null);
 
   const [estimate, setEstimate] = useState<ExperimentCostEstimate | null>(null);
   const [isEstimateOpen, setIsEstimateOpen] = useState(false);
@@ -122,58 +116,6 @@ export default function NewExperimentPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const latestFileRef = useRef<File | null>(null);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    const fetchRubrics = async () => {
-      if (!userLoaded) return;
-
-      if (!user?.id) {
-        if (!isCancelled) {
-          setCustomRubrics([]);
-          setRubricsError(null);
-        }
-        return;
-      }
-
-      setIsRubricsLoading(true);
-      setRubricsError(null);
-
-      const response = await supabase
-        .from("rubrics")
-        .select("id, rubric_title")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (isCancelled) {
-        setIsRubricsLoading(false);
-        return;
-      }
-
-      if (response.error) {
-        setRubricsError(response.error.message);
-        setCustomRubrics([]);
-      } else {
-        const nextRubrics = (response.data || []).map((rubric) => ({
-          id: String(rubric.id),
-          title:
-            typeof rubric.rubric_title === "string" && rubric.rubric_title.trim().length > 0
-              ? rubric.rubric_title.trim()
-              : "Untitled rubric",
-        }));
-        setCustomRubrics(nextRubrics);
-      }
-
-      setIsRubricsLoading(false);
-    };
-
-    fetchRubrics();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [supabase, user?.id, userLoaded]);
 
   const handleFile = useCallback((selectedFile: File) => {
     setParseError(null);
@@ -361,10 +303,6 @@ export default function NewExperimentPage() {
     () => validateSelectedModelsCount(selectedModels),
     [selectedModels]
   );
-
-  const rubricOptions = useMemo<RubricOption[]>(() => {
-    return [{ id: DEFAULT_RUBRIC_ID, title: "Default Rubric" }, ...customRubrics];
-  }, [customRubrics]);
 
   const isConfigurationComplete = useMemo(() => {
     return (
@@ -704,23 +642,13 @@ export default function NewExperimentPage() {
                       <label className="block text-sm font-medium">
                         Rubric <span className="text-destructive">*</span>
                       </label>
-                      <Select
+                      <RubricSelector
                         value={selectedRubricId}
-                        onValueChange={(v) => setSelectedRubricId(String(v))}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select rubric" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {rubricOptions.map((rubric) => (
-                            <SelectItem key={rubric.id} value={String(rubric.id)}>
-                              {rubric.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={setSelectedRubricId}
+                        evaluationMethod={selectedEvaluationMethod}
+                      />
                       <p className="text-xs text-muted-foreground">
-                        Default rubric is preselected; custom rubrics are available here.
+                        Search and select a rubric for this experiment.
                       </p>
                     </div>
 
@@ -765,14 +693,6 @@ export default function NewExperimentPage() {
                     </div>
                   )}
 
-                  {isRubricsLoading && (
-                    <p className="text-xs text-muted-foreground">Loading custom rubrics...</p>
-                  )}
-                  {rubricsError && (
-                    <p className="text-xs text-destructive">
-                      Failed to load custom rubrics: {rubricsError}
-                    </p>
-                  )}
                 </div>
               </section>
             )}
@@ -833,7 +753,7 @@ export default function NewExperimentPage() {
                   <Button
                     onClick={handleOpenEstimate}
                     className="gap-2"
-                    disabled={!isConfigurationComplete || isRubricsLoading || isEstimating}
+                    disabled={!isConfigurationComplete || isEstimating}
                   >
                     {isEstimating ? (
                       <Loader2 className="size-4 animate-spin" />
