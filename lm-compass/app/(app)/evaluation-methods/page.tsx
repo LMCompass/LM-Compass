@@ -27,7 +27,7 @@ const EVALUATION_METHODS = [
       "Clear, per-judge reasoning for every candidate",
     ],
     cons: [
-      "O(n²) cost and latency as you add more models",
+      "n² cost and latency as you add more models",
       "Higher token usage compared to one-shot methods",
     ],
   },
@@ -36,13 +36,13 @@ const EVALUATION_METHODS = [
     name: "One-Shot Prompt-based scoring",
     badge: "n cross-evaluation",
     description:
-      "Each model evaluates all other models in a single prompt. The judge returns a JSON object with scores and justifications for every candidate.",
+      "Each model evaluates all other models in a single prompt. The judge returns all scores and justifications for every candidate in a single response.",
     bestFor: [
       "Larger model sets where n² is too expensive",
       "Fast, still rubric-based comparisons across many models",
     ],
     pros: [
-      "O(n) calls instead of O(n²), reducing latency and cost",
+      "n calls instead of n², reducing latency and cost",
       "Still benefits from cross-evaluation and your custom rubric",
       "Keeps per-model reasoning while batching work",
     ],
