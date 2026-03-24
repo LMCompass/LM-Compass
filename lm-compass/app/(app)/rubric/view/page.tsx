@@ -7,9 +7,10 @@ import {
   useSidebar,
 } from "@/components/sidebar/sidebar";
 import { Button } from "@/components/ui/button";
-import { FileText, Plus, Trash2 } from "lucide-react";
-import { AddRubricDialog, type NewRubricInput } from "@/components/add-rubric-dialog";
-import { createRubric } from "../actions";
+import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { AddRubricDialog, type NewRubricInput, type RubricDialogInitialData } from "@/components/add-rubric-dialog";
+import { createRubric, updateRubric } from "../actions";
+import type { RubricEvaluationMethod } from "@/lib/rubrics";
 import { useSupabaseClient } from "@/utils/supabase/client";
 import { useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,8 @@ type RubricRow = {
   rubric_content: string | null;
   created_at: string | null;
   category: string | null;
+  mode: string | null;
+  weights_json: Record<string, number> | null;
 };
 
 function formatDate(dateString: string) {
@@ -64,6 +67,7 @@ export default function ViewRubricsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [rubricIdPendingDelete, setRubricIdPendingDelete] = useState<string | null>(null);
+  const [editingRubric, setEditingRubric] = useState<RubricRow | null>(null);
 
   const selectedRubric = useMemo(
     () => rubrics.find((r) => r.id === selectedRubricId) ?? null,
@@ -87,7 +91,7 @@ export default function ViewRubricsPage() {
     try {
       const response = await supabase
         .from("rubrics")
-        .select("id, rubric_title, rubric_content, created_at, category")
+        .select("id, rubric_title, rubric_content, created_at, category, mode, weights_json")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -132,9 +136,45 @@ export default function ViewRubricsPage() {
       if (createdId) setSelectedRubricId(createdId);
     } else {
       console.error("Error saving rubric:", result.error);
-      // TODO: Show error message to user
     }
   };
+
+  const handleUpdateRubric = async (rubric: NewRubricInput) => {
+    if (!editingRubric) return;
+
+    const result = await updateRubric(editingRubric.id, rubric);
+
+    if (result.success) {
+      setEditingRubric(null);
+      await refreshRubrics();
+      setSelectedRubricId(editingRubric.id);
+    } else {
+      console.error("Error updating rubric:", result.error);
+    }
+  };
+
+  const editInitialData: RubricDialogInitialData | undefined = useMemo(() => {
+    if (!editingRubric) return undefined;
+
+    const methods: RubricEvaluationMethod[] =
+      editingRubric.category
+        ?.split(",")
+        .map((c) => c.trim())
+        .filter((c): c is RubricEvaluationMethod =>
+          ["prompt-based", "rl4f", "hitl"].includes(c)
+        ) ?? ["prompt-based"];
+
+    return {
+      mode:
+        editingRubric.mode === "weight-adjusted-default"
+          ? "weight-adjusted-default"
+          : "custom",
+      title: editingRubric.rubric_title ?? "",
+      content: editingRubric.rubric_content ?? "",
+      weights: editingRubric.weights_json,
+      evaluationMethods: methods.length > 0 ? methods : ["prompt-based"],
+    };
+  }, [editingRubric]);
 
   return (
     <SidebarInset>
@@ -312,17 +352,27 @@ export default function ViewRubricsPage() {
                     )}
                   </div>
                   {selectedRubric && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setRubricIdPendingDelete(selectedRubric.id);
-                        setShowDeleteDialog(true);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingRubric(selectedRubric)}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setRubricIdPendingDelete(selectedRubric.id);
+                          setShowDeleteDialog(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
                   )}
                 </div>
 
@@ -360,6 +410,14 @@ export default function ViewRubricsPage() {
           open={showAddRubricDialog}
           onOpenChange={setShowAddRubricDialog}
           onSave={handleSaveRubric}
+        />
+        <AddRubricDialog
+          open={editingRubric !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingRubric(null);
+          }}
+          onSave={handleUpdateRubric}
+          initialData={editInitialData}
         />
         <AlertDialog
           open={showDeleteDialog}

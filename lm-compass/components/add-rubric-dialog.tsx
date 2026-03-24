@@ -35,13 +35,23 @@ export type NewRubricInput =
   | CreateRubricFromDefaultPayload
   | CreateCustomRubricPayload;
 
+export interface RubricDialogInitialData {
+  mode: "custom" | "weight-adjusted-default";
+  title: string;
+  content: string;
+  weights: Record<string, number> | null;
+  evaluationMethods: RubricEvaluationMethod[];
+}
+
 interface AddRubricDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave?: (rubric: NewRubricInput) => void | Promise<void>;
+  initialData?: RubricDialogInitialData;
 }
 
-export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogProps) {
+export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: AddRubricDialogProps) {
+  const isEditMode = !!initialData;
   const [mode, setMode] = useState<"custom" | "weight-adjusted-default">("custom");
   const [rubricName, setRubricName] = useState("");
   const [rubricDescription, setRubricDescription] = useState("");
@@ -53,21 +63,32 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
     RubricEvaluationMethod[]
   >(["prompt-based"]);
 
-  // Clear form when dialog is closed (handles ESC, click outside, etc.)
   useEffect(() => {
     if (!open) {
+      setCategories(null);
+      setIsLoadingCategories(false);
+      setCategoriesError(null);
+    }
+
+    if (open && initialData) {
+      setMode(initialData.mode);
+      setRubricName(initialData.title);
+      setRubricDescription(initialData.mode === "custom" ? initialData.content : "");
+      setWeights(initialData.weights ?? {});
+      setEvaluationMethods(
+        initialData.evaluationMethods.length > 0
+          ? initialData.evaluationMethods
+          : ["prompt-based"]
+      );
+    } else if (!open) {
       setRubricName("");
       setRubricDescription("");
       setMode("custom");
-      setCategories(null);
       setWeights({});
-      setIsLoadingCategories(false);
-      setCategoriesError(null);
       setEvaluationMethods(["prompt-based"]);
     }
-  }, [open]);
+  }, [open, initialData]);
 
-  // Lazy-load default categories when switching into "weight-adjusted-default"
   useEffect(() => {
     if (!open) return;
     if (mode !== "weight-adjusted-default") return;
@@ -86,11 +107,16 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
         }
 
         setCategories(result.data);
-        const initialWeights: Record<string, number> = {};
-        for (const cat of result.data) {
-          initialWeights[cat.key] = cat.defaultPoints;
+
+        if (initialData?.mode === "weight-adjusted-default" && initialData.weights) {
+          setWeights(initialData.weights);
+        } else {
+          const defaultWeights: Record<string, number> = {};
+          for (const cat of result.data) {
+            defaultWeights[cat.key] = cat.defaultPoints;
+          }
+          setWeights(defaultWeights);
         }
-        setWeights(initialWeights);
       } catch (error) {
         console.error("Failed to load default rubric categories:", error);
         setCategoriesError("Failed to load default rubric.");
@@ -102,7 +128,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
     };
 
     void loadCategories();
-  }, [open, mode, categories, isLoadingCategories]);
+  }, [open, mode, categories, isLoadingCategories, initialData]);
 
   const clearForm = () => {
     setRubricName("");
@@ -194,9 +220,9 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Rubric</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Rubric" : "Add Rubric"}</DialogTitle>
           <DialogDescription>
-            Create a new evaluation rubric
+            {isEditMode ? "Modify your evaluation rubric" : "Create a new evaluation rubric"}
           </DialogDescription>
         </DialogHeader>
         {/* Mode toggle */}
@@ -375,7 +401,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
                     mode === "custom" ? !isCustomValid : !isDefaultModeValid
                   }
                 >
-                  Save
+                  {isEditMode ? "Update" : "Save"}
                 </Button>
               </span>
             </TooltipTrigger>

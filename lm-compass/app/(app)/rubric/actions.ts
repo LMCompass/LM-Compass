@@ -166,6 +166,128 @@ export async function createRubric(
   }
 }
 
+export async function updateRubric(
+  id: string,
+  input: CreateRubricFromDefaultPayload | CreateCustomRubricPayload
+) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { error: "Unauthorized", success: false };
+    }
+
+    if (!id) {
+      return { error: "Rubric ID is required", success: false };
+    }
+
+    const title = input.title?.trim() ?? "";
+    if (!title) {
+      return { error: "Name is required", success: false };
+    }
+
+    let mode: "weight-adjusted-default" | "custom";
+    let content: string;
+    let weightsJson: Record<string, number> | null = null;
+    let evaluationMethods: RubricEvaluationMethod[] = ["prompt-based"];
+
+    if (Array.isArray(input.evaluationMethods) && input.evaluationMethods.length > 0) {
+      evaluationMethods = input.evaluationMethods;
+    }
+
+    if (input.mode === "weight-adjusted-default") {
+      mode = "weight-adjusted-default";
+
+      const rawWeights = input.weights ?? {};
+      const defaultText = loadDefaultRubricText();
+      const categories = parseDefaultRubric(defaultText);
+
+      if (!categories.length) {
+        return {
+          error: "Default rubric is not configured correctly.",
+          success: false,
+        };
+      }
+
+      const categoryKeys = new Set(categories.map((c) => c.key));
+
+      for (const key of Object.keys(rawWeights)) {
+        if (!categoryKeys.has(key)) {
+          return {
+            error: `Unknown rubric category: ${key}`,
+            success: false,
+          };
+        }
+      }
+
+      const normalizedWeights: Record<string, number> = {};
+      for (const category of categories) {
+        const value = rawWeights[category.key];
+        if (
+          typeof value !== "number" ||
+          !Number.isFinite(value) ||
+          value <= 0
+        ) {
+          return {
+            error: `Invalid weight for category "${category.key}".`,
+            success: false,
+          };
+        }
+        normalizedWeights[category.key] = value;
+      }
+
+      const total = Object.values(normalizedWeights).reduce(
+        (sum, v) => sum + v,
+        0
+      );
+      if (total !== 100) {
+        return {
+          error: `Total points must be 100, got ${total}.`,
+          success: false,
+        };
+      }
+
+      weightsJson = normalizedWeights;
+      content = buildRubricFromWeights(categories, normalizedWeights);
+    } else {
+      mode = "custom";
+      content = input.content?.trim() ?? "";
+      if (!content) {
+        return { error: "Description is required", success: false };
+      }
+    }
+
+    const evaluationCategoryString = evaluationMethods.join(",");
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("rubrics")
+      .update({
+        rubric_title: title,
+        rubric_content: content,
+        mode,
+        weights_json: weightsJson,
+        category: evaluationCategoryString,
+      })
+      .eq("id", id)
+      .eq("user_id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      return { error: error.message, success: false };
+    }
+
+    return { data, success: true };
+  } catch (error) {
+    console.error("Error updating rubric:", error);
+    return {
+      error: error instanceof Error ? error.message : "Internal server error",
+      success: false,
+    };
+  }
+}
+
 export async function getRubrics() {
   try {
     const { userId } = await auth();
