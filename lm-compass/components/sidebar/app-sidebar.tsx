@@ -16,6 +16,7 @@ import {
   Settings,
   Trash2,
   Pencil,
+  Ruler,
 } from "lucide-react";
 
 import {
@@ -293,6 +294,13 @@ export function AppSidebar() {
             >
               <BookOpen className="h-4 w-4" />
               View Rubrics
+            </SidebarMenuButton>
+            <SidebarMenuButton
+              className="hover:bg-sidebar-accent/60"
+              onClick={() => router.push("/evaluation-methods")}
+            >
+              <Ruler className="h-4 w-4" />
+              Evaluation Methods
             </SidebarMenuButton>
             <SidebarMenuButton
               className="hover:bg-sidebar-accent/60"
