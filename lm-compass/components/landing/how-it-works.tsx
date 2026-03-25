@@ -55,19 +55,11 @@ const content = [
             </span>
           </div>
           <div className="relative flex items-center justify-center h-36 mt-2">
-            {/* Triangle of evaluating models */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 size-12 rounded-full bg-chart-1/15 border border-chart-1/30 flex items-center justify-center text-xs text-chart-1 font-semibold">
-              A
-            </div>
-            <div className="absolute bottom-0 left-8 size-12 rounded-full bg-chart-2/15 border border-chart-2/30 flex items-center justify-center text-xs text-chart-2 font-semibold">
-              B
-            </div>
-            <div className="absolute bottom-0 right-8 size-12 rounded-full bg-chart-3/15 border border-chart-3/30 flex items-center justify-center text-xs text-chart-3 font-semibold">
-              C
-            </div>
+            {/* Triangle + nodes share one viewBox so vertices and circles align */}
             <svg
-              className="absolute inset-0 w-full h-full"
+              className="h-full w-full max-w-[min(100%,18rem)]"
               viewBox="0 0 240 150"
+              aria-hidden
             >
               <line
                 x1="120"
@@ -96,6 +88,54 @@ const content = [
                 strokeWidth="1.5"
                 strokeDasharray="5 5"
               />
+              <circle
+                cx="120"
+                cy="30"
+                r="18"
+                className="fill-chart-1/15 stroke-chart-1/30"
+                strokeWidth="1.5"
+              />
+              <circle
+                cx="55"
+                cy="115"
+                r="18"
+                className="fill-chart-2/15 stroke-chart-2/30"
+                strokeWidth="1.5"
+              />
+              <circle
+                cx="185"
+                cy="115"
+                r="18"
+                className="fill-chart-3/15 stroke-chart-3/30"
+                strokeWidth="1.5"
+              />
+              <text
+                x="120"
+                y="30"
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="fill-chart-1 text-[12px] font-semibold"
+              >
+                A
+              </text>
+              <text
+                x="55"
+                y="115"
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="fill-chart-2 text-[12px] font-semibold"
+              >
+                B
+              </text>
+              <text
+                x="185"
+                y="115"
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="fill-chart-3 text-[12px] font-semibold"
+              >
+                C
+              </text>
             </svg>
           </div>
           <p className="text-xs text-center text-white/70">

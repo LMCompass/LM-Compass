@@ -6,7 +6,6 @@ import {
   BookOpen,
   CirclePlay,
   ChevronRight,
-  Compass,
   FlaskConical,
   History,
   MessageSquarePlus,
@@ -55,6 +54,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useChat } from "@/contexts/chat-context";
 import { useOnboarding } from "@/contexts/onboarding-context";
+import { AppLogo } from "@/components/app-logo";
 
 import {
   SignInButton,
@@ -121,8 +121,8 @@ export function AppSidebar() {
                     size="lg"
                     className="w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                   >
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                      <Compass className="size-4" />
+                    <div className="flex aspect-square size-6 items-center justify-center rounded-lg overflow-hidden">
+                      <AppLogo className="size-6" />
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="text-lg truncate font-bold">

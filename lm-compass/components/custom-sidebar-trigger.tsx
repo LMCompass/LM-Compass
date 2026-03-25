@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Compass, PanelLeft } from "lucide-react";
+import { PanelLeft } from "lucide-react";
+import { AppLogo } from "@/components/app-logo";
 import { useSidebar } from "@/components/sidebar/sidebar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +27,7 @@ export function CustomSidebarTrigger({
           data-sidebar="trigger"
           variant="ghost"
           size="icon"
-          className={cn("size-7", className)}
+          className={cn("relative size-7", className)}
           onClick={(event) => {
             onClick?.(event);
             toggleSidebar();
@@ -39,7 +40,7 @@ export function CustomSidebarTrigger({
             <PanelLeft className="size-5" />
           ) : (
             <>
-              <Compass
+              <AppLogo
                 className={cn(
                   "size-5 transition-all duration-200 absolute",
                   isHovered ? "opacity-0 scale-75" : "opacity-100 scale-100"
