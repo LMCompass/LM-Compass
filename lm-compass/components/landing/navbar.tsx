@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { AppLogo } from "@/components/app-logo";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
@@ -44,9 +45,7 @@ export function Navbar() {
         `}
       >
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground">
-            <Compass className="size-4" />
-          </div>
+          <AppLogo className="size-7" />
           <span className="font-semibold text-sm text-foreground">
             LM Compass
           </span>

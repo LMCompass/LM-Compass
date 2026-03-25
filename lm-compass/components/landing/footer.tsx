@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Compass } from "lucide-react";
+import { AppLogo } from "@/components/app-logo";
 
 export function Footer() {
   const scrollTo = (id: string) => {
@@ -17,9 +17,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           <div>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="size-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-                <Compass className="size-3.5" />
-              </div>
+              <AppLogo className="size-7" />
               <span className="font-semibold text-foreground">LM Compass</span>
             </div>
             <p className="text-sm text-white/75 leading-relaxed">
