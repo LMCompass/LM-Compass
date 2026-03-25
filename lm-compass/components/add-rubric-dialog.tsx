@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Minus, Plus } from "lucide-react";
 import type { RubricCategory, RubricEvaluationMethod } from "@/lib/rubrics";
 import { getDefaultRubricCategories } from "@/app/(app)/rubric/actions";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,8 @@ type CreateRubricFromDefaultPayload = {
   mode: "weight-adjusted-default";
   title: string;
   weights: Record<string, number>;
+  categoryLabels?: Record<string, string>;
+  categoryDescriptions?: Record<string, string>;
   evaluationMethods: RubricEvaluationMethod[];
 };
 
@@ -35,13 +38,25 @@ export type NewRubricInput =
   | CreateRubricFromDefaultPayload
   | CreateCustomRubricPayload;
 
+export interface RubricDialogInitialData {
+  mode: "custom" | "weight-adjusted-default";
+  title: string;
+  content: string;
+  weights: Record<string, number> | null;
+  categoryLabels?: Record<string, string> | null;
+  categoryDescriptions?: Record<string, string> | null;
+  evaluationMethods: RubricEvaluationMethod[];
+}
+
 interface AddRubricDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave?: (rubric: NewRubricInput) => void | Promise<void>;
+  initialData?: RubricDialogInitialData;
 }
 
-export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogProps) {
+export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: AddRubricDialogProps) {
+  const isEditMode = !!initialData;
   const [mode, setMode] = useState<"custom" | "weight-adjusted-default">("custom");
   const [rubricName, setRubricName] = useState("");
   const [rubricDescription, setRubricDescription] = useState("");
@@ -52,22 +67,39 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
   const [evaluationMethods, setEvaluationMethods] = useState<
     RubricEvaluationMethod[]
   >(["prompt-based"]);
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({});
+  const [categoryDescriptions, setCategoryDescriptions] = useState<Record<string, string>>({});
 
-  // Clear form when dialog is closed (handles ESC, click outside, etc.)
   useEffect(() => {
     if (!open) {
+      setCategories(null);
+      setIsLoadingCategories(false);
+      setCategoriesError(null);
+    }
+
+    if (open && initialData) {
+      setMode(initialData.mode);
+      setRubricName(initialData.title);
+      setRubricDescription(initialData.mode === "custom" ? initialData.content : "");
+      setWeights(initialData.weights ?? {});
+      setCategoryLabels(initialData.categoryLabels ?? {});
+      setCategoryDescriptions(initialData.categoryDescriptions ?? {});
+      setEvaluationMethods(
+        initialData.evaluationMethods.length > 0
+          ? initialData.evaluationMethods
+          : ["prompt-based"]
+      );
+    } else if (!open) {
       setRubricName("");
       setRubricDescription("");
       setMode("custom");
-      setCategories(null);
       setWeights({});
-      setIsLoadingCategories(false);
-      setCategoriesError(null);
+      setCategoryLabels({});
+      setCategoryDescriptions({});
       setEvaluationMethods(["prompt-based"]);
     }
-  }, [open]);
+  }, [open, initialData]);
 
-  // Lazy-load default categories when switching into "weight-adjusted-default"
   useEffect(() => {
     if (!open) return;
     if (mode !== "weight-adjusted-default") return;
@@ -86,11 +118,18 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
         }
 
         setCategories(result.data);
-        const initialWeights: Record<string, number> = {};
-        for (const cat of result.data) {
-          initialWeights[cat.key] = cat.defaultPoints;
+
+        if (initialData?.mode === "weight-adjusted-default" && initialData.weights) {
+          setWeights(initialData.weights);
+          setCategoryLabels(initialData.categoryLabels ?? {});
+          setCategoryDescriptions(initialData.categoryDescriptions ?? {});
+        } else {
+          const defaultWeights: Record<string, number> = {};
+          for (const cat of result.data) {
+            defaultWeights[cat.key] = cat.defaultPoints;
+          }
+          setWeights(defaultWeights);
         }
-        setWeights(initialWeights);
       } catch (error) {
         console.error("Failed to load default rubric categories:", error);
         setCategoriesError("Failed to load default rubric.");
@@ -102,7 +141,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
     };
 
     void loadCategories();
-  }, [open, mode, categories, isLoadingCategories]);
+  }, [open, mode, categories, isLoadingCategories, initialData]);
 
   const clearForm = () => {
     setRubricName("");
@@ -110,6 +149,8 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
     setMode("custom");
     setCategories(null);
     setWeights({});
+    setCategoryLabels({});
+    setCategoryDescriptions({});
     setCategoriesError(null);
     setEvaluationMethods(["prompt-based"]);
     onOpenChange(false);
@@ -175,10 +216,14 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
       });
     } else {
       if (!isDefaultModeValid) return;
+      const hasLabelOverrides = Object.keys(categoryLabels).length > 0;
+      const hasDescOverrides = Object.keys(categoryDescriptions).length > 0;
       await onSave({
         mode: "weight-adjusted-default",
         title: rubricName.trim(),
         weights,
+        ...(hasLabelOverrides ? { categoryLabels } : {}),
+        ...(hasDescOverrides ? { categoryDescriptions } : {}),
         evaluationMethods,
       });
     }
@@ -194,9 +239,9 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Rubric</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Rubric" : "Add Rubric"}</DialogTitle>
           <DialogDescription>
-            Create a new evaluation rubric
+            {isEditMode ? "Modify your evaluation rubric" : "Create a new evaluation rubric"}
           </DialogDescription>
         </DialogHeader>
         {/* Mode toggle */}
@@ -329,34 +374,94 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
               )}
 
               {categories && categories.length > 0 && (
-                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                  {categories.map((cat) => (
-                    <div key={cat.key} className="space-y-1 rounded-md border p-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-medium">{cat.key}</div>
-                        <div className="flex items-center gap-1">
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                  {categories.map((cat) => {
+                    const currentPoints = weights[cat.key] ?? cat.defaultPoints;
+                    const pointsUsedByOthers = Object.entries(weights)
+                      .filter(([k]) => k !== cat.key)
+                      .reduce((sum, [, v]) => sum + (Number.isFinite(v) ? v : 0), 0);
+                    const maxForThis = 100 - pointsUsedByOthers;
+
+                    return (
+                      <div key={cat.key} className="space-y-2 rounded-md border p-3">
+                        <div className="flex items-center justify-between gap-3">
                           <Input
-                            type="number"
-                            className="h-8 w-20"
-                            value={weights[cat.key] ?? cat.defaultPoints}
-                            onChange={(e) => {
-                              const next = Number(e.target.value);
-                              setWeights((prev) => ({
+                            className="h-8 text-sm font-medium"
+                            value={categoryLabels[cat.key] ?? cat.key}
+                            onChange={(e) =>
+                              setCategoryLabels((prev) => ({
                                 ...prev,
-                                [cat.key]: Number.isNaN(next) ? 0 : next,
-                              }));
-                            }}
+                                [cat.key]: e.target.value,
+                              }))
+                            }
+                            placeholder="Category name"
                           />
-                          <span className="text-xs text-muted-foreground">
-                            points
-                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={currentPoints <= 0}
+                              onClick={() =>
+                                setWeights((prev) => ({
+                                  ...prev,
+                                  [cat.key]: Math.max(0, currentPoints - 1),
+                                }))
+                              }
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              className="h-7 w-12 text-center text-sm font-medium tabular-nums px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={currentPoints}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/[^0-9]/g, "");
+                                if (raw === "") {
+                                  setWeights((prev) => ({ ...prev, [cat.key]: 0 }));
+                                  return;
+                                }
+                                const next = Math.min(Number(raw), maxForThis);
+                                setWeights((prev) => ({ ...prev, [cat.key]: next }));
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={currentPoints >= maxForThis}
+                              onClick={() =>
+                                setWeights((prev) => ({
+                                  ...prev,
+                                  [cat.key]: Math.min(currentPoints + 1, maxForThis),
+                                }))
+                              }
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                            <span className="text-xs text-muted-foreground ml-0.5">
+                              pts
+                            </span>
+                          </div>
                         </div>
+                        <Textarea
+                          className="text-xs text-muted-foreground resize-none min-h-0"
+                          rows={2}
+                          value={categoryDescriptions[cat.key] ?? cat.description}
+                          onChange={(e) =>
+                            setCategoryDescriptions((prev) => ({
+                              ...prev,
+                              [cat.key]: e.target.value,
+                            }))
+                          }
+                          placeholder="Category description"
+                        />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {cat.description}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -375,7 +480,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave }: AddRubricDialogP
                     mode === "custom" ? !isCustomValid : !isDefaultModeValid
                   }
                 >
-                  Save
+                  {isEditMode ? "Update" : "Save"}
                 </Button>
               </span>
             </TooltipTrigger>

@@ -66,7 +66,11 @@ export function parseDefaultRubric(text: string): RubricCategory[] {
 
 export function buildRubricFromWeights(
   categories: RubricCategory[],
-  weights: Record<string, number>
+  weights: Record<string, number>,
+  overrides?: {
+    labels?: Record<string, string>;
+    descriptions?: Record<string, string>;
+  }
 ): string {
   const lines: string[] = [];
 
@@ -76,8 +80,11 @@ export function buildRubricFromWeights(
         ? weights[category.key]
         : category.defaultPoints;
 
+    const label = overrides?.labels?.[category.key] || category.key;
+    const description = overrides?.descriptions?.[category.key] || category.description;
+
     lines.push(
-      `${category.key} (${points} points) — ${category.description}`
+      `${label} (${points} points) — ${description}`
     );
 
     if (index < categories.length - 1) {
