@@ -43,7 +43,7 @@ type RubricRow = {
   created_at: string | null;
   category: string | null;
   mode: string | null;
-  weights_json: Record<string, number> | null;
+  weights_json: Record<string, unknown> | null;
 };
 
 function formatDate(dateString: string) {
@@ -164,6 +164,18 @@ export default function ViewRubricsPage() {
           ["prompt-based", "rl4f", "hitl"].includes(c)
         ) ?? ["prompt-based"];
 
+    const raw = editingRubric.weights_json;
+    const isStructured = raw && typeof raw === "object" && "weights" in raw;
+    const weights = isStructured
+      ? (raw as { weights: Record<string, number> }).weights
+      : (raw as Record<string, number> | null);
+    const categoryLabels = isStructured
+      ? (raw as { labels?: Record<string, string> }).labels ?? null
+      : null;
+    const categoryDescriptions = isStructured
+      ? (raw as { descriptions?: Record<string, string> }).descriptions ?? null
+      : null;
+
     return {
       mode:
         editingRubric.mode === "weight-adjusted-default"
@@ -171,7 +183,9 @@ export default function ViewRubricsPage() {
           : "custom",
       title: editingRubric.rubric_title ?? "",
       content: editingRubric.rubric_content ?? "",
-      weights: editingRubric.weights_json,
+      weights,
+      categoryLabels,
+      categoryDescriptions,
       evaluationMethods: methods.length > 0 ? methods : ["prompt-based"],
     };
   }, [editingRubric]);

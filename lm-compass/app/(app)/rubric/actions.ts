@@ -16,6 +16,8 @@ type CreateRubricFromDefaultPayload = {
   mode: "weight-adjusted-default";
   title: string;
   weights: Record<string, number>;
+  categoryLabels?: Record<string, string>;
+  categoryDescriptions?: Record<string, string>;
   evaluationMethods: RubricEvaluationMethod[];
 };
 
@@ -47,7 +49,7 @@ export async function createRubric(
     let mode: "weight-adjusted-default" | "custom";
     let title: string;
     let content: string;
-    let weightsJson: Record<string, number> | null = null;
+    let weightsJson: Record<string, unknown> | null = null;
     let evaluationMethods: RubricEvaluationMethod[] = ["prompt-based"];
 
     if ("mode" in input) {
@@ -113,8 +115,18 @@ export async function createRubric(
           };
         }
 
-        weightsJson = normalizedWeights;
-        content = buildRubricFromWeights(categories, normalizedWeights);
+        const labelOverrides = input.categoryLabels ?? {};
+        const descOverrides = input.categoryDescriptions ?? {};
+
+        weightsJson = {
+          weights: normalizedWeights,
+          ...(Object.keys(labelOverrides).length > 0 ? { labels: labelOverrides } : {}),
+          ...(Object.keys(descOverrides).length > 0 ? { descriptions: descOverrides } : {}),
+        };
+        content = buildRubricFromWeights(categories, normalizedWeights, {
+          labels: labelOverrides,
+          descriptions: descOverrides,
+        });
       } else {
         mode = "custom";
         content = input.content?.trim() ?? "";
@@ -188,7 +200,7 @@ export async function updateRubric(
 
     let mode: "weight-adjusted-default" | "custom";
     let content: string;
-    let weightsJson: Record<string, number> | null = null;
+    let weightsJson: Record<string, unknown> | null = null;
     let evaluationMethods: RubricEvaluationMethod[] = ["prompt-based"];
 
     if (Array.isArray(input.evaluationMethods) && input.evaluationMethods.length > 0) {
@@ -247,8 +259,18 @@ export async function updateRubric(
         };
       }
 
-      weightsJson = normalizedWeights;
-      content = buildRubricFromWeights(categories, normalizedWeights);
+      const labelOverrides = input.categoryLabels ?? {};
+      const descOverrides = input.categoryDescriptions ?? {};
+
+      weightsJson = {
+        weights: normalizedWeights,
+        ...(Object.keys(labelOverrides).length > 0 ? { labels: labelOverrides } : {}),
+        ...(Object.keys(descOverrides).length > 0 ? { descriptions: descOverrides } : {}),
+      };
+      content = buildRubricFromWeights(categories, normalizedWeights, {
+        labels: labelOverrides,
+        descriptions: descOverrides,
+      });
     } else {
       mode = "custom";
       content = input.content?.trim() ?? "";
