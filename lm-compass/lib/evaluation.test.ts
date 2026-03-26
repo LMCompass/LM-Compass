@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Evaluator } from "./evaluation/evaluator";
 import { GradeHITLEvaluator } from "./evaluation/grade-hitl-evaluator";
 import { NPromptBasedEvaluator } from "./evaluation/n-prompt-based-evaluator";
-import { PromptBasedEvaluator, createScoringQuery } from "./evaluation/prompt-based-evaluator";
+import { PromptBasedEvaluator, createScoringQuery } from "./evaluation/prompt-based-evaluators";
 import { RL4FEvaluator } from "./evaluation/rl4f-evaluator";
 import type { ModelResponse } from "./evaluation/types";
 
