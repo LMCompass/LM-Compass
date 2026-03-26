@@ -253,15 +253,16 @@ export class NPromptBasedEvaluator implements IEvaluationService {
       for (const [key, value] of Object.entries(parsed)) {
         if (typeof value === "object" && value !== null) {
           const valObj = value as Record<string, unknown>;
+          const score = parseInt(String(valObj.score));
           if (
             typeof valObj.reasoning === "string" &&
             valObj.reasoning.trim().length > 0 &&
-            typeof valObj.score === "number" &&
-            valObj.score >= 0 &&
-            valObj.score <= 100
+            !isNaN(score) &&
+            score >= 0 &&
+            score <= 100
           ) {
             result[key] = {
-              score: valObj.score,
+              score,
               reasoning: valObj.reasoning,
             };
           }
