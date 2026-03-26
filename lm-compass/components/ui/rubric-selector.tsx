@@ -150,10 +150,10 @@ export function RubricSelector({
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="min-w-[220px] max-w-fit justify-between"
+              className="w-full justify-between"
               disabled={!isRubricSelectable}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="truncate">
                   {selectedRubric?.rubric_title?.trim() ||

@@ -232,37 +232,44 @@ export default function Home() {
     <SidebarInset className="overflow-hidden">
       <div className="h-screen flex flex-col overflow-hidden">
         <header className="flex-shrink-0 flex flex-col gap-2 border-b border-border">
-          <div className="flex items-center gap-4 p-4 sm:p-6">
-            <SidebarTrigger className="md:hidden -ml-1 shrink-0" />
-            <div data-tour-id="chat-model-selector">
+        <div className="flex items-center gap-3 p-4 sm:p-6 w-full">
+          <SidebarTrigger className="md:hidden -ml-1 shrink-0" />
+          <div className="flex flex-1 flex-row flex-nowrap items-center justify-between gap-3 min-w-0 w-full">
+            <div className="flex flex-1 flex-row flex-nowrap items-center justify-center gap-2 min-w-0 overflow-hidden">
+            <div data-tour-id="chat-model-selector" className="flex-1 md:max-w-[250px] min-w-0">
               <MultiModelSelector
                 values={selectedModels}
                 onChange={handleMultiModelChange}
               />
             </div>
-            <div data-tour-id="chat-evaluation-method-selector">
+            <div data-tour-id="chat-evaluation-method-selector" className="flex-1 md:max-w-[250px] min-w-0">
               <EvaluationMethodSelector
                 value={selectedRubric}
                 onChange={handleEvaluationMethodChange}
               />
             </div>
-            <RubricSelector
-              value={selectedRubricId}
-              onChange={setSelectedRubricId}
-              evaluationMethod={selectedRubric}
-            />
-            {selectedRubric === "rl4f" && (
-              <IterationsSelector
-                value={iterations}
-                onChange={setIterations}
+            <div className="flex-1 md:max-w-[250px] min-w-0">
+              <RubricSelector
+                value={selectedRubricId}
+                onChange={setSelectedRubricId}
+                evaluationMethod={selectedRubric}
               />
+            </div>
+            {selectedRubric === "rl4f" && (
+              <div className="flex-1 md:max-w-[150px] min-w-0">
+                <IterationsSelector
+                  value={iterations}
+                  onChange={setIterations}
+                />
+              </div>
             )}
-            <div className="flex-1" />
+            </div>
             <Button
               variant="outline"
               onClick={toggleTheme}
               disabled={!mounted}
               size="icon"
+              className="shrink-0 self-center"
             >
               {mounted && theme === "dark" ? (
                 <Sun className="size-4" />
@@ -271,6 +278,7 @@ export default function Home() {
               )}
             </Button>
           </div>
+        </div>
           {loadedChatDisplayInfo && (loadedChatDisplayInfo.models.length > 0 || loadedChatDisplayInfo.evaluationMethod) && (
             <div className="px-4 sm:px-6 pb-3 pt-0 text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
               <span>This chat used:</span>
