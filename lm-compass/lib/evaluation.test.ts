@@ -291,7 +291,7 @@ describe("PromptBasedEvaluator", () => {
     const evaluator = new PromptBasedEvaluator({} as never);
 
     expect(
-      (evaluator as any).extractScoreAndReasoning(
+      evaluator.extractScoreAndReasoning(
         'Preface ```json\n{"score":77,"reasoning":"Weighted correctly."}\n``` trailing text',
       ),
     ).toEqual({
@@ -300,7 +300,7 @@ describe("PromptBasedEvaluator", () => {
     });
 
     expect(
-      (evaluator as any).extractScoreAndReasoning(
+      evaluator.extractScoreAndReasoning(
         '{"score":"77","reasoning":"Wrong score type"}',
       ),
     ).toEqual({
@@ -390,7 +390,7 @@ describe("NPromptBasedEvaluator", () => {
     });
     expect(result.winner).toEqual({ model: "model-a", content: "Answer A" });
     expect(
-      (evaluator as any).extractScores('{"model-a":{"score":88,"reasoning":"Good"},"model-b":"bad"}'),
+      evaluator.extractScores('{"model-a":{"score":88,"reasoning":"Good"},"model-b":"bad"}'),
     ).toEqual({
       "model-a": { score: 88, reasoning: "Good" },
     });

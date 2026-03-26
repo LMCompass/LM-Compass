@@ -206,7 +206,7 @@ export class NPromptBasedEvaluator implements IEvaluationService {
   /**
    * Extracts scores mapping from LLM response
    */
-  private extractScores(
+  public extractScores(
     responseText: string,
   ): Record<string, { score: number; reasoning: string }> {
     if (!responseText || responseText.trim().length === 0) {

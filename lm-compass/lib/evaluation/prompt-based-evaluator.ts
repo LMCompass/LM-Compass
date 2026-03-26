@@ -193,7 +193,7 @@ export class PromptBasedEvaluator implements IEvaluationService {
   /**
    * Extracts the score and reasoning from an LLM response, handling various JSON formats
    */
-  private extractScoreAndReasoning(responseText: string): { score: number | null; reasoning: string | null } {
+  public extractScoreAndReasoning(responseText: string): { score: number | null; reasoning: string | null } {
     if (!responseText || responseText.trim().length === 0) {
       return { score: null, reasoning: null };
     }
