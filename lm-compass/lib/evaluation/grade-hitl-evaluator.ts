@@ -5,7 +5,7 @@
 
 import type { OpenAI } from 'openai';
 import { Evaluator, type ModelQueryResponse } from './evaluator';
-import { createScoringQuery } from './prompt-based-evaluator';
+import { createNSqScoringQuery as createScoringQuery } from './prompt-based-evaluators';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

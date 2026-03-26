@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Evaluator } from "./evaluation/evaluator";
 import { GradeHITLEvaluator } from "./evaluation/grade-hitl-evaluator";
-import { NPromptBasedEvaluator } from "./evaluation/n-prompt-based-evaluator";
-import { PromptBasedEvaluator, createScoringQuery } from "./evaluation/prompt-based-evaluators";
+import { PromptBasedEvaluator, createNSqScoringQuery, NPromptBasedEvaluator } from "./evaluation/prompt-based-evaluators";
 import { RL4FEvaluator } from "./evaluation/rl4f-evaluator";
 import type { ModelResponse } from "./evaluation/types";
 
@@ -37,9 +36,9 @@ function createMockClient(responses: Array<string | Error>) {
   };
 }
 
-describe("createScoringQuery", () => {
+describe("createNSqScoringQuery", () => {
   it("includes the user query, candidate response, rubric, and JSON output requirements", () => {
-    const query = createScoringQuery(
+    const query = createNSqScoringQuery(
       "What is LM Compass?",
       "It compares language models.",
       "Accuracy (5 points) - Correct facts",
