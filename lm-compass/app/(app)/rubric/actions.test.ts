@@ -170,6 +170,49 @@ describe("createRubric", () => {
 
     expect(result).toEqual({ error: "insert failed", success: false });
   });
+
+  it("rejects custom upload when description is empty", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+
+    const result = await createRubric({
+      mode: "custom",
+      title: "Uploaded rubric",
+      content: "   ",
+      evaluationMethods: ["prompt-based"],
+    });
+
+    expect(result).toEqual({ error: "Description is required", success: false });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it("defaults evaluation method for uploaded legacy payload", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+    const dbRow = {
+      id: "rubric-legacy-1",
+      rubric_title: "Uploaded Legacy Rubric",
+      rubric_content: "Imported rubric text",
+      user_id: "user-1",
+      mode: "custom",
+      category: "prompt-based",
+    };
+    const { client, spies } = makeCreateChain({ data: dbRow, error: null });
+    mockCreateClient.mockResolvedValue(asMockedSupabaseClient(client));
+
+    const result = await createRubric({
+      name: "Uploaded Legacy Rubric",
+      description: "Imported rubric text",
+    });
+
+    expect(spies.insert).toHaveBeenCalledWith({
+      rubric_title: "Uploaded Legacy Rubric",
+      rubric_content: "Imported rubric text",
+      user_id: "user-1",
+      mode: "custom",
+      weights_json: null,
+      category: "prompt-based",
+    });
+    expect(result).toEqual({ data: dbRow, success: true });
+  });
 });
 
 describe("getRubrics", () => {
@@ -266,5 +309,30 @@ describe("authentication checks on remaining actions", () => {
     const deleteResult = await deleteRubric("rubric-1");
 
     expect(deleteResult).toEqual({ success: false, error: "delete failed" });
+  });
+
+  it("deletes rubric successfully when authenticated", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+    const { client, spies } = makeDeleteChain({ error: null });
+    mockCreateClient.mockResolvedValue(asMockedSupabaseClient(client));
+
+    const result = await deleteRubric("rubric-99");
+
+    expect(spies.from).toHaveBeenCalledWith("rubrics");
+    expect(spies.del).toHaveBeenCalledTimes(1);
+    expect(spies.eq).toHaveBeenCalledWith("id", "rubric-99");
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns internal server error when delete throws non-Error", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+    mockCreateClient.mockRejectedValue("boom");
+
+    const result = await deleteRubric("rubric-1");
+
+    expect(result).toEqual({
+      success: false,
+      error: "Internal server error",
+    });
   });
 });
