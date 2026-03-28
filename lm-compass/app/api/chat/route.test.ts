@@ -56,8 +56,8 @@ beforeEach(() => {
   mockFrom.select.mockImplementation(() => mockFrom);
   mockFrom.eq.mockImplementation(() => mockFrom);
 
-  mockCreateClient.mockReturnValue({ from: vi.fn().mockReturnValue(mockFrom) } as any);
-  mockCreateAdminClient.mockReturnValue({} as any);
+  mockCreateClient.mockReturnValue(Promise.resolve({ from: vi.fn().mockReturnValue(mockFrom) }) as unknown as ReturnType<typeof createClient>);
+  mockCreateAdminClient.mockReturnValue(Promise.resolve({}) as unknown as ReturnType<typeof createAdminClient>);
   mockLoadAllMessages.mockResolvedValue({ messages: [] });
 });
 
@@ -74,8 +74,8 @@ const buildRequest = (body: Record<string, unknown>) =>
 
 describe("POST /api/chat route", () => {
   it("supabase mock chain sanity check", async () => {
-    mockAuth.mockResolvedValue({ userId: "user-1" } as any);
-    mockCreateClient.mockReturnValue({ from: vi.fn().mockReturnValue(mockFrom) } as any);
+    mockAuth.mockResolvedValue({ userId: "user-1" } as unknown as Awaited<ReturnType<typeof auth>>);
+    mockCreateClient.mockReturnValue(Promise.resolve({ from: vi.fn().mockReturnValue(mockFrom) }) as unknown as ReturnType<typeof createClient>);
     mockFrom.single.mockResolvedValue({ data: { openrouter_api_key: null }, error: null });
 
     const supabase = await createClient();
@@ -92,7 +92,7 @@ describe("POST /api/chat route", () => {
   });
 
   it("rejects unauthenticated requests with 401", async () => {
-    mockAuth.mockResolvedValue({ userId: null } as any);
+    mockAuth.mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
     const res = await POST(buildRequest({}));
 
@@ -101,7 +101,7 @@ describe("POST /api/chat route", () => {
   });
 
   it("rejects when OpenRouter API key is missing from settings", async () => {
-    mockAuth.mockResolvedValue({ userId: "user-1" } as any);
+    mockAuth.mockResolvedValue({ userId: "user-1" } as unknown as Awaited<ReturnType<typeof auth>>);
     mockFrom.single.mockResolvedValue({ data: { openrouter_api_key: null }, error: null });
 
     const res = await POST(buildRequest({ messages: [{ role: "user", content: "hi" }] }));
@@ -113,7 +113,7 @@ describe("POST /api/chat route", () => {
   });
 
   it("rejects missing model selection with 400", async () => {
-    mockAuth.mockResolvedValue({ userId: "user-1" } as any);
+    mockAuth.mockResolvedValue({ userId: "user-1" } as unknown as Awaited<ReturnType<typeof auth>>);
     mockFrom.single.mockResolvedValue({ data: { openrouter_api_key: "encrypted-key" }, error: null });
     mockDecrypt.mockReturnValue("clear-key");
 
@@ -126,7 +126,7 @@ describe("POST /api/chat route", () => {
   });
 
   it("returns a friendly error when external OpenRouter response indicates invalid key", async () => {
-    mockAuth.mockResolvedValue({ userId: "user-1" } as any);
+    mockAuth.mockResolvedValue({ userId: "user-1" } as unknown as Awaited<ReturnType<typeof auth>>);
     mockFrom.single.mockResolvedValue({ data: { openrouter_api_key: "encrypted-key" }, error: null });
     mockDecrypt.mockReturnValue("clear-key");
 
@@ -137,7 +137,7 @@ describe("POST /api/chat route", () => {
         },
       },
     };
-    mockOpenAI.mockImplementation(() => openAIInstance as any);
+    mockOpenAI.mockImplementation(() => openAIInstance as unknown as InstanceType<typeof OpenAI>);
 
     const res = await POST(buildRequest({
       messages: [{ role: "user", content: "Hello" }],
@@ -153,7 +153,7 @@ describe("POST /api/chat route", () => {
   });
 
   it("handles evaluation failures gracefully and returns evaluationError in stream", async () => {
-    mockAuth.mockResolvedValue({ userId: "user-1" } as any);
+    mockAuth.mockResolvedValue({ userId: "user-1" } as unknown as Awaited<ReturnType<typeof auth>>);
     mockFrom.single.mockResolvedValue({ data: { openrouter_api_key: "encrypted-key" }, error: null });
     mockDecrypt.mockReturnValue("clear-key");
 
@@ -166,12 +166,12 @@ describe("POST /api/chat route", () => {
         },
       },
     };
-    mockOpenAI.mockImplementation(() => openAIInstance as any);
+    mockOpenAI.mockImplementation(() => openAIInstance as unknown as InstanceType<typeof OpenAI>);
 
     const evaluatorMock = {
       evaluate: vi.fn().mockRejectedValue(new Error("Evaluation pipeline crashed")),
     };
-    mockPromptBasedEvaluator.mockImplementation(() => evaluatorMock as any);
+    mockPromptBasedEvaluator.mockImplementation(() => evaluatorMock as unknown as InstanceType<typeof PromptBasedEvaluator>);
 
     const res = await POST(buildRequest({
       messages: [{ role: "user", content: "Hi" }, { role: "assistant", content: "Hey" }],
