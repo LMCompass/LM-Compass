@@ -132,7 +132,7 @@ export function MultiModelSelector({
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className={cn("w-[250px] justify-between", buttonClassName)}
+              className={cn("w-full justify-between", buttonClassName)}            
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Sparkles className="h-4 w-4 text-muted-foreground" />

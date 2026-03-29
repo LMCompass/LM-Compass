@@ -130,8 +130,7 @@ export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: Add
           }
           setWeights(defaultWeights);
         }
-      } catch (error) {
-        console.error("Failed to load default rubric categories:", error);
+      } catch {
         setCategoriesError("Failed to load default rubric.");
         setCategories(null);
         setWeights({});
@@ -189,18 +188,8 @@ export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: Add
     if (!onSave) {
       if (mode === "custom") {
         if (!isCustomValid) return;
-        console.log("Saving rubric:", {
-          mode: "custom",
-          title: rubricName,
-          content: rubricDescription,
-        });
       } else {
         if (!isDefaultModeValid) return;
-        console.log("Saving rubric:", {
-          mode: "weight-adjusted-default",
-          title: rubricName,
-          weights,
-        });
       }
       clearForm();
       return;
@@ -495,4 +484,3 @@ export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: Add
     </Dialog>
   );
 }
-

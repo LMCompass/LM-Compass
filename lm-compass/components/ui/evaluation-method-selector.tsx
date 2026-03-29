@@ -54,9 +54,9 @@ export function EvaluationMethodSelector({ value, onChange }: EvaluationMethodSe
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="min-w-[200px] max-w-fit justify-between"
+              className="w-full justify-between"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="truncate">{selectedMethod?.label || "Select method"}</span>
               </div>

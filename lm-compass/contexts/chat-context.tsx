@@ -121,7 +121,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-
         const { messages: loadedMessages, hasMore, chatMetadata, error } = await loadChatFromStorage(
           supabase,
           chatIdToLoad,
@@ -129,7 +128,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         );
 
         if (error) {
-          console.error("Error loading chat:", error);
           return;
         }
 
@@ -152,9 +150,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           // Mark that we've loaded a chat (prevents auto-loading on new chat)
           hasLoadedInitialChat.current = true;
         }
-      } catch (error) {
-        console.error("Error loading chat:", error);
-      }
+      } catch {}
     },
     [user?.id, supabase]
   );
@@ -211,7 +207,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       );
 
       if (error) {
-        console.error("Error loading more messages:", error);
         setHasMoreMessages(false);
         return;
       }
@@ -222,8 +217,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       } else {
         setHasMoreMessages(false);
       }
-    } catch (error) {
-      console.error("Error loading more messages:", error);
+    } catch {
       setHasMoreMessages(false);
     } finally {
       setIsLoadingMore(false);
@@ -262,7 +256,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     try {
       const { chats, error } = await listChats(supabase, user.id);
       if (error) {
-        console.error("Error retrieving chat history:", error);
         return;
       }
       setChatHistory(chats);
@@ -270,9 +263,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       // Don't auto-load on initial mount - start with a new chat
       // Users can click on a chat in the sidebar if they want to load it
       hasLoadedInitialChat.current = true;
-    } catch (error) {
-      console.error("Error retrieving chat history:", error);
-    }
+    } catch {}
   }, [user?.id, supabase]);
 
   const deleteChat = useCallback(
@@ -285,7 +276,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           user.id
         );
         if (error) {
-          console.error("Error deleting chat:", error);
           return;
         }
         if (success) {
@@ -296,9 +286,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             handleNewChat();
           }
         }
-      } catch (err) {
-        console.error("Error deleting chat:", err);
-      }
+      } catch {}
     },
     [user?.id, supabase, chatId, handleNewChat]
   );
@@ -316,7 +304,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           trimmed
         );
         if (error) {
-          console.error("Error updating chat title:", error);
           return;
         }
         if (success) {
@@ -326,9 +313,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             )
           );
         }
-      } catch (err) {
-        console.error("Error updating chat title:", err);
-      }
+      } catch {}
     },
     [user?.id, supabase]
   );
