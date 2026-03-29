@@ -23,7 +23,7 @@ import { HITLForm } from "@/components/chat/hitl-form";
 import type { HITLPhase2Result } from "@/lib/evaluation";
 import { useChat } from "@/contexts/chat-context";
 import { Button } from "@/components/ui/button";
-import { ChevronUp } from "lucide-react";
+import { AlertCircle, ChevronUp } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { useSupabaseClient } from "@/utils/supabase/client";
 import { saveChat, loadAllMessages } from "@/lib/chat-storage";
@@ -52,6 +52,7 @@ export function MessagesDisplay({
   }>(null);
   const [showComparison, setShowComparison] = useState<string | null>(null);
   const [hitlPhase2Results, setHitlPhase2Results] = useState<Record<string, HITLPhase2Result>>({});
+  const [winnerSelectionError, setWinnerSelectionError] = useState<string | null>(null);
   const { loadMoreMessages, hasMoreMessages, isLoadingMore, chatId } = useChat();
   const { user } = useUser();
   const supabase = useSupabaseClient();
@@ -158,6 +159,8 @@ export function MessagesDisplay({
     selectedModel: string,
     selectedContent: string
   ) => {
+    setWinnerSelectionError(null);
+
     // Update local state
     const updatedMessages = messages.map((msg) =>
       msg.id === messageId
@@ -176,7 +179,15 @@ export function MessagesDisplay({
       try {
         // Load ALL existing messages from database to preserve full conversation
         // This ensures we don't lose older messages that weren't loaded in the UI
-        const { messages: allExistingMessages } = await loadAllMessages(supabase, chatId, user.id);
+        const { messages: allExistingMessages, error: loadError } = await loadAllMessages(
+          supabase,
+          chatId,
+          user.id
+        );
+
+        if (loadError) {
+          throw new Error(loadError);
+        }
         
         if (allExistingMessages) {
           const allMessagesToSave = allExistingMessages.map((msg) =>
@@ -189,12 +200,24 @@ export function MessagesDisplay({
               : msg
           );
           
-          await saveChat(supabase, chatId, user.id, allMessagesToSave);
+          const saveResult = await saveChat(supabase, chatId, user.id, allMessagesToSave);
+          if (!saveResult.success) {
+            throw new Error(saveResult.error || "Failed to save winner selection.");
+          }
         } else {
           // Fallback: if we can't load all messages, save what we have
-          await saveChat(supabase, chatId, user.id, updatedMessages);
+          const saveResult = await saveChat(supabase, chatId, user.id, updatedMessages);
+          if (!saveResult.success) {
+            throw new Error(saveResult.error || "Failed to save winner selection.");
+          }
         }
-      } catch {}
+      } catch (error) {
+        setWinnerSelectionError(
+          error instanceof Error
+            ? error.message
+            : "Failed to save your winner selection."
+        );
+      }
     }
   };
 
@@ -255,6 +278,12 @@ export function MessagesDisplay({
         <EmptyChatHeader />
       ) : (
         <>
+          {winnerSelectionError && (
+            <div className="mx-auto flex max-w-2xl items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>{winnerSelectionError}</p>
+            </div>
+          )}
           {shouldShowLoadMoreButton && (
             <div className="flex justify-center py-4">
               <Button

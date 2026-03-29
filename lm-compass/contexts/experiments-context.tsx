@@ -266,13 +266,16 @@ export function ExperimentsProvider({
           );
         }
 
-        await supabase
+        const { error: updateError } = await supabase
           .from("experiments_items")
           .update({
             status: ExperimentItemStatus.COMPLETED,
             result: finalResult,
           })
           .eq("id", item.id);
+        if (updateError) {
+          throw updateError;
+        }
       } catch (error: unknown) {
         const errorMessage =
           error instanceof Error ? error.message : "An unknown error occurred";

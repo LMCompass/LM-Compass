@@ -458,7 +458,10 @@ export function OnboardingProvider({
 
   const persistState = React.useCallback(
     async (status: OnboardingStatus) => {
-      await setOnboardingState(status, CURRENT_TOUR_VERSION);
+      const result = await setOnboardingState(status, CURRENT_TOUR_VERSION);
+      if (!result.success) {
+        throw new Error(result.error || "Failed to persist onboarding state.");
+      }
     },
     []
   );
