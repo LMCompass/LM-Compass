@@ -79,7 +79,6 @@ export function RubricSelector({
         if (!isMounted) return;
 
         if (error) {
-          console.error("Failed to load rubrics:", error);
           setRubrics([]);
           return;
         }
@@ -220,4 +219,3 @@ export function RubricSelector({
     </Popover>
   );
 }
-

@@ -189,24 +189,12 @@ export function MessagesDisplay({
               : msg
           );
           
-          const result = await saveChat(supabase, chatId, user.id, allMessagesToSave);
-          if (result.success) {
-            console.log('Chat saved successfully after winner selection');
-          } else {
-            console.error('Error saving chat after winner selection:', result.error);
-          }
+          await saveChat(supabase, chatId, user.id, allMessagesToSave);
         } else {
           // Fallback: if we can't load all messages, save what we have
-          const result = await saveChat(supabase, chatId, user.id, updatedMessages);
-          if (result.success) {
-            console.log('Chat saved successfully after winner selection (fallback)');
-          } else {
-            console.error('Error saving chat after winner selection:', result.error);
-          }
+          await saveChat(supabase, chatId, user.id, updatedMessages);
         }
-      } catch (error) {
-        console.error('Error saving chat to database after winner selection:', error);
-      }
+      } catch {}
     }
   };
 

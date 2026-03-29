@@ -226,8 +226,7 @@ export function PromptInputComponent({
                 if (data.phase === "error") {
                   throw new Error(data.error || "Unknown error");
                 }
-              } catch (e) {
-                console.error("Error parsing SSE data:", e);
+              } catch {
                 // Re-throw if we failed to parse critical phase data
                 if (
                   line.includes('"phase":"complete"') ||
@@ -285,8 +284,6 @@ export function PromptInputComponent({
         return;
       }
 
-      console.error("Error:", error);
-      
       // Get error message - show the actual error message if available
       let errorContent = "Sorry, I encountered an error. Please try again.";
       if (error instanceof Error) {

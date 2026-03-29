@@ -352,8 +352,7 @@ export default function ExperimentDetailPage() {
         } else {
           setRubricTitle(config.rubric_id);
         }
-      } catch (err) {
-        console.error("Failed to fetch rubric title:", err);
+      } catch {
       }
     };
 

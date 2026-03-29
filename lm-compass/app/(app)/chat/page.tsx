@@ -164,8 +164,7 @@ export default function Home() {
         } else {
           setPendingSettingsPrompt(false);
         }
-      } catch (error) {
-        console.error("Failed to check API key:", error);
+      } catch {
         setHasKey(false);
       } finally {
         setCheckingKey(false);

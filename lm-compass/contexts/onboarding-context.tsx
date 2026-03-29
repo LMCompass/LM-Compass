@@ -458,10 +458,7 @@ export function OnboardingProvider({
 
   const persistState = React.useCallback(
     async (status: OnboardingStatus) => {
-      const result = await setOnboardingState(status, CURRENT_TOUR_VERSION);
-      if (!result.success) {
-        console.error("Failed to persist onboarding state:", result.error);
-      }
+      await setOnboardingState(status, CURRENT_TOUR_VERSION);
     },
     []
   );
@@ -533,8 +530,7 @@ export function OnboardingProvider({
         if (!cancelled) {
           setAutoStartEligible(result.shouldAutoStart);
         }
-      } catch (error) {
-        console.error("Failed to read onboarding state:", error);
+      } catch {
         if (!cancelled) {
           setAutoStartEligible(true);
         }

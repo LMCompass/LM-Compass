@@ -187,7 +187,6 @@ export function ExperimentsProvider({
         .limit(3);
 
       if (findError || !candidates || candidates.length === 0) {
-        if (findError) console.error("Error finding pending items:", findError);
         return [];
       }
 
@@ -202,7 +201,6 @@ export function ExperimentsProvider({
         .select();
 
       if (claimError) {
-        console.error("Error claiming items:", claimError);
         return [];
       }
 
@@ -268,19 +266,14 @@ export function ExperimentsProvider({
           );
         }
 
-        const { error: updateError } = await supabase
+        await supabase
           .from("experiments_items")
           .update({
             status: ExperimentItemStatus.COMPLETED,
             result: finalResult,
           })
           .eq("id", item.id);
-
-        if (updateError) {
-          console.error("Error updating item status:", updateError);
-        }
       } catch (error: unknown) {
-        console.error(`Error processing item ${item.id}:`, error);
         const errorMessage =
           error instanceof Error ? error.message : "An unknown error occurred";
         await supabase
@@ -310,10 +303,6 @@ export function ExperimentsProvider({
         .single();
 
       if (expError || !experiment) {
-        console.error(
-          "Experiment not found at start of processQueue:",
-          expError,
-        );
         setActiveExperimentId(null);
         return;
       }
@@ -330,10 +319,6 @@ export function ExperimentsProvider({
             .eq("status", ExperimentItemStatus.PENDING);
 
           if (countError) {
-            console.error(
-              "Transient error checking pending count:",
-              countError,
-            );
             break; // Stop processing loop but don't mark as complete
           }
 
