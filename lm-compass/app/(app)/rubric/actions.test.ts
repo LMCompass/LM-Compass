@@ -24,6 +24,7 @@ vi.mock("@/lib/rubrics", () => ({
 
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/utils/supabase/server";
+import { buildRubricFromWeights } from "@/lib/rubrics";
 import {
   createRubric,
   deleteRubric,
@@ -309,6 +310,157 @@ describe("authentication checks on remaining actions", () => {
     const deleteResult = await deleteRubric("rubric-1");
 
     expect(deleteResult).toEqual({ success: false, error: "delete failed" });
+  });
+
+  it("updates custom rubric successfully when authenticated", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+    const dbRow = {
+      id: "rubric-1",
+      rubric_title: "Updated title",
+      rubric_content: "Updated content",
+      user_id: "user-1",
+      mode: "custom",
+      category: "prompt-based,rl4f",
+    };
+    const { client, spies } = makeUpdateChain({ data: dbRow, error: null });
+    mockCreateClient.mockResolvedValue(asMockedSupabaseClient(client));
+
+    const result = await updateRubric("rubric-1", {
+      mode: "custom",
+      title: "Updated title",
+      content: "Updated content",
+      evaluationMethods: ["prompt-based", "rl4f"],
+    });
+
+    expect(spies.from).toHaveBeenCalledWith("rubrics");
+    expect(spies.update).toHaveBeenCalledWith({
+      rubric_title: "Updated title",
+      rubric_content: "Updated content",
+      mode: "custom",
+      weights_json: null,
+      category: "prompt-based,rl4f",
+    });
+    expect(spies.eqId).toHaveBeenCalledWith("id", "rubric-1");
+    expect(spies.eqUserId).toHaveBeenCalledWith("user_id", "user-1");
+    expect(result).toEqual({ data: dbRow, success: true });
+  });
+
+  it("returns error when update rubric id is missing", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+
+    const result = await updateRubric("", {
+      mode: "custom",
+      title: "Updated title",
+      content: "Updated content",
+      evaluationMethods: ["prompt-based"],
+    });
+
+    expect(result).toEqual({ error: "Rubric ID is required", success: false });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it("returns error when update title is empty", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+
+    const result = await updateRubric("rubric-1", {
+      mode: "custom",
+      title: "   ",
+      content: "Updated content",
+      evaluationMethods: ["prompt-based"],
+    });
+
+    expect(result).toEqual({ error: "Name is required", success: false });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it("returns error when custom update content is empty", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+
+    const result = await updateRubric("rubric-1", {
+      mode: "custom",
+      title: "Updated title",
+      content: "   ",
+      evaluationMethods: ["prompt-based"],
+    });
+
+    expect(result).toEqual({ error: "Description is required", success: false });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it("defaults evaluation method on update when list is empty", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+    const dbRow = {
+      id: "rubric-1",
+      rubric_title: "Updated title",
+      rubric_content: "Updated content",
+      user_id: "user-1",
+      mode: "custom",
+      category: "prompt-based",
+    };
+    const { client, spies } = makeUpdateChain({ data: dbRow, error: null });
+    mockCreateClient.mockResolvedValue(asMockedSupabaseClient(client));
+
+    const result = await updateRubric("rubric-1", {
+      mode: "custom",
+      title: "Updated title",
+      content: "Updated content",
+      evaluationMethods: [],
+    });
+
+    expect(spies.update).toHaveBeenCalledWith(
+      expect.objectContaining({ category: "prompt-based" })
+    );
+    expect(result).toEqual({ data: dbRow, success: true });
+  });
+
+  it("updates weight-adjusted rubric and stores generated content", async () => {
+    mockAuth.mockResolvedValue({ userId: "user-1" } as Awaited<ReturnType<typeof auth>>);
+    const dbRow = {
+      id: "rubric-1",
+      rubric_title: "Weighted title",
+      rubric_content: "Generated rubric content",
+      user_id: "user-1",
+      mode: "weight-adjusted-default",
+      category: "rl4f",
+    };
+    const { client, spies } = makeUpdateChain({ data: dbRow, error: null });
+    mockCreateClient.mockResolvedValue(asMockedSupabaseClient(client));
+
+    const result = await updateRubric("rubric-1", {
+      mode: "weight-adjusted-default",
+      title: "Weighted title",
+      weights: { Accuracy: 100 },
+      categoryLabels: { Accuracy: "Faithfulness" },
+      categoryDescriptions: { Accuracy: "Measures factual consistency" },
+      evaluationMethods: ["rl4f"],
+    });
+
+    expect(vi.mocked(buildRubricFromWeights)).toHaveBeenCalledWith(
+      [
+        {
+          key: "Accuracy",
+          description: "Checks factual correctness",
+          defaultPoints: 100,
+        },
+      ],
+      { Accuracy: 100 },
+      {
+        labels: { Accuracy: "Faithfulness" },
+        descriptions: { Accuracy: "Measures factual consistency" },
+      }
+    );
+    expect(spies.update).toHaveBeenCalledWith({
+      rubric_title: "Weighted title",
+      rubric_content: "Generated rubric content",
+      mode: "weight-adjusted-default",
+      weights_json: {
+        weights: { Accuracy: 100 },
+        labels: { Accuracy: "Faithfulness" },
+        descriptions: { Accuracy: "Measures factual consistency" },
+      },
+      category: "rl4f",
+    });
+    expect(result).toEqual({ data: dbRow, success: true });
   });
 
   it("deletes rubric successfully when authenticated", async () => {
