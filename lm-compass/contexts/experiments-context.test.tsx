@@ -40,7 +40,8 @@ class SelectBuilder {
     return this;
   }
 
-  limit(_value: number) {
+  limit(value: number) {
+    void value;
     return this;
   }
 
