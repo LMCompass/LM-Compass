@@ -30,7 +30,7 @@ const SELECTED_RUBRIC = loadRubric();
 /**
  * Creates a scoring query prompt for n² evaluation
  */
-function createNSqScoringQuery(userQuery: string, candidateAnswer: string, rubric: string): string {
+export function createNSqScoringQuery(userQuery: string, candidateAnswer: string, rubric: string): string {
   return `You are an expert evaluator for a large language model comparison tool. Your role is to provide an objective, rubric-based score for the candidate's response to a user's query.
 
 QUERY:
@@ -60,7 +60,7 @@ Use your judgment to apply rubric weightings accurately, and remember that Corre
 /**
  * Creates a scoring query prompt for n evaluation
  */
-function createNScoringQuery(userQuery: string, candidateResponses: ModelResponse[], rubric: string): string {
+export function createNScoringQuery(userQuery: string, candidateResponses: ModelResponse[], rubric: string): string {
   let answers = "";
   for (const response of candidateResponses) {
     answers += `${response.model} RESPONSE:\n${response.content}\n\n`;
@@ -229,9 +229,9 @@ export class PromptBasedEvaluator implements IEvaluationService {
   }
 
   /**
-   * Extracts the score and reasoning from an LLM response
+   * Extracts the score and reasoning from an LLM response, handling various JSON formats
    */
-  private extractScoreAndReasoning(responseText: string): { score: number | null; reasoning: string | null } {
+  public extractScoreAndReasoning(responseText: string): { score: number | null; reasoning: string | null } {
     if (!responseText || responseText.trim().length === 0) {
       return { score: null, reasoning: null };
     }
@@ -468,17 +468,21 @@ export class NPromptBasedEvaluator implements IEvaluationService {
   /**
    * Extracts scores mapping from LLM response
    */
-  private extractScores(responseText: string): Record<string, { score: number; reasoning: string }> {
+  public extractScores(
+    responseText: string
+  ): Record<string, { score: number; reasoning: string }> {
     if (!responseText || responseText.trim().length === 0) {
       return {};
     }
 
     let jsonStr: string | null = null;
 
+    // Try to find JSON block
     const markdownMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
     if (markdownMatch) {
       jsonStr = markdownMatch[1];
     } else {
+      // Fallback: find outer braces
       const firstBrace = responseText.indexOf('{');
       if (firstBrace !== -1) {
         let braceCount = 0;
@@ -509,15 +513,22 @@ export class NPromptBasedEvaluator implements IEvaluationService {
       for (const [key, value] of Object.entries(parsed)) {
         if (typeof value === 'object' && value !== null) {
           const valObj = value as Record<string, unknown>;
+          const rawScore = valObj.score;
+          const parsedScore =
+            typeof rawScore === 'number'
+              ? rawScore
+              : typeof rawScore === 'string'
+                ? Number(rawScore)
+                : NaN;
           if (
             typeof valObj.reasoning === 'string' &&
             valObj.reasoning.trim().length > 0 &&
-            typeof valObj.score === 'number' &&
-            valObj.score >= 0 &&
-            valObj.score <= 100
+            Number.isFinite(parsedScore) &&
+            parsedScore >= 0 &&
+            parsedScore <= 100
           ) {
             result[key] = {
-              score: valObj.score,
+              score: parsedScore,
               reasoning: valObj.reasoning
             };
           }
@@ -525,7 +536,7 @@ export class NPromptBasedEvaluator implements IEvaluationService {
       }
       return result;
     } catch (e) {
-      console.error("[NPromptBasedEvaluator] JSON parse error:", e);
+      console.error('[NPromptBasedEvaluator] JSON parse error:', e);
       return {};
     }
   }
