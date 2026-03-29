@@ -126,7 +126,6 @@ export default function ViewRubricsPage() {
     const result = await createRubric(rubric);
 
     if (result.success) {
-      console.log("Rubric saved successfully:", result.data);
       setShowAddRubricDialog(false);
       const createdId =
         result.data && typeof result.data === "object" && "id" in result.data
@@ -134,8 +133,6 @@ export default function ViewRubricsPage() {
           : null;
       await refreshRubrics();
       if (createdId) setSelectedRubricId(createdId);
-    } else {
-      console.error("Error saving rubric:", result.error);
     }
   };
 
@@ -148,8 +145,6 @@ export default function ViewRubricsPage() {
       setEditingRubric(null);
       await refreshRubrics();
       setSelectedRubricId(editingRubric.id);
-    } else {
-      console.error("Error updating rubric:", result.error);
     }
   };
 
@@ -460,25 +455,14 @@ export default function ViewRubricsPage() {
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={async () => {
-                  if (rubricIdPendingDelete) {
-                    console.log("Deleting rubric via client:", {
-                      id: rubricIdPendingDelete,
-                      userId: user?.id,
-                    });
-                    if (!user?.id) {
-                      console.error("Cannot delete rubric: no user id");
-                    } else {
-                      const { error } = await supabase
-                        .from("rubrics")
-                        .delete()
-                        .eq("id", rubricIdPendingDelete)
-                        .eq("user_id", user.id);
-
-                      if (error) {
-                        console.error("Error deleting rubric:", error);
-                      } else {
-                        await refreshRubrics();
-                      }
+                  if (rubricIdPendingDelete && user?.id) {
+                    const { error } = await supabase
+                      .from("rubrics")
+                      .delete()
+                      .eq("id", rubricIdPendingDelete)
+                      .eq("user_id", user.id);
+                    if (!error) {
+                      await refreshRubrics();
                     }
                   }
                   setShowDeleteDialog(false);
