@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { Evaluator } from "./evaluation/evaluator";
-import { GradeHITLEvaluator } from "./evaluation/grade-hitl-evaluator";
-import { PromptBasedEvaluator, createNSqScoringQuery, NPromptBasedEvaluator } from "./evaluation/prompt-based-evaluators";
-import { RL4FEvaluator } from "./evaluation/rl4f-evaluator";
-import type { ModelResponse } from "./evaluation/types";
+import { Evaluator } from "@/lib/evaluation/evaluator";
+import { GradeHITLEvaluator } from "@/lib/evaluation/grade-hitl-evaluator";
+import { PromptBasedEvaluator, createNSqScoringQuery, NPromptBasedEvaluator } from "@/lib/evaluation/prompt-based-evaluators";
+import { RL4FEvaluator } from "@/lib/evaluation/rl4f-evaluator";
+import type { ModelResponse } from "@/lib/evaluation/types";
 
 function createMockClient(responses: Array<string | Error>) {
   const create = vi.fn().mockImplementation(async () => {

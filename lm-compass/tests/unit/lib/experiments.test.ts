@@ -12,7 +12,7 @@ import {
   normalizeSelectedModels,
   resolveExperimentIterations,
   validateSelectedModelsCount,
-} from "./experiments";
+} from "@/lib/experiments";
 
 describe("normalizeAndValidateRows", () => {
   it("trims fields, drops empty queries, and counts skipped rows", () => {

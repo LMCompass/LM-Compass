@@ -18,7 +18,7 @@ vi.mock("@/lib/encryption", () => ({
   encrypt: encryptMock,
 }));
 
-import { hasApiKey, saveOpenRouterKey } from "./actions";
+import { hasApiKey, saveOpenRouterKey } from "@/app/(app)/settings/actions";
 
 describe("settings actions", () => {
   beforeEach(() => {
