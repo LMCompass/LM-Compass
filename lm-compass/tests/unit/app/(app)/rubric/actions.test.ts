@@ -30,7 +30,7 @@ import {
   deleteRubric,
   getRubrics,
   updateRubric,
-} from "./actions";
+} from "@/app/(app)/rubric/actions";
 
 const mockAuth = vi.mocked(auth);
 const mockCreateClient = vi.mocked(createClient);
