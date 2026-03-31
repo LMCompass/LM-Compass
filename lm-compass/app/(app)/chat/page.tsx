@@ -12,6 +12,7 @@ import { SidebarInset, SidebarTrigger } from "@/components/sidebar/sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import { useChat } from "@/contexts/chat-context";
 import { useOnboarding } from "@/contexts/onboarding-context";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -233,21 +234,21 @@ export default function Home() {
         <header className="flex-shrink-0 flex flex-col gap-2 border-b border-border">
         <div className="flex items-center gap-3 p-4 sm:p-6 w-full">
           <SidebarTrigger className="md:hidden -ml-1 shrink-0" />
-          <div className="flex flex-1 flex-row flex-nowrap items-center justify-between gap-3 min-w-0 w-full">
-            <div className="flex flex-1 flex-row flex-nowrap items-center justify-center gap-2 min-w-0 overflow-hidden">
-            <div data-tour-id="chat-model-selector" className="flex-1 md:max-w-[250px] min-w-0">
+          <div className={cn("flex flex-1 flex-row items-center justify-between gap-3 min-w-0 w-full", selectedRubric === "rl4f" ? "flex-wrap" : "flex-nowrap")}>
+            <div className={cn("flex flex-1 flex-row items-center justify-center gap-2 min-w-0", selectedRubric === "rl4f" ? "flex-wrap" : "flex-nowrap")}>
+            <div data-tour-id="chat-model-selector" className={cn("flex-1 md:max-w-[250px] min-w-0", selectedRubric === "rl4f" && "min-w-[140px]")}>
               <MultiModelSelector
                 values={selectedModels}
                 onChange={handleMultiModelChange}
               />
             </div>
-            <div data-tour-id="chat-evaluation-method-selector" className="flex-1 md:max-w-[250px] min-w-0">
+            <div data-tour-id="chat-evaluation-method-selector" className={cn("flex-1 md:max-w-[250px] min-w-0", selectedRubric === "rl4f" && "min-w-[140px]")}>
               <EvaluationMethodSelector
                 value={selectedRubric}
                 onChange={handleEvaluationMethodChange}
               />
             </div>
-            <div className="flex-1 md:max-w-[250px] min-w-0">
+            <div className={cn("flex-1 md:max-w-[250px] min-w-0", selectedRubric === "rl4f" && "min-w-[140px]")}>
               <RubricSelector
                 value={selectedRubricId}
                 onChange={setSelectedRubricId}
@@ -255,7 +256,7 @@ export default function Home() {
               />
             </div>
             {selectedRubric === "rl4f" && (
-              <div className="flex-1 md:max-w-[150px] min-w-0">
+              <div className="flex-1 min-w-[120px] md:max-w-[150px]">
                 <IterationsSelector
                   value={iterations}
                   onChange={setIterations}
