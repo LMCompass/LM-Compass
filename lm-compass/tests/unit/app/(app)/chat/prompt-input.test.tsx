@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PromptInputComponent } from "./prompt-input";
+import { PromptInputComponent } from "@/app/(app)/chat/prompt-input";
 import type { Message } from "@/lib/types";
 
 // ---------------------------------------------------------------------------

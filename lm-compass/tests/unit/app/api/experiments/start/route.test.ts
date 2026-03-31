@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ExperimentItemStatus, ExperimentStatus } from '@/lib/types';
 import { BATCH_INSERT_SIZE } from '@/lib/experiments';
-import { POST } from './route';
+import { POST } from '@/app/api/experiments/start/route';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/utils/supabase/server';
 import { estimateExperimentCostLive } from '@/lib/cost';

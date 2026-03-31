@@ -5,7 +5,7 @@ import {
   loadDefaultRubricText,
   parseDefaultRubric,
   type RubricCategory,
-} from "./rubrics";
+} from "@/lib/rubrics";
 
 describe("parseDefaultRubric", () => {
   it("parses valid rubric lines and ignores malformed lines", () => {

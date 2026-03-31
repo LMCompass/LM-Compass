@@ -28,7 +28,7 @@ vi.mock("@/lib/evaluation", () => ({
   GradeHITLEvaluator: vi.fn(),
 }));
 
-import { POST } from "./route";
+import { POST } from "@/app/api/chat/route";
 import { auth } from "@clerk/nextjs/server";
 import { createClient, createAdminClient } from "@/utils/supabase/server";
 import { decrypt } from "@/lib/encryption";

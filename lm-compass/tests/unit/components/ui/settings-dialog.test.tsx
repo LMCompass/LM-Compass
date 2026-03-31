@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { SettingsDialog } from "./settings-dialog";
+import { SettingsDialog } from "@/components/ui/settings-dialog";
 import { saveOpenRouterKey } from "@/app/(app)/settings/actions";
 
 vi.mock("@/app/(app)/settings/actions", () => ({
