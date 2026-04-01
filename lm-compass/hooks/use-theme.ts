@@ -4,11 +4,11 @@ import { useTheme as useNextTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 export function useTheme() {
-  const { theme, setTheme } = useNextTheme();
+  const { setTheme, resolvedTheme } = useNextTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Only allow "light" or "dark", no "system"
-  const currentTheme = theme === "dark" ? "dark" : "light";
+  // Use resolvedTheme so "system" (default) still matches the real appearance (OS light/dark).
+  const currentTheme = resolvedTheme === "dark" ? "dark" : "light";
 
   useEffect(() => {
     setMounted(true);
