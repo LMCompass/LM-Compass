@@ -1,9 +1,6 @@
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { test, expect } from "@playwright/test";
-import {
-  getTestUserId,
-  signInTestUser,
-} from "./helpers";
+import { getTestUserId, signInAsTestUser } from "./clerk-auth";
 
 // ---------------------------------------------------------------------------
 // Unauthenticated tests
@@ -82,7 +79,7 @@ test.describe("Authenticated access", () => {
       return;
     }
 
-    await signInTestUser(page, userId);
+    await signInAsTestUser(page, userId);
   });
 
   test("authenticated user sees prompt input or API key banner on /chat", async ({
