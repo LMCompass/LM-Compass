@@ -1,42 +1,10 @@
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { test, expect } from "@playwright/test";
-import fs from "node:fs";
-import path from "node:path";
-
-const TEST_USER_FILE = path.resolve(__dirname, ".test-user.json");
-
-function getTestUserId(): string | null {
-  try {
-    const data = JSON.parse(fs.readFileSync(TEST_USER_FILE, "utf-8"));
-    return data.userId ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Creates a one-time sign-in token via the Clerk Backend API.
- * This bypasses all configured auth strategies (password, OAuth, etc.)
- * and works with any existing user.
- */
-async function createSignInToken(userId: string): Promise<string> {
-  const res = await fetch("https://api.clerk.com/v1/sign_in_tokens", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ user_id: userId }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Failed to create sign-in token: ${res.status} ${err}`);
-  }
-
-  const { token } = await res.json();
-  return token;
-}
+import {
+  getTestUserId,
+  createSignInToken,
+  signInTestUser,
+} from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Unauthenticated tests
@@ -115,44 +83,7 @@ test.describe("Authenticated access", () => {
       return;
     }
 
-    const ticket = await createSignInToken(userId);
-
-    await setupClerkTestingToken({ page });
-    await page.goto("/");
-
-    // Wait for Clerk to fully initialize
-    await page.waitForFunction(
-      () => (window as unknown as { Clerk?: { loaded: boolean } }).Clerk?.loaded === true,
-      null,
-      { timeout: 15_000 }
-    );
-
-    // Sign in via the ticket strategy (bypasses password/OAuth requirements)
-    await page.evaluate(async (t) => {
-      const clerk = (
-        window as unknown as {
-          Clerk: {
-            client: {
-              signIn: {
-                create: (params: {
-                  strategy: string;
-                  ticket: string;
-                }) => Promise<{ createdSessionId: string }>;
-              };
-            };
-            setActive: (params: { session: string }) => Promise<void>;
-          };
-        }
-      ).Clerk;
-      const signIn = await clerk.client.signIn.create({
-        strategy: "ticket",
-        ticket: t,
-      });
-      await clerk.setActive({ session: signIn.createdSessionId });
-    }, ticket);
-
-    // Wait for auth state to propagate
-    await page.waitForTimeout(1000);
+    await signInTestUser(page, userId);
   });
 
   test("authenticated user sees prompt input or API key banner on /chat", async ({
