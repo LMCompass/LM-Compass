@@ -127,14 +127,14 @@ export async function mockHasApiKey(page: Page) {
           status: response.status(),
           headers: response.headers(),
           body: rewritten,
-        }).catch(() => {});
+        }).catch(() => { });
       } else {
         // Not the hasApiKey action — pass through untouched
-        await route.fulfill({ response }).catch(() => {});
+        await route.fulfill({ response }).catch(() => { });
       }
-    } catch (e) {
+    } catch {
       // The browser/page might be closing, ignore the error
-      await route.fallback().catch(() => {});
+      await route.fallback().catch(() => { });
     }
   });
 }
@@ -214,7 +214,7 @@ export type MockSSEOptions = {
   }>;
   /** Whether to include the "refining" phase (for rl4f) */
   includeRefiningPhase?: boolean;
-  /** Delay in ms between each SSE phase (default: 100) */
+  /** Delay in ms between each SSE phase (default: 500) */
   phaseDelay?: number;
   /** If true, delay the response significantly (for stop/cancel tests) */
   slowResponse?: boolean;
@@ -225,67 +225,110 @@ export type MockSSEOptions = {
  * with true chunk-by-chunk delays.
  */
 export async function mockChatSSE(page: Page, options: MockSSEOptions) {
-  const delay = options.phaseDelay ?? 500;
-  
   // We need to pass options into the browser context, so we stringify it
   const optionsJson = JSON.stringify(options);
-  
+
   await page.evaluate((optsStr) => {
     const opts = JSON.parse(optsStr);
     const delayMs = opts.phaseDelay ?? 500;
-    
+
     // Store original fetch if not already stored
     if (!window.__originalFetch) {
       window.__originalFetch = window.fetch;
     }
     const OriginalFetch = window.__originalFetch;
-    
+
     window.fetch = async (input, init) => {
       const url = typeof input === "string" ? input : (input instanceof Request ? input.url : "");
-      
+
       if (url.includes("/api/chat") && init?.method === "POST") {
+        if (init?.signal?.aborted) {
+          return Promise.reject(new DOMException('Aborted', 'AbortError'));
+        }
+
+        let cancelStream = () => { };
+
         const stream = new ReadableStream({
           async start(controller) {
             const encoder = new TextEncoder();
-            
-            // 1. Querying phase
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ phase: "querying" })}\n\n`));
-            
-            if (opts.slowResponse) {
-              await new Promise(r => setTimeout(r, 60000)); // Hang indefinitely
-            } else {
-              await new Promise(r => setTimeout(r, delayMs));
+            let timerId: ReturnType<typeof setTimeout> | null = null;
+            let rejectDelay: ((reason?: Error | DOMException) => void) | null = null;
+            let isCancelled = false;
+
+            cancelStream = () => {
+              isCancelled = true;
+              if (timerId) clearTimeout(timerId);
+              if (rejectDelay) rejectDelay(new DOMException('Aborted', 'AbortError'));
+            };
+
+            const handleAbort = () => {
+              cancelStream();
+              // Try to error the stream if fetch is aborted externally
+              try { controller.error(new DOMException('Aborted', 'AbortError')); } catch (e) { }
+            };
+
+            if (init?.signal) {
+              init.signal.addEventListener('abort', handleAbort);
             }
-            
-            // 2. Evaluating phase
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ phase: "evaluating" })}\n\n`));
-            await new Promise(r => setTimeout(r, delayMs));
-            
-            // 3. Refining phase
-            if (opts.includeRefiningPhase) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ phase: "refining" })}\n\n`));
-              await new Promise(r => setTimeout(r, delayMs));
-            }
-            
-            // 4. Complete
-            if (opts.results) {
-              const completePayload: Record<string, unknown> = {
-                phase: "complete",
-                results: opts.results,
-              };
-              if (opts.evaluationMetadata) {
-                completePayload.evaluationMetadata = opts.evaluationMetadata;
+
+            const delay = (ms: number) => new Promise((resolve, reject) => {
+              if (isCancelled) return reject(new DOMException('Aborted', 'AbortError'));
+              rejectDelay = reject;
+              timerId = setTimeout(() => {
+                rejectDelay = null;
+                resolve(undefined);
+              }, ms);
+            });
+
+            try {
+              // 1. Querying phase
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ phase: "querying" })}\n\n`));
+
+              if (opts.slowResponse) {
+                await delay(60000); // Hang indefinitely
+              } else {
+                await delay(delayMs);
               }
-              if (opts.iterationResults) {
-                completePayload.iterationResults = opts.iterationResults;
+
+              // 2. Evaluating phase
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ phase: "evaluating" })}\n\n`));
+              await delay(delayMs);
+
+              // 3. Refining phase
+              if (opts.includeRefiningPhase) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ phase: "refining" })}\n\n`));
+                await delay(delayMs);
               }
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(completePayload)}\n\n`));
+
+              // 4. Complete
+              if (opts.results) {
+                const completePayload: Record<string, unknown> = {
+                  phase: "complete",
+                  results: opts.results,
+                };
+                if (opts.evaluationMetadata) {
+                  completePayload.evaluationMetadata = opts.evaluationMetadata;
+                }
+                if (opts.iterationResults) {
+                  completePayload.iterationResults = opts.iterationResults;
+                }
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(completePayload)}\n\n`));
+              }
+
+              controller.close();
+            } catch {
+              // Ignore intentional abort errors from our delay
+            } finally {
+              if (init?.signal) {
+                init.signal.removeEventListener('abort', handleAbort);
+              }
             }
-            
-            controller.close();
+          },
+          cancel() {
+            cancelStream();
           }
         });
-        
+
         return new Response(stream, {
           headers: {
             "Content-Type": "text/event-stream",
@@ -294,7 +337,7 @@ export async function mockChatSSE(page: Page, options: MockSSEOptions) {
           }
         });
       }
-      
+
       return OriginalFetch(input, init);
     };
   }, optionsJson);

@@ -2,7 +2,6 @@ import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { test, expect } from "@playwright/test";
 import {
   getTestUserId,
-  createSignInToken,
   signInTestUser,
 } from "./helpers";
 

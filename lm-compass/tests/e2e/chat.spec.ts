@@ -1,4 +1,3 @@
-import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { test, expect } from "@playwright/test";
 import {
   getTestUserId,
@@ -671,7 +670,7 @@ test.describe("Chat Workflow", () => {
     test("chat appears in sidebar after sending a message", async ({
       page,
     }) => {
-      // Unroute the mock pricing so the real chat can be saved
+      // Select a model before sending a message
       await selectModels(page, ["GPT-5 Mini"]);
 
       await mockChatSSE(page, {
