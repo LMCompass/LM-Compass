@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     let apiKey: string;
     try {
       apiKey = decrypt(userSettings.openrouter_api_key);
-    } catch (e) {
+    } catch {
       return NextResponse.json(
         { error: 'Failed to decrypt API key. Please try again.' },
         { status: 500 }

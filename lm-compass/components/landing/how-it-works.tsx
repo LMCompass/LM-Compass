@@ -55,7 +55,6 @@ const content = [
             </span>
           </div>
           <div className="relative flex items-center justify-center h-36 mt-2">
-            {/* Triangle + nodes share one viewBox so vertices and circles align */}
             <svg
               className="h-full w-full max-w-[min(100%,18rem)]"
               viewBox="0 0 240 150"

@@ -233,7 +233,6 @@ export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: Add
             {isEditMode ? "Modify your evaluation rubric" : "Create a new evaluation rubric"}
           </DialogDescription>
         </DialogHeader>
-        {/* Mode toggle */}
         <div className="mt-2 flex flex-wrap gap-2">
           <Button
             type="button"
@@ -254,7 +253,6 @@ export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: Add
         </div>
 
         <div className="space-y-4 py-4">
-          {/* Common: name */}
           <div className="space-y-2">
             <label htmlFor="rubric-name" className="text-sm font-medium">
               Name
@@ -268,7 +266,6 @@ export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: Add
             />
           </div>
 
-          {/* Common: evaluation methods/categories */}
           <div className="space-y-2">
             <label className="text-sm font-medium">
               Applies to evaluation methods
@@ -327,7 +324,6 @@ export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: Add
           </div>
 
           {mode === "custom" ? (
-            // Custom rubric content
             <div className="space-y-2">
               <label htmlFor="rubric-description" className="text-sm font-medium">
                 Description
@@ -343,7 +339,6 @@ export function AddRubricDialog({ open, onOpenChange, onSave, initialData }: Add
               />
             </div>
           ) : (
-            // Weight-adjusted default mode
             <div className="space-y-3">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-sm font-medium">Default categories</span>

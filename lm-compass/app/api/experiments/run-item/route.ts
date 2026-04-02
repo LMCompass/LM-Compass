@@ -13,14 +13,7 @@ import {
 } from '@/lib/experiments';
 import { loadDefaultRubricText } from '@/lib/rubrics';
 
-/**
- * Adjusts the rubric to include the expected output as the ground truth
- * @param rubric The base rubric criteria
- * @param expectedOutput The ground truth/expected answer
- * @returns Modified rubric that incorporates the expected output
- */
 function adjustRubricWithExpectedOutput(rubric: string, expectedOutput: string): string {
-  // Inject the expected output into the rubric
   const adjustedRubric = `${rubric} 
   ${expectedOutput}
   IMPORTANT: When evaluating responses, compare them against the above ground truth. Responses that align with or correctly produce the expected output should receive higher scores, especially in Correctness & Accuracy. Responses that deviate significantly from the ground truth should be penalized accordingly.`;
@@ -74,7 +67,6 @@ export async function POST(req: Request) {
 
     const { input_query, expected_output, models, rubric, evaluationMethod, iterations } = await req.json();
 
-    // Validate required inputs
     if (!input_query) {
       return NextResponse.json(
         { error: 'input_query is required' },
@@ -82,7 +74,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Normalize to models array - handle both single model (legacy) and multi-model cases
     let modelsToQuery: string[];
 
     if (Array.isArray(models) && models.length > 0) {
@@ -90,14 +81,12 @@ export async function POST(req: Request) {
     } else if (models) {
       modelsToQuery = [models];
     } else {
-      // No models provided - return error
       return NextResponse.json(
         { error: 'No models selected. Please select at least one model before querying.' },
         { status: 400 }
       );
     }
 
-    // Create messages array for the model query
     const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
       {
         role: 'user',
@@ -105,7 +94,6 @@ export async function POST(req: Request) {
       },
     ];
 
-    // Query all models and capture execution time per model
     const allResults = await Promise.all(
       modelsToQuery.map(async (modelId: string) => {
         const startedAtMs = Date.now();
@@ -143,7 +131,6 @@ export async function POST(req: Request) {
       })
     );
 
-    // Filter successful responses for evaluation
     const successfulResults: ModelResponse[] = allResults
       .filter((r) => {
         if (r.error) return false;
@@ -155,7 +142,6 @@ export async function POST(req: Request) {
         content: r.message?.content || '',
       }));
 
-    // If we don't have at least 2 successful responses, return error
     if (successfulResults.length < 2) {
       return NextResponse.json(
         {
@@ -198,36 +184,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // Load the base rubric (from provided rubric text or default file)
     const baseRubric =
       typeof rubric === 'string' && rubric.trim().length > 0
         ? rubric
         : loadDefaultRubricText();
 
-    // Adjust rubric if expected_output is provided
     const finalRubric = expected_output
       ? adjustRubricWithExpectedOutput(baseRubric, expected_output)
       : baseRubric;
 
-    // Create evaluator based on selected method
     let evaluator;
     if (resolvedEvaluationMethod === 'n-prompt-based') {
       evaluator = new NPromptBasedEvaluator(llmClient);
     } else if (resolvedEvaluationMethod === 'rl4f') {
       evaluator = new RL4FEvaluator(llmClient);
     } else {
-      // Default to n^2 prompt-based
       evaluator = new PromptBasedEvaluator(llmClient);
     }
 
-    // Run evaluation
     const evaluationResult = await evaluator.evaluate(successfulResults, {
       userQuery: input_query,
       rubric: finalRubric,
       iterations: resolvedIterations,
     });
 
-    // Aggregate reasoning for each model
     const modelReasoning: Record<string, string[]> = {};
     successfulResults.forEach((r) => {
       modelReasoning[r.model] = [];
@@ -238,7 +218,6 @@ export async function POST(req: Request) {
       }
     });
 
-    // Create evaluation metadata
     const evaluationMetadata: EvaluationMetadata = {
       winnerModel: evaluationResult.winner ? evaluationResult.winner.model : null,
       scores: evaluationResult.scores,
@@ -247,7 +226,6 @@ export async function POST(req: Request) {
       tiedModels: evaluationResult.tiedModels,
     };
 
-    // Return the evaluation results
     return NextResponse.json({
       success: true,
       evaluationMetadata,

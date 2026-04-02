@@ -357,7 +357,7 @@ export default function ExperimentDetailPage() {
     };
 
     fetchRubric();
-  }, [experiment?.configuration?.rubric_id, supabase]);
+  }, [experiment?.configuration, supabase]);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {

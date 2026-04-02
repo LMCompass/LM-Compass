@@ -58,11 +58,6 @@ interface ParsedCSV {
   rows: Record<string, string>[];
 }
 
-type RubricOption = {
-  id: string;
-  title: string;
-};
-
 const NONE_VALUE = "__none__";
 
 const EVALUATION_METHOD_LABELS: Record<ExperimentEvaluationMethod, string> = {
