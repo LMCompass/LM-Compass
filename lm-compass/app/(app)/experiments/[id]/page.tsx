@@ -331,10 +331,10 @@ export default function ExperimentDetailPage() {
   }, [experiment]);
 
   useEffect(() => {
-    const config = experiment?.configuration;
-    if (!config?.rubric_id) return;
+    const rubricId = experiment?.configuration?.rubric_id;
+    if (!rubricId) return;
 
-    if (config.rubric_id === "default") {
+    if (rubricId === "default") {
       setRubricTitle("Default Rubric");
       return;
     }
@@ -344,20 +344,20 @@ export default function ExperimentDetailPage() {
         const { data } = await supabase
           .from("rubrics")
           .select("rubric_title")
-          .eq("id", config.rubric_id)
+          .eq("id", rubricId)
           .maybeSingle();
 
         if (data?.rubric_title) {
           setRubricTitle(data.rubric_title);
         } else {
-          setRubricTitle(config.rubric_id);
+          setRubricTitle(rubricId);
         }
       } catch {
       }
     };
 
     fetchRubric();
-  }, [experiment?.configuration, supabase]);
+  }, [experiment?.configuration?.rubric_id, supabase]);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
