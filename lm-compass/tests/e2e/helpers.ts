@@ -2,6 +2,8 @@ import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { type Page, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import type { EvaluationMetadata } from "../../lib/evaluation/types";
+import type { RL4FIterationResult } from "../../lib/evaluation";
 
 const TEST_USER_FILE = path.resolve(__dirname, ".test-user.json");
 
@@ -182,29 +184,11 @@ export type MockSSEOptions = {
     message?: { role: string; content: string };
     error?: string;
   }>;
-  evaluationMetadata?: {
-    winnerModel: string | null;
-    scores: Array<{
-      judgeModel: string;
-      evaluatedModel: string;
-      score: number | null;
-      reasoning: string | null;
-    }>;
-    meanScores: Record<string, number>;
-    modelReasoning: Record<string, string[]>;
-    tiedModels: string[];
-  };
-  iterationResults?: Array<{
-    iteration: number;
-    scores: Array<{
-      judgeModel: string;
-      evaluatedModel: string;
-      score: number | null;
-      reasoning: string | null;
-    }>;
-    meanScores: Record<string, number>;
-    winner: { model: string; meanScore: number } | null;
-  }>;
+  /** Optional evaluation metadata */
+  evaluationMetadata?: EvaluationMetadata;
+  /** Optional iteration results for rl4f */
+  iterationResults?: RL4FIterationResult[];
+  /** Whether to include the "refining" phase (for rl4f) */
   includeRefiningPhase?: boolean;
   phaseDelay?: number;
   slowResponse?: boolean;
