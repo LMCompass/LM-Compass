@@ -90,7 +90,6 @@ export function FeaturesGrid() {
                 boxShadow: "0 0 0 1px rgba(255,255,255,0.04) inset",
               }}
             >
-              {/* Top edge: gradient + glow that fades to nothing at ends (like container scroll) */}
               <div className="absolute left-0 right-0 top-0 z-10">
                 <div
                   className="absolute inset-x-0 -top-px h-3 rounded-t-2xl opacity-90"
@@ -108,7 +107,6 @@ export function FeaturesGrid() {
                   }}
                 />
               </div>
-              {/* Very subtle orange tint spread across card, low opacity */}
               <div
                 className="pointer-events-none absolute inset-0 rounded-2xl"
                 style={{
@@ -116,7 +114,6 @@ export function FeaturesGrid() {
                     "linear-gradient(160deg, rgba(234,88,12,0.06) 0%, transparent 35%, rgba(255,255,255,0.03) 70%, rgba(0,0,0,0.03) 100%)",
                 }}
               />
-              {/* Glass-like overlay */}
               <div
                 className="pointer-events-none absolute inset-0 rounded-2xl"
                 style={{

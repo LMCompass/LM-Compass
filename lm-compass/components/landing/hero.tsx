@@ -62,9 +62,7 @@ export function Hero() {
             </div>
           }
         >
-          {/* App interface mockup */}
           <div className="h-full w-full flex flex-col bg-background rounded-lg overflow-hidden shadow-[0_4px_20px_-4px_rgba(0,0,0,0.2),0_8px_32px_-8px_rgba(0,0,0,0.12)]">
-            {/* Mock header */}
             <div className="flex items-center gap-3 p-4 border-b border-border/60">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/80 text-sm text-foreground/70">
                 <span className="size-2 rounded-full bg-chart-1" />
@@ -84,9 +82,7 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Mock chat area */}
             <div className="flex-1 p-6 space-y-4 overflow-hidden">
-              {/* User message */}
               <div className="flex justify-end">
                 <div className="max-w-[70%] px-4 py-3 rounded-2xl bg-primary text-primary-foreground text-sm">
                   Compare the trade-offs between microservices and monolithic
@@ -94,7 +90,6 @@ export function Hero() {
                 </div>
               </div>
 
-              {/* Model responses */}
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { name: "Gemini 3.1 Pro", color: "chart-3", rank: "#1" },
@@ -127,7 +122,6 @@ export function Hero() {
                 )}
               </div>
 
-              {/* Consensus bar */}
               <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/15">
                 <span className="text-xs font-medium text-primary">
                   Consensus Winner:
@@ -139,7 +133,6 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Mock input */}
             <div className="p-4 border-t border-border/60">
               <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-secondary/60">
                 <span className="text-sm text-white/60">

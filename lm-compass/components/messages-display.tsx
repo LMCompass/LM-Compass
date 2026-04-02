@@ -70,13 +70,10 @@ export function MessagesDisplay({
     return map;
   }, []);
 
-  // Track when chatId changes - if it changes, messages were likely loaded from storage
   useEffect(() => {
     if (chatId !== lastChatIdRef.current && lastChatIdRef.current !== null) {
-      // Chat ID changed, so messages were loaded from storage
       isChatLoadedFromStorageRef.current = true;
     } else if (chatId !== lastChatIdRef.current && lastChatIdRef.current === null) {
-      // First time setting chatId, check if messages have sequenceOrder (loaded from storage)
       const allHaveSequenceOrder = messages.length > 0 && messages.every(
         (msg) => msg.sequenceOrder !== undefined
       );
@@ -85,13 +82,8 @@ export function MessagesDisplay({
     lastChatIdRef.current = chatId;
   }, [chatId, messages]);
 
-  // When new messages are added in the current session (not loading from history),
-  // mark chat as active (not loaded from storage)
   useEffect(() => {
-    // If messages increased and we're not loading more (which means loading from history),
-    // then new messages were added in the current session
     if (messages.length > prevMessageCountRef.current && !isLoadingMore) {
-      // Check if new messages don't have sequenceOrder (they're newly created)
       const hasNewMessages = messages.some(
         (msg) => msg.sequenceOrder === undefined
       );
@@ -101,16 +93,8 @@ export function MessagesDisplay({
     }
   }, [messages.length, isLoadingMore, messages]);
 
-  /**
-   * Determines if a message is "active" (currently being worked on) vs "previous" (from a completed chat).
-   * A message is active if:
-   * - It's the last assistant message with multiple results AND
-   *   (the chat was not loaded from storage OR the message itself doesn't have sequenceOrder)
-   * - All other messages with multiple results are considered "previous"
-   */
   const isMessageActive = useMemo(() => {
     return (message: MessageType, messageIndex: number): boolean => {
-      // Only assistant messages with multiple results can be active
       if (
         message.role !== "assistant" ||
         !message.multiResults ||
@@ -119,7 +103,6 @@ export function MessagesDisplay({
         return false;
       }
 
-      // Find the last assistant message with multiple results
       let lastAssistantMessageIndex = -1;
       for (let i = messages.length - 1; i >= 0; i--) {
         const msg = messages[i];
@@ -133,7 +116,6 @@ export function MessagesDisplay({
         }
       }
 
-      // If this is not the last assistant message with multiple results, it's previous
       if (messageIndex !== lastAssistantMessageIndex) {
         return false;
       }
@@ -161,7 +143,6 @@ export function MessagesDisplay({
   ) => {
     setWinnerSelectionError(null);
 
-    // Update local state
     const updatedMessages = messages.map((msg) =>
       msg.id === messageId
         ? {
@@ -174,11 +155,8 @@ export function MessagesDisplay({
     
     setMessages(updatedMessages);
 
-    // Save to database after user selects a winner
     if (chatId && user?.id) {
       try {
-        // Load ALL existing messages from database to preserve full conversation
-        // This ensures we don't lose older messages that weren't loaded in the UI
         const { messages: allExistingMessages, error: loadError } = await loadAllMessages(
           supabase,
           chatId,
@@ -205,7 +183,6 @@ export function MessagesDisplay({
             throw new Error(saveResult.error || "Failed to save winner selection.");
           }
         } else {
-          // Fallback: if we can't load all messages, save what we have
           const saveResult = await saveChat(supabase, chatId, user.id, updatedMessages);
           if (!saveResult.success) {
             throw new Error(saveResult.error || "Failed to save winner selection.");
@@ -221,7 +198,6 @@ export function MessagesDisplay({
     }
   };
 
-  // Store scroll height and position before loading more messages starts
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
@@ -232,18 +208,15 @@ export function MessagesDisplay({
     }
   }, [isLoadingMore, messagesContainerRef]);
 
-  // Preserve scroll position after loading more messages - use useLayoutEffect for immediate execution
   useLayoutEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
 
-    // If messages were added (count increased) and we just finished loading
     if (messages.length > prevMessageCountRef.current && prevMessageCountRef.current > 0) {
       const scrollHeightAfter = container.scrollHeight;
       const scrollDiff = scrollHeightAfter - scrollHeightBeforeRef.current;
       
       if (scrollDiff > 0) {
-        // Maintain the same visual position by adding the height difference to the previous scroll position
         const newScrollTop = scrollTopBeforeRef.current + scrollDiff;
         container.scrollTop = newScrollTop;
       }
@@ -252,13 +225,10 @@ export function MessagesDisplay({
     prevMessageCountRef.current = messages.length;
   }, [messages, messagesContainerRef]);
 
-  // Determine if we should show the "Load Previous Messages" button
   const shouldShowLoadMoreButton = useMemo(() => {
     if (!hasMoreMessages || messages.length === 0) {
       return false;
     }
-    // Don't show button if oldest message doesn't have sequenceOrder
-    // or is at the beginning (sequenceOrder 0)
     const oldestMessage = messages[0];
     if (!oldestMessage?.sequenceOrder) {
       return false;
@@ -307,7 +277,6 @@ export function MessagesDisplay({
             const hasNoWinner = evaluationMetadata?.winnerModel === null;
             const userSelectedWinner = message.userSelectedWinner;
 
-            // displayModel will be decided after we know if phase2 has completed (may override winner)
             let displayModel: string | null =
               userSelectedWinner || evaluationMetadata?.winnerModel || null;
             const shouldShowSelectionButtons =
@@ -321,7 +290,6 @@ export function MessagesDisplay({
             const phase2Result = hitlPhase2Results[message.id];
             const hasPhase2 = !!phase2Result;
 
-            // If phase 2 has completed, compute the winner based on updated scores
             let phase2WinnerModel: string | null = null;
             if (phase2Result) {
               const entries = Object.entries(phase2Result.graderResults);
@@ -343,7 +311,6 @@ export function MessagesDisplay({
               }
             }
 
-            // For display bubble, prefer user-selected winner, then phase2 winner, then phase1 winner
             if (!userSelectedWinner && phase2WinnerModel) {
               displayModel = phase2WinnerModel;
             }
@@ -360,7 +327,6 @@ export function MessagesDisplay({
 
             return (
               <div key={message.id} className="max-w-5xl mx-auto space-y-4">
-                {/* HITL rubric / form/result shown before model responses when disagreement is detected */}
                 {isHITLTriggered && (
                   <div className="mt-4">
                     {phase2Result ? (
@@ -404,7 +370,6 @@ export function MessagesDisplay({
                             })}
                           </ul>
                         </div>
-                        {/* Phase 2 winner summary based on updated scores */}
                         {(() => {
                           const entries = Object.entries(phase2Result.graderResults);
                           if (entries.length === 0) return null;
@@ -454,8 +419,6 @@ export function MessagesDisplay({
                   </div>
                 )}
 
-                {/* Only show model response cards for active messages.
-                    When HITL triggers, hide them until phase 2 completes (then show again). */}
                 {hasMultipleResults &&
                   message.multiResults &&
                   isActive &&
@@ -464,14 +427,12 @@ export function MessagesDisplay({
                     {message.multiResults.map((r) => {
                       const cardKey = `${message.id}-${r.model}`;
                       const label = modelLabelMap[r.model] || r.model;
-                      // Winner is normally based on evaluationMetadata; after phase2, override with updated winner
                       let isWinner =
                         message.evaluationMetadata?.winnerModel === r.model;
                       if (phase2WinnerModel) {
                         isWinner = phase2WinnerModel === r.model;
                       }
                       const isUserSelected = userSelectedWinner === r.model;
-                      // Default to phase 1 meanScores; if phase 2 has run, override with updated averages
                       let score =
                         message.evaluationMetadata?.meanScores[r.model];
                       if (phase2Result) {
@@ -504,7 +465,6 @@ export function MessagesDisplay({
                   </div>
                 )}
 
-                {/* Winner / comparison panel for active messages (hidden when HITL triggers) */}
                 {hasEvaluation && evaluationMetadata && isActive && (
                   <div>
                     {!isHITLTriggered && (
@@ -545,7 +505,6 @@ export function MessagesDisplay({
                   </div>
                 )}
 
-                {/* Single Result or Regular Messages */}
                 {message.role === "assistant" &&
                   message.multiResults &&
                   message.multiResults.length === 1 ? (
@@ -561,7 +520,6 @@ export function MessagesDisplay({
                   </div>
                 ) : null}
 
-                {/* Error Messages - Assistant messages without multiResults */}
                 {message.role === "assistant" &&
                   !message.multiResults &&
                   message.content &&
@@ -578,7 +536,6 @@ export function MessagesDisplay({
                   </div>
                 ) : null}
 
-                {/* Regular Assistant Messages (without multiResults) */}
                 {message.role === "assistant" &&
                   !message.multiResults &&
                   message.content &&

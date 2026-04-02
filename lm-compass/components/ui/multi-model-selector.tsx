@@ -99,7 +99,6 @@ export function MultiModelSelector({
     }
   }, [])
 
-  // Sort models by selected status, so the selected models are at the top
   const sortedModels = React.useMemo(() => {
     return [...models].sort((a, b) => {
       const aSelected = values.includes(a.value)
@@ -116,7 +115,6 @@ export function MultiModelSelector({
       onChange(values.filter((v) => v !== val))
     } else {
       if (values.length >= 4) {
-        // TODO: Show a toast notification that the user has selected the maximum number of models
         return
       }
       onChange([...values, val])

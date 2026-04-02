@@ -33,7 +33,6 @@ export function NoiseBackground({
 
   return (
     <div className={cn("relative overflow-hidden", containerClassName)}>
-      {/* Gradient layers */}
       {gradientColors.map((color, index) => (
         <motion.div
           key={index}
@@ -67,7 +66,6 @@ export function NoiseBackground({
         />
       ))}
 
-      {/* Noise texture overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{ opacity: noiseIntensity }}
@@ -85,12 +83,10 @@ export function NoiseBackground({
         </svg>
       </div>
 
-      {/* Backdrop blur */}
       {backdropBlur && (
         <div className="absolute inset-0 backdrop-blur-3xl" />
       )}
 
-      {/* Content */}
       <div className={cn("relative z-10", className)}>{children}</div>
     </div>
   );

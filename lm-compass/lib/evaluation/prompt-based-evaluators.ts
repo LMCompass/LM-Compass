@@ -333,12 +333,12 @@ export class PromptBasedEvaluator implements IEvaluationService {
     }
 
     const maxScore = Math.max(...scores);
-    const modelsWithMaxScore = Object.entries(meanScores).filter(([_, score]) => score === maxScore);
+    const modelsWithMaxScore = Object.entries(meanScores).filter(([, score]) => score === maxScore);
 
     if (modelsWithMaxScore.length > 1) {
       return {
         winner: null,
-        tiedModels: modelsWithMaxScore.map(([model, _]) => model)
+        tiedModels: modelsWithMaxScore.map(([model]) => model)
       };
     }
 
@@ -588,12 +588,12 @@ export class NPromptBasedEvaluator implements IEvaluationService {
     }
 
     const maxScore = Math.max(...scores);
-    const modelsWithMaxScore = Object.entries(meanScores).filter(([_, score]) => score === maxScore);
+    const modelsWithMaxScore = Object.entries(meanScores).filter(([, score]) => score === maxScore);
 
     if (modelsWithMaxScore.length > 1) {
       return {
         winner: null,
-        tiedModels: modelsWithMaxScore.map(([model, _]) => model)
+        tiedModels: modelsWithMaxScore.map(([model]) => model)
       };
     }
 

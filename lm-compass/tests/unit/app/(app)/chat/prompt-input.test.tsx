@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PromptInputComponent } from "@/app/(app)/chat/prompt-input";
 import type { Message } from "@/lib/types";
@@ -636,7 +636,7 @@ describe("PromptInputComponent", () => {
       });
 
       const phaseCalls = props.setLoadingPhase.mock.calls.map(
-        (c: [string]) => c[0]
+        (c: unknown[]) => c[0] as string
       );
       expect(phaseCalls[0]).toBe("querying");
       expect(phaseCalls[phaseCalls.length - 1]).toBe("querying");
@@ -654,7 +654,7 @@ describe("PromptInputComponent", () => {
       });
 
       const phaseCalls = props.setLoadingPhase.mock.calls.map(
-        (c: [string]) => c[0]
+        (c: unknown[]) => c[0] as string
       );
       expect(phaseCalls[phaseCalls.length - 1]).toBe("querying");
     });

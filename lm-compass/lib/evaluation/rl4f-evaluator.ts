@@ -393,7 +393,7 @@ Instructions:
   private calculateTiedModels(meanScores: Record<string, number>): string[] {
     const maxScore = Math.max(...Object.values(meanScores));
     return Object.entries(meanScores)
-      .filter(([_, score]) => score === maxScore)
+      .filter(([, score]) => score === maxScore)
       .map(([model]) => model);
   }
 
