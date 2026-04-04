@@ -2,7 +2,7 @@
 
 ## Overview
 
-**LM Compass** is an open-source evaluation platform for Large Language Models (LLMs) and Small Language Models (SLMs). 
+**LM Compass** is an evaluation platform for Large Language Models (LLMs) and Small Language Models (SLMs). 
 
 ### Objective
 To provide an objective, research-backed framework for evaluating AI model responses. LM Compass allows researchers and developers to find the most accurate and context-aware models for their specific data or queries.
