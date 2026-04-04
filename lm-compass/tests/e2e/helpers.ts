@@ -102,6 +102,56 @@ export async function mockHasApiKey(page: Page) {
   });
 }
 
+export async function mockApiKeyConfigurationFlow(
+  page: Page,
+  options: { initialHasKey?: boolean } = {},
+) {
+  let hasKey = options.initialHasKey ?? false;
+
+  await page.route("**/chat", async (route, request) => {
+    const isServerAction =
+      request.method() === "POST" &&
+      request.headers()["next-action"] !== undefined;
+
+    if (!isServerAction) {
+      return route.fallback();
+    }
+
+    try {
+      const response = await route.fetch();
+      const body = await response.text();
+      let rewritten = body;
+      let changed = false;
+
+      if (rewritten.includes("hasKey")) {
+        rewritten = rewritten.replace(
+          /"hasKey"\s*:\s*(true|false)/g,
+          `"hasKey":${hasKey}`,
+        );
+        changed = true;
+      }
+
+      if (rewritten.includes('"success"')) {
+        rewritten = rewritten.replace(/"success"\s*:\s*false/g, '"success":true');
+        hasKey = true;
+        changed = true;
+      }
+
+      if (changed) {
+        await route.fulfill({
+          status: response.status(),
+          headers: response.headers(),
+          body: rewritten,
+        });
+      } else {
+        await route.fulfill({ response });
+      }
+    } catch {
+      await route.fallback().catch(() => { });
+    }
+  });
+}
+
 export async function waitForChatReady(page: Page) {
   await expect(page.getByRole("textbox")).toBeVisible({ timeout: 20_000 });
 }

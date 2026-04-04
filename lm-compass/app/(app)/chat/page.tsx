@@ -189,6 +189,20 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    if (!user) return;
+
+    const handleApiKeySaved = async () => {
+      const result = await hasApiKey();
+      setHasKey(result.hasKey);
+    };
+
+    window.addEventListener("openrouter-key-saved", handleApiKeySaved);
+    return () => {
+      window.removeEventListener("openrouter-key-saved", handleApiKeySaved);
+    };
+  }, [user]);
+
   const handleMultiModelChange = (newModels: string[]) => {
     if (chatStarted && messages.length > 0) {
       setPendingModels(newModels);
