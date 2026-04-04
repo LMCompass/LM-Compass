@@ -24,6 +24,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     setLoading(false);
 
     if (result.success) {
+      window.dispatchEvent(new CustomEvent("openrouter-key-saved"));
       onOpenChange(false);
       setKey("");
       setError("");
