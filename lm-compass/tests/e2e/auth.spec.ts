@@ -1,42 +1,6 @@
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { test, expect } from "@playwright/test";
-import fs from "node:fs";
-import path from "node:path";
-
-const TEST_USER_FILE = path.resolve(__dirname, ".test-user.json");
-
-function getTestUserId(): string | null {
-  try {
-    const data = JSON.parse(fs.readFileSync(TEST_USER_FILE, "utf-8"));
-    return data.userId ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Creates a one-time sign-in token via the Clerk Backend API.
- * This bypasses all configured auth strategies (password, OAuth, etc.)
- * and works with any existing user.
- */
-async function createSignInToken(userId: string): Promise<string> {
-  const res = await fetch("https://api.clerk.com/v1/sign_in_tokens", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ user_id: userId }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Failed to create sign-in token: ${res.status} ${err}`);
-  }
-
-  const { token } = await res.json();
-  return token;
-}
+import { createSignInToken, getTestUserId, pathnameUrlRegex } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Unauthenticated tests
@@ -54,7 +18,7 @@ test.describe("Unauthenticated access", () => {
     ).toBeVisible();
 
     await page.getByRole("link", { name: /get started/i }).first().click();
-    await page.waitForURL("**/chat", { timeout: 15_000 });
+    await page.waitForURL(pathnameUrlRegex("/chat"), { timeout: 15_000 });
   });
 
   test("chat page shows sign-in prompt when unauthenticated", async ({
