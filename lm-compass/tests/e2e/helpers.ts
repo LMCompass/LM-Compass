@@ -2,6 +2,8 @@ import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { type Page, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import type { EvaluationMetadata } from "../../lib/evaluation/types";
+import type { RL4FIterationResult } from "../../lib/evaluation/rl4f-evaluator";
 
 const TEST_USER_FILE = path.resolve(__dirname, ".test-user.json");
 
@@ -182,29 +184,11 @@ export type MockSSEOptions = {
     message?: { role: string; content: string };
     error?: string;
   }>;
-  evaluationMetadata?: {
-    winnerModel: string | null;
-    scores: Array<{
-      judgeModel: string;
-      evaluatedModel: string;
-      score: number | null;
-      reasoning: string | null;
-    }>;
-    meanScores: Record<string, number>;
-    modelReasoning: Record<string, string[]>;
-    tiedModels: string[];
-  };
-  iterationResults?: Array<{
-    iteration: number;
-    scores: Array<{
-      judgeModel: string;
-      evaluatedModel: string;
-      score: number | null;
-      reasoning: string | null;
-    }>;
-    meanScores: Record<string, number>;
-    winner: { model: string; meanScore: number } | null;
-  }>;
+  /** Optional evaluation metadata */
+  evaluationMetadata?: EvaluationMetadata;
+  /** Optional iteration results for rl4f */
+  iterationResults?: RL4FIterationResult[];
+  /** Whether to include the "refining" phase (for rl4f) */
   includeRefiningPhase?: boolean;
   phaseDelay?: number;
   slowResponse?: boolean;
@@ -223,9 +207,21 @@ export async function mockChatSSE(page: Page, options: MockSSEOptions) {
     const OriginalFetch = window.__originalFetch;
 
     window.fetch = async (input, init) => {
-      const url = typeof input === "string" ? input : (input instanceof Request ? input.url : "");
+      const rawUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof Request
+            ? input.url
+            : "";
+      const pathname = (() => {
+        try {
+          return new URL(rawUrl, window.location.origin).pathname;
+        } catch {
+          return "";
+        }
+      })();
 
-      if (url.includes("/api/chat") && init?.method === "POST") {
+      if (pathname === "/api/chat" && init?.method === "POST") {
         if (init?.signal?.aborted) {
           return Promise.reject(new DOMException('Aborted', 'AbortError'));
         }
