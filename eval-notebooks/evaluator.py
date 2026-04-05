@@ -28,10 +28,12 @@ class Evaluator:
             {"name": "OpenAI: GPT-4o Mini", "openrouter": "openai/gpt-4o-mini"},
             {"name": "DeepSeek: DeepSeek V3.2", "openrouter": "deepseek/deepseek-v3.2"},
             {"name": "Anthropic: Claude Sonnet 4.6", "openrouter": "anthropic/claude-sonnet-4.6"},
+            {"name": "Llama 4 Maverick", "openrouter": "meta-llama/llama-4-maverick"},
+            {"name": "Grok 4", "openrouter": "x-ai/grok-4"},
             # FREE
             {"name": "StepFun: Step 3.5 Flash (free)", "openrouter": "stepfun/step-3.5-flash:free"},
             {"name": "TNG: DeepSeek R1T2 Chimera (free)", "openrouter": "tngtech/deepseek-r1t2-chimera:free"},
-            {"name": "LiquidAI: LFM2.5-1.2B-Thinking (free)", "openrouter": "liquid/lfm-2.5-1.2b-thinking:free"},
+            {"name": "LiquidAI: LFM2.5-1.2B-Thinking (free)", "openrouter": "liquid/lfm-2.5-1.2b-thinking:free"}
         ]
 
         self.model_names = model_names
