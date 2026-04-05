@@ -196,7 +196,7 @@ test.describe("Evaluation Method Workflows", () => {
       },
       iterationResults: [
         {
-          iteration: 0,
+          iterationNumber: 0,
           scores: [
             {
               judgeModel: "openai/gpt-5-mini",
@@ -209,10 +209,10 @@ test.describe("Evaluation Method Workflows", () => {
             "openai/gpt-5-mini": 82,
             "anthropic/claude-haiku-4.5": 78,
           },
-          winner: { model: "openai/gpt-5-mini", meanScore: 82 },
+          winner: { model: "openai/gpt-5-mini", content: "" },
         },
         {
-          iteration: 1,
+          iterationNumber: 1,
           scores: [
             {
               judgeModel: "openai/gpt-5-mini",
@@ -225,7 +225,7 @@ test.describe("Evaluation Method Workflows", () => {
             "openai/gpt-5-mini": 84,
             "anthropic/claude-haiku-4.5": 79,
           },
-          winner: { model: "openai/gpt-5-mini", meanScore: 84 },
+          winner: { model: "openai/gpt-5-mini", content: "" },
         },
       ],
     });
@@ -385,7 +385,9 @@ test.describe("Evaluation Method Workflows", () => {
     await page.getByRole("button", { name: /submit & update rubric/i }).click();
     await phase2Response;
 
-    await expect(page.getByText(/updated rubric/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/updated rubric \(after your answers\):/i)).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.getByText("Updated rubric from human input")).toBeVisible({
       timeout: 15_000,
     });

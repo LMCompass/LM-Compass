@@ -47,6 +47,7 @@ export function IterationsSelector({ value, onChange }: IterationsSelectorProps)
             <Button
               variant="outline"
               role="combobox"
+              aria-label={selectedOption?.label || "Select iterations"}
               aria-expanded={open}
               className="min-w-[120px] max-w-fit justify-between"
             >

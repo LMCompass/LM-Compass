@@ -3,7 +3,7 @@ import { type Page, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import type { EvaluationMetadata } from "../../lib/evaluation/types";
-import type { RL4FIterationResult } from "../../lib/evaluation";
+import type { RL4FIterationResult } from "../../lib/evaluation/rl4f-evaluator";
 
 const TEST_USER_FILE = path.resolve(__dirname, ".test-user.json");
 
