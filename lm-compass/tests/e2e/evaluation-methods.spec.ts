@@ -196,7 +196,7 @@ test.describe("Evaluation Method Workflows", () => {
       },
       iterationResults: [
         {
-          iterationNumber: 0,
+          iteration: 0,
           scores: [
             {
               judgeModel: "openai/gpt-5-mini",
@@ -209,10 +209,10 @@ test.describe("Evaluation Method Workflows", () => {
             "openai/gpt-5-mini": 82,
             "anthropic/claude-haiku-4.5": 78,
           },
-          winner: { model: "openai/gpt-5-mini", content: "" },
+          winner: { model: "openai/gpt-5-mini", meanScore: 82 },
         },
         {
-          iterationNumber: 1,
+          iteration: 1,
           scores: [
             {
               judgeModel: "openai/gpt-5-mini",
@@ -225,7 +225,7 @@ test.describe("Evaluation Method Workflows", () => {
             "openai/gpt-5-mini": 84,
             "anthropic/claude-haiku-4.5": 79,
           },
-          winner: { model: "openai/gpt-5-mini", content: "" },
+          winner: { model: "openai/gpt-5-mini", meanScore: 84 },
         },
       ],
     });
