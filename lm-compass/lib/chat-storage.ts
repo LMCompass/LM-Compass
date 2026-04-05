@@ -59,6 +59,21 @@ export async function saveChat(
       return { success: true };
     }
 
+    // When using the service-role client, RLS is bypassed — ensure this chat is
+    // either new or already owned by userId before upsert/delete.
+    const { data: existingChat, error: existingError } = await supabase
+      .from("chats")
+      .select("user_id")
+      .eq("id", chatId)
+      .maybeSingle();
+
+    if (existingError) {
+      return { success: false, error: existingError.message };
+    }
+    if (existingChat && existingChat.user_id !== userId) {
+      return { success: false, error: "Chat not found" };
+    }
+
     // Auto-generate title from first user message if not provided
     let chatTitle = title;
     if (!chatTitle) {
