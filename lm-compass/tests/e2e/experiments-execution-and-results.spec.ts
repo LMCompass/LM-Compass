@@ -170,7 +170,7 @@ test.describe("Experiment execution and results", () => {
   test("experiment list shows title, status, created date, and row opens dashboard", async ({
     page,
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
 
     await page.route("**/api/experiments/run-item", async (route) => {
       const body = route.request().postDataJSON() as { models?: string[] };
@@ -196,6 +196,11 @@ test.describe("Experiment execution and results", () => {
 
     await openCostDialogAndStart(page);
     await waitForExperimentDashboard(page);
+    await expect(
+      experimentDashboardHeader(page).getByText("Completed", { exact: true })
+    ).toBeVisible({
+      timeout: 120_000,
+    });
     const dashboardUrl = page.url();
 
     await page.goto("/experiments");
