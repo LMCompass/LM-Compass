@@ -53,10 +53,23 @@ export async function saveChat(
   chatMetadata?: ChatMetadata
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('saveChat called:', { chatId, userId, messagesCount: messages.length });
     if (messages.length === 0) {
-      console.log('No messages to save, returning early');
       return { success: true };
+    }
+
+    // When using the service-role client, RLS is bypassed — ensure this chat is
+    // either new or already owned by userId before upsert/delete.
+    const { data: existingChat, error: existingError } = await supabase
+      .from("chats")
+      .select("user_id")
+      .eq("id", chatId)
+      .maybeSingle();
+
+    if (existingError) {
+      return { success: false, error: existingError.message };
+    }
+    if (existingChat && existingChat.user_id !== userId) {
+      return { success: false, error: "Chat not found" };
     }
 
     // Auto-generate title from first user message if not provided
@@ -112,13 +125,6 @@ export async function saveChat(
       };
     }
 
-    console.log('Upserting chat:', {
-      id: chatId,
-      user_id: userId,
-      title: chatTitle,
-      metadata: chatRow.metadata,
-    });
-
     const { error: chatError } = await supabase
       .from("chats")
       .upsert(chatRow, { onConflict: "id" });
@@ -127,7 +133,6 @@ export async function saveChat(
       console.error('Error upserting chat:', chatError);
       return { success: false, error: chatError.message };
     }
-    console.log('Chat upserted successfully');
 
     // Delete existing messages for this chat
     const { error: deleteError } = await supabase
@@ -166,8 +171,6 @@ export async function saveChat(
       };
     });
 
-    // Insert all messages
-    console.log('Inserting', messagesToInsert.length, 'messages');
     const { error: messagesError } = await supabase
       .from("messages")
       .insert(messagesToInsert);
@@ -177,7 +180,6 @@ export async function saveChat(
       return { success: false, error: messagesError.message };
     }
 
-    console.log('Chat saved successfully!');
     return { success: true };
   } catch (error) {
     return {
@@ -198,7 +200,6 @@ export async function loadChat(
 ): Promise<{ messages: Message[] | null; hasMore: boolean; chatMetadata?: ChatMetadata | null; error?: string }> {
   try {
     // Verify chat belongs to user and load metadata
-    console.log('loadChat: Attempting to load chat', { chatId, userId });
     const { data: chat, error: chatError } = await supabase
       .from("chats")
       .select("id, user_id, metadata")
