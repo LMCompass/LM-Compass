@@ -384,7 +384,7 @@ export default function ExperimentDetailPage() {
   const fetchItems = useCallback(async (id: string) => {
     const response = await supabase
       .from("experiments_items")
-      .select("id, input_query, expected_output, status, result")
+      .select("id, input_query, expected_output, status, result, error_message")
       .eq("experiment_id", id)
       .order("id", { ascending: true });
 
