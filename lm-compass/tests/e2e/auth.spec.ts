@@ -1,6 +1,7 @@
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { test, expect } from "@playwright/test";
 import { getTestUserId, signInAsTestUser } from "./clerk-auth";
+import { pathnameUrlRegex } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Unauthenticated tests
@@ -18,7 +19,7 @@ test.describe("Unauthenticated access", () => {
     ).toBeVisible();
 
     await page.getByRole("link", { name: /get started/i }).first().click();
-    await page.waitForURL("**/chat", { timeout: 15_000 });
+    await page.waitForURL(pathnameUrlRegex("/chat"), { timeout: 15_000 });
   });
 
   test("chat page shows sign-in prompt when unauthenticated", async ({

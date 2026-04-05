@@ -19,9 +19,8 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSidebarResize } from "@/hooks/use-sidebar-resize";
 import { mergeButtonRefs } from "@/lib/merge-button-refs";
+import { SIDEBAR_STATE_COOKIE } from "@/lib/sidebar-state";
 import { cn } from "@/lib/utils";
-
-const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
@@ -94,7 +93,8 @@ const SidebarProvider = React.forwardRef<
           _setOpen(openState);
         }
 
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+        // This sets the cookie to keep the sidebar state.
+        document.cookie = `${SIDEBAR_STATE_COOKIE}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
       },
       [setOpenProp, open]
     );

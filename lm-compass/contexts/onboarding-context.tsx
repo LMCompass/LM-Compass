@@ -588,6 +588,13 @@ export function OnboardingProvider({
 
   return (
     <OnboardingContext.Provider value={value}>
+      {/* E2E: wait for data-loading=false before clicking sidebar — tour mounts after async getOnboardingState. */}
+      <span
+        data-testid="onboarding-eligibility"
+        data-loading={isLoadingEligibility ? "true" : "false"}
+        className="pointer-events-none fixed left-0 top-0 h-0 w-0 opacity-0"
+        aria-hidden="true"
+      />
       {children}
       <TourOverlay
         isTourActive={isTourActive}

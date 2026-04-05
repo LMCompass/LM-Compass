@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
+  dismissOnboardingTourIfPresent,
+  e2eGoto,
   getTestUserId,
   signInTestUser,
   mockModelPricing,
@@ -24,18 +26,24 @@ async function closeSettingsDialogIfOpen(page: import("@playwright/test").Page) 
 async function openSettingsFromSidebarUserMenu(
   page: import("@playwright/test").Page,
 ) {
+  await dismissOnboardingTourIfPresent(page);
   await closeSettingsDialogIfOpen(page);
 
-  const userButtonTrigger = page
+  // Match app-sidebar: the row is a div that delegates to Clerk's inner trigger.
+  // force-clicking the inner button often never opens the UserButton popover.
+  const userRow = page
     .locator("[data-sidebar='footer']")
-    .locator("button")
+    .locator("div.cursor-pointer")
     .first();
-  await expect(userButtonTrigger).toBeVisible({ timeout: 10_000 });
-  await userButtonTrigger.click();
-  await expect(page.getByText("OpenRouter Key")).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByText("OpenRouter Key").click();
+  await expect(userRow).toBeVisible({ timeout: 10_000 });
+  await userRow.click();
+
+  const openRouterKey = page
+    .getByRole("menuitem", { name: /openrouter key/i })
+    .or(page.getByRole("button", { name: /openrouter key/i }))
+    .or(page.getByText("OpenRouter Key", { exact: true }));
+  await expect(openRouterKey.first()).toBeVisible({ timeout: 10_000 });
+  await openRouterKey.first().click();
 }
 
 test.describe("API Key Configuration", () => {
@@ -70,7 +78,8 @@ test.describe("API Key Configuration", () => {
   test("banner -> settings validation -> successful save enables chat and persists across navigation", async ({
     page,
   }) => {
-    await page.goto("/chat");
+    await e2eGoto(page, "/chat");
+    await dismissOnboardingTourIfPresent(page);
     await closeSettingsDialogIfOpen(page);
 
     await expect(page.getByText("API key required")).toBeVisible({
@@ -105,12 +114,13 @@ test.describe("API Key Configuration", () => {
     });
     await expect(page.getByRole("textbox")).toBeVisible({ timeout: 15_000 });
 
-    await page.goto("/experiments");
+    await e2eGoto(page, "/experiments");
     await expect(
       page.getByRole("button", { name: /create experiment/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    await page.goto("/chat");
+    await e2eGoto(page, "/chat");
+    await dismissOnboardingTourIfPresent(page);
     await expect(page.getByText("API key required")).not.toBeVisible({
       timeout: 15_000,
     });
@@ -120,7 +130,8 @@ test.describe("API Key Configuration", () => {
   test("settings dialog from sidebar user menu validates and saves key the same way", async ({
     page,
   }) => {
-    await page.goto("/chat");
+    await e2eGoto(page, "/chat");
+    await dismissOnboardingTourIfPresent(page);
     await closeSettingsDialogIfOpen(page);
     await expect(page.getByText("API key required")).toBeVisible({
       timeout: 15_000,

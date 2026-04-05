@@ -49,12 +49,13 @@ export function Hero() {
                   <ArrowUpRight className="size-5 transition-transform duration-300 group-hover:rotate-[45deg]" />
                 </Link>
                 <button
+                  type="button"
                   onClick={() => {
                     document
                       .getElementById("features")
-                      ?.scrollIntoView({ behavior: "smooth" });
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className="px-7 py-3.5 rounded-full bg-white/8 text-white font-medium border border-white/15 hover:bg-white/12 hover:border-white/25 transition-all duration-300 cursor-pointer"
+                  className="inline-flex items-center justify-center px-7 py-3.5 rounded-full bg-white/8 text-white font-medium border border-white/15 hover:bg-white/12 hover:border-white/25 transition-all duration-300 cursor-pointer"
                 >
                   Learn More
                 </button>

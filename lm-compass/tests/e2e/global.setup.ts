@@ -1,11 +1,9 @@
 import { clerkSetup } from "@clerk/testing/playwright";
 import { test as setup } from "@playwright/test";
 import fs from "node:fs";
-import path from "node:path";
+import { TEST_USER_FILE } from "./helpers";
 
 setup.describe.configure({ mode: "serial" });
-
-export const TEST_USER_FILE = path.resolve(__dirname, ".test-user.json");
 
 setup("global setup", async ({}) => {
   await clerkSetup();

@@ -1,11 +1,91 @@
-import { setupClerkTestingToken } from "@clerk/testing/playwright";
-import { type Page, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import { expect, type Page } from "@playwright/test";
+import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import type { EvaluationMetadata } from "../../lib/evaluation/types";
 import type { RL4FIterationResult } from "../../lib/evaluation/rl4f-evaluator";
 
-const TEST_USER_FILE = path.resolve(__dirname, ".test-user.json");
+/**
+ * Assert full URL ends with this pathname (e.g. /chat). Avoids Playwright's glob pattern
+ * where ** and /chat are concatenated (that pattern does not match root paths like /chat).
+ */
+export function pathnameUrlRegex(pathSuffix: string): RegExp {
+  const pathname = pathSuffix.startsWith("/")
+    ? pathSuffix
+    : `/${pathSuffix}`;
+  const escaped = pathname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`${escaped}(\\?.*)?(#.*)?$`);
+}
+
+export async function expectPagePath(
+  page: Page,
+  pathSuffix: string,
+  options?: { timeout?: number }
+) {
+  await expect(page).toHaveURL(pathnameUrlRegex(pathSuffix), {
+    timeout: options?.timeout ?? 15_000,
+  });
+}
+
+/**
+ * Next.js dev + parallel Playwright workers often abort navigations that wait for "load".
+ * Use domcontentloaded + short retries so tests stay stable.
+ */
+export async function e2eGoto(page: Page, url: string) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.goto(url, {
+        waitUntil: "domcontentloaded",
+        timeout: 60_000,
+      });
+      return;
+    } catch (e) {
+      lastError = e;
+      await page.waitForTimeout(500 * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * On /chat, first-time users get an onboarding overlay that sits above the sidebar and can
+ * swallow clicks, so sidebar `router.push` never runs. Skip the tour before sidebar nav tests.
+ *
+ * Route-transition steps use a card without role=dialog; handle that Skip too.
+ */
+export async function dismissOnboardingTourIfPresent(page: Page) {
+  const dialog = page.getByRole("dialog", { name: "Onboarding tour" });
+  const transition = page.getByText("Press The Highlighted Button");
+  await dialog
+    .or(transition)
+    .waitFor({ state: "visible", timeout: 3_000 })
+    .catch(() => {});
+
+  if (await dialog.isVisible().catch(() => false)) {
+    await dialog.getByRole("button", { name: /^Skip$/ }).click();
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
+    return;
+  }
+
+  if (await transition.isVisible().catch(() => false)) {
+    await page.getByRole("button", { name: /^Skip$/ }).first().click();
+    await expect(transition).toBeHidden({ timeout: 15_000 });
+  }
+}
+
+/** Navigate to chat and ensure the onboarding overlay is not blocking the sidebar. */
+export async function e2eGotoChatReady(page: Page) {
+  await e2eGoto(page, "/chat");
+  await expect(page.getByTestId("onboarding-eligibility")).toHaveAttribute(
+    "data-loading",
+    "false",
+    { timeout: 15_000 }
+  );
+  await dismissOnboardingTourIfPresent(page);
+}
+
+export const TEST_USER_FILE = path.resolve(__dirname, ".test-user.json");
 
 export function getTestUserId(): string | null {
   try {
@@ -16,6 +96,11 @@ export function getTestUserId(): string | null {
   }
 }
 
+/**
+ * Creates a one-time sign-in token via the Clerk Backend API.
+ * This bypasses all configured auth strategies (password, OAuth, etc.)
+ * and works with any existing user.
+ */
 export async function createSignInToken(userId: string): Promise<string> {
   const res = await fetch("https://api.clerk.com/v1/sign_in_tokens", {
     method: "POST",
@@ -119,23 +204,60 @@ export async function mockApiKeyConfigurationFlow(
       return route.fallback();
     }
 
+    const postBuffer = request.postDataBuffer();
+    const postPayload = request.postData() ?? "";
+    const postUtf8 =
+      postBuffer && postBuffer.length > 0
+        ? postBuffer.toString("utf8")
+        : postPayload;
+    let postScan = postUtf8;
+    try {
+      const decoded = decodeURIComponent(postUtf8.replace(/\+/g, " "));
+      if (decoded !== postUtf8) {
+        postScan = `${postUtf8}\n${decoded}`;
+      }
+    } catch {
+      /* ignore */
+    }
+    const keyMarker = Buffer.from("sk-or-v1-", "utf8");
+    /** OpenRouter keys in multipart / binary chunks; postData() is often empty. */
+    const looksLikeSaveKeyPost =
+      (postBuffer != null && postBuffer.indexOf(keyMarker) >= 0) ||
+      /sk-or-v1-[A-Za-z0-9]{16,}/.test(postScan) ||
+      postScan.includes("sk-or-v1-");
+
     try {
       const response = await route.fetch();
       const body = await response.text();
       let rewritten = body;
       let changed = false;
 
-      if (rewritten.includes("hasKey")) {
+      const saveSucceeded = /"success"\s*:\s*true/.test(rewritten);
+
+      // saveOpenRouterKey: invalid keys are rejected client-side, so a false
+      // success here is a server-side failure we simulate as OK for e2e without DB.
+      if (rewritten.includes('"success":false')) {
         rewritten = rewritten.replace(
-          /"hasKey"\s*:\s*(true|false)/g,
-          `"hasKey":${hasKey}`,
+          /"success"\s*:\s*false/,
+          '"success":true',
         );
+        hasKey = true;
         changed = true;
+      } else if (looksLikeSaveKeyPost && saveSucceeded) {
+        // Real Supabase save returns success without going through the branch above.
+        // If we do not flip `hasKey`, the next hasApiKey mock still forces false and
+        // the "API key required" banner never clears.
+        hasKey = true;
       }
 
-      if (rewritten.includes('"success"')) {
-        rewritten = rewritten.replace(/"success"\s*:\s*false/g, '"success":true');
-        hasKey = true;
+      // Server-action responses are often a React Flight stream. Global string
+      // replacement can corrupt unrelated chunks and surface the Next.js dev error
+      // overlay (blocking Playwright clicks). Only touch the first clear match.
+      if (rewritten.includes("hasKey")) {
+        rewritten = rewritten.replace(
+          /"hasKey"\s*:\s*(true|false)/,
+          `"hasKey":${hasKey}`,
+        );
         changed = true;
       }
 
