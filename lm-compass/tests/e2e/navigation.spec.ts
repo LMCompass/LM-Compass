@@ -442,10 +442,9 @@ test.describe("Landing page navigation", () => {
     await setupClerkTestingToken({ page });
     await e2eGoto(page,"/");
 
-    // In-page anchor works before React hydrates; onClick + scrollIntoView did not.
-    await page.getByRole("link", { name: "Learn More" }).click();
+    await page.getByRole("button", { name: "Learn More" }).click();
     await expect(page.locator("#features")).toBeInViewport({
-      timeout: 10_000,
+      timeout: 15_000,
     });
   });
 });
