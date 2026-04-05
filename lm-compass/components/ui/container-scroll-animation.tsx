@@ -91,9 +91,7 @@ function Card({
       }}
       className="max-w-5xl -mt-12 mx-auto h-[30rem] md:h-[40rem] w-full px-2 rounded-[30px] shadow-2xl relative"
     >
-      {/* Top edge: gradient line + glow that fades to nothing at ends */}
       <div className="absolute left-0 right-0 top-0 z-10">
-        {/* Glow from gradient only (no box-shadow) – transparent at ends */}
         <div
           className="absolute inset-x-0 -top-px h-5 rounded-t-[30px] opacity-90"
           style={{
@@ -102,7 +100,6 @@ function Card({
             filter: "blur(10px)",
           }}
         />
-        {/* Crisp gradient line – no box-shadow so glow comes only from blurred layer */}
         <div
           className="relative h-[2px] rounded-t-[30px]"
           style={{

@@ -27,7 +27,6 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
-//* new constants for sidebar resizing
 const MIN_SIDEBAR_WIDTH = "14rem";
 const MAX_SIDEBAR_WIDTH = "22rem";
 
@@ -39,10 +38,8 @@ type SidebarContext = {
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
-  //* new properties for sidebar resizing
   width: string;
   setWidth: (width: string) => void;
-  //* new properties for tracking is dragging rail
   isDraggingRail: boolean;
   setIsDraggingRail: (isDraggingRail: boolean) => void;
 };
@@ -64,7 +61,6 @@ const SidebarProvider = React.forwardRef<
     defaultOpen?: boolean;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
-    //* new prop for default width
     defaultWidth?: string;
   }
 >(
@@ -82,14 +78,10 @@ const SidebarProvider = React.forwardRef<
     ref
   ) => {
     const isMobile = useIsMobile();
-    //* new state for sidebar width
     const [width, setWidth] = React.useState(defaultWidth);
     const [openMobile, setOpenMobile] = React.useState(false);
-    //* new state for tracking is dragging rail
     const [isDraggingRail, setIsDraggingRail] = React.useState(false);
 
-    // This is the internal state of the sidebar.
-    // We use openProp and setOpenProp for control from outside the component.
     const [_open, _setOpen] = React.useState(defaultOpen);
     const open = openProp ?? _open;
     const setOpen = React.useCallback(
@@ -107,7 +99,6 @@ const SidebarProvider = React.forwardRef<
       [setOpenProp, open]
     );
 
-    // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
       return isMobile
         ? setOpenMobile((open) => !open)
@@ -115,11 +106,8 @@ const SidebarProvider = React.forwardRef<
     }, [
       isMobile,
       setOpen,
-      //* remove setOpenMobile from dependencies because setOpenMobile are state setters created by useState
-      // setOpenMobile
     ]);
 
-    // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
         if (
@@ -135,8 +123,6 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [toggleSidebar]);
 
-    // We add a state so that we can do data-state="expanded" or "collapsed".
-    // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed";
 
     const contextValue = React.useMemo<SidebarContext>(
@@ -148,10 +134,8 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
-        //* new context for sidebar resizing
         width,
         setWidth,
-        //* new context for tracking is dragging rail
         isDraggingRail,
         setIsDraggingRail,
       }),
@@ -161,12 +145,8 @@ const SidebarProvider = React.forwardRef<
         setOpen,
         isMobile,
         openMobile,
-        //* remove setOpenMobile from dependencies because setOpenMobile are state setters created by useState
-        // setOpenMobile,
         toggleSidebar,
-        //* add width to dependencies
         width,
-        //* add isDraggingRail to dependencies
         isDraggingRail,
       ]
     );
@@ -177,7 +157,6 @@ const SidebarProvider = React.forwardRef<
           <div
             style={
               {
-                // * update '--sidebar-width' to use the new width state
                 "--sidebar-width": width,
                 "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
                 ...style,
@@ -223,7 +202,6 @@ const Sidebar = React.forwardRef<
       state,
       openMobile,
       setOpenMobile,
-      //* new property for tracking is dragging rail
       isDraggingRail,
     } = useSidebar();
 
@@ -271,10 +249,8 @@ const Sidebar = React.forwardRef<
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
-        //* add data-dragging attribute
         data-dragging={isDraggingRail}
       >
-        {/* This is what handles the sidebar gap on desktop */}
         <div
           className={cn(
             "duration-200 relative h-svh w-(--sidebar-width) bg-transparent transition-[width] ease-linear",
@@ -283,7 +259,6 @@ const Sidebar = React.forwardRef<
             variant === "floating" || variant === "inset"
               ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
               : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
-            //* set duration to 0 for all elements when dragging
             "group-data-[dragging=true]:duration-0! group-data-[dragging=true]_*:!duration-0"
           )}
         />
@@ -293,11 +268,9 @@ const Sidebar = React.forwardRef<
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
               : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l border-border",
-            //* set duration to 0 for all elements when dragging
             "group-data-[dragging=true]:duration-0! group-data-[dragging=true]_*:!duration-0",
             className
           )}
@@ -345,7 +318,6 @@ SidebarTrigger.displayName = "SidebarTrigger";
 const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> & {
-    //* new prop for enabling drag
     enableDrag?: boolean;
   }
 >(({ className, enableDrag = true, ...props }, ref) => {
@@ -363,10 +335,9 @@ const SidebarRail = React.forwardRef<
     maxResizeWidth: MAX_SIDEBAR_WIDTH,
     setIsDraggingRail,
     widthCookieName: "sidebar:width",
-    widthCookieMaxAge: 60 * 60 * 24 * 7, // 1 week
+    widthCookieMaxAge: 60 * 60 * 24 * 7,
   });
 
-  //* Merge external ref with our dragRef
   const combinedRef = React.useMemo(
     () => mergeButtonRefs([ref, dragRef]),
     [ref, dragRef]
@@ -374,13 +345,10 @@ const SidebarRail = React.forwardRef<
 
   return (
     <button
-      //* updated ref to use combinedRef
       ref={combinedRef}
       data-sidebar="rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      // onClick={toggleSidebar}
-      //* replace onClick with onMouseDown
       onMouseDown={handleMouseDown}
       title="Toggle Sidebar"
       className={cn(
@@ -545,7 +513,6 @@ const SidebarGroupAction = React.forwardRef<
       data-sidebar="group-action"
       className={cn(
         "absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-hidden ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 md:after:hidden",
         "group-data-[collapsible=icon]:hidden",
         className
@@ -693,7 +660,6 @@ const SidebarMenuAction = React.forwardRef<
       data-sidebar="menu-action"
       className={cn(
         "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-hidden ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 md:after:hidden",
         "peer-data-[size=sm]/menu-button:top-1",
         "peer-data-[size=default]/menu-button:top-1.5",
@@ -736,7 +702,6 @@ const SidebarMenuSkeleton = React.forwardRef<
     showIcon?: boolean;
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%.
   const width = React.useMemo(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`;
   }, []);

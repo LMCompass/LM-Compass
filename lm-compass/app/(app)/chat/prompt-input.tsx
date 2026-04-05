@@ -66,14 +66,11 @@ export function PromptInputComponent({
   const [input, setInput] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Check if user needs to select a winner before sending another message
   const needsWinnerSelection = useMemo(() => {
     if (messages.length === 0) return false;
     const lastMessage = messages[messages.length - 1];
 
-    // Check if last message is an assistant message with evaluation metadata
     if (lastMessage.role === "assistant" && lastMessage.evaluationMetadata) {
-      // Check if there's a tie (no winner) and no user selection yet
       const hasTie = lastMessage.evaluationMetadata.winnerModel === null;
       const hasNoSelection = !lastMessage.userSelectedWinner;
       const hasMultipleResults =
@@ -100,7 +97,6 @@ export function PromptInputComponent({
     selectedModels.length < 3;
 
   const handleSubmit = async () => {
-    // Prevent submission if waiting for winner selection, no input, or invalid model selection
     if (
       !input.trim() ||
       isLoading ||
@@ -116,7 +112,6 @@ export function PromptInputComponent({
       content: input.trim(),
     };
 
-    // Add user message to chat
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -125,7 +120,6 @@ export function PromptInputComponent({
     abortControllerRef.current = new AbortController();
 
     try {
-      // Send to API
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -134,7 +128,6 @@ export function PromptInputComponent({
         body: JSON.stringify({
           messages: [...messages, userMessage]
             .filter((msg) => !msg.isStopped)
-            // Filter out assistant messages with empty content only in tie scenarios (evaluationMetadata present, no winnerModel)
             .filter(
               (msg) =>
                 msg.role !== "assistant" ||
@@ -159,17 +152,14 @@ export function PromptInputComponent({
       });
 
       if (!response.ok) {
-        // Try to parse error response
         let errorMessage = "Failed to get response";
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } catch {
-          // If JSON parsing fails, use status text
           errorMessage = response.statusText || errorMessage;
         }
         
-        // Provide more specific error messages based on status code
         if (response.status === 401) {
           errorMessage = "Unauthorized: Please sign in and try again.";
         } else if (response.status === 404) {
@@ -181,7 +171,6 @@ export function PromptInputComponent({
         throw new Error(errorMessage);
       }
 
-      // Handle streaming response
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -207,27 +196,22 @@ export function PromptInputComponent({
               try {
                 const data = JSON.parse(line.slice(6));
 
-                // Update loading phase when evaluation starts
                 if (data.phase === "evaluating") {
                   setLoadingPhase("evaluating");
                 }
 
-                // Update loading phase when refinement starts
                 if (data.phase === "refining") {
                   setLoadingPhase("refining");
                 }
 
-                // Store final data when complete
                 if (data.phase === "complete") {
                   finalData = data;
                 }
 
-                // Handle errors
                 if (data.phase === "error") {
                   throw new Error(data.error || "Unknown error");
                 }
               } catch {
-                // Re-throw if we failed to parse critical phase data
                 if (
                   line.includes('"phase":"complete"') ||
                   line.includes('"phase":"error"')
@@ -239,7 +223,6 @@ export function PromptInputComponent({
           }
         }
       } finally {
-        // Ensure reader is released even if request is aborted or an error occurs
         reader.releaseLock();
       }
 
@@ -247,7 +230,6 @@ export function PromptInputComponent({
         throw new Error("No data received");
       }
 
-      // API always returns { results } array for consistent format
       if (!finalData.results || !Array.isArray(finalData.results)) {
         throw new Error("Invalid response format");
       }
@@ -259,7 +241,6 @@ export function PromptInputComponent({
           : coerceToString(r.message?.content),
       }));
 
-      // Set content to winning response if winner exists, otherwise keep empty (tie scenario)
       let content = "";
       if (finalData.evaluationMetadata?.winnerModel) {
         const winnerResult = multiResults.find(
@@ -284,7 +265,6 @@ export function PromptInputComponent({
         return;
       }
 
-      // Get error message - show the actual error message if available
       let errorContent = "Sorry, I encountered an error. Please try again.";
       if (error instanceof Error) {
         errorContent = error.message;

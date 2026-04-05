@@ -17,6 +17,12 @@ import { saveChat, loadAllMessages } from "@/lib/chat-storage";
 import type { Message } from "@/lib/types";
 import { randomUUID } from "crypto";
 
+function devLog(...args: unknown[]) {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args);
+  }
+}
+
 /**
  * Extracts the user query from the messages array (last user message)
  */
@@ -98,7 +104,7 @@ export async function POST(req: Request) {
     let apiKey;
     try {
       apiKey = decrypt(userSettings.openrouter_api_key);
-    } catch (e) {
+    } catch {
       return NextResponse.json(
         { error: "Failed to decrypt API key. Please try again." },
         { status: 500 },
@@ -339,7 +345,7 @@ export async function POST(req: Request) {
                 const usingCustomRubric =
                   !!rubricId && rubricId !== "default" && !!rubricText;
 
-                console.log("[HITL] Starting phase1 with rubric choice:", {
+                devLog("[HITL] Starting phase1 with rubric choice:", {
                   evaluationMethod,
                   rubricId,
                   usingCustomRubric,
@@ -351,7 +357,7 @@ export async function POST(req: Request) {
                   : GradeHITLEvaluator.getDefaultRubric();
 
                 if (!usingCustomRubric && rubricId && rubricId !== "default") {
-                  console.warn(
+                  devLog(
                     "[HITL] Expected custom rubricText but none was available. Falling back to default HITL rubric.",
                   );
                 }
@@ -592,7 +598,7 @@ export async function POST(req: Request) {
               )
                 .then((result) => {
                   if (result.success) {
-                    console.log("Chat saved successfully");
+                    devLog("Chat saved successfully");
                   } else {
                     console.error("Error saving chat:", result.error);
                   }
@@ -605,11 +611,11 @@ export async function POST(req: Request) {
             }
           } else {
             if (shouldSkipSave) {
-              console.log(
+              devLog(
                 "Skipping save - waiting for user to select winner for tie",
               );
             } else {
-              console.log("Not saving chat - missing:", {
+              devLog("Not saving chat - missing:", {
                 chatId: !!chatId,
                 userId: !!userId,
                 finalAssistantMessage: !!finalAssistantMessage,

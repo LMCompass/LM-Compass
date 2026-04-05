@@ -82,8 +82,6 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Only scroll to bottom when new messages are APPENDED at the end
-    // Don't scroll when messages are PREPENDED (loading previous messages)
     const lastMessageId = messages[messages.length - 1]?.id;
     const isNewMessageAppended =
       messages.length > prevMessageCountRef.current &&
@@ -98,14 +96,12 @@ export default function Home() {
     lastMessageIdRef.current = lastMessageId || null;
   }, [messages, isLoadingMore]);
 
-  // Track when chat has started
   useEffect(() => {
     if (messages.length > 0 && !chatStarted) {
       setChatStarted(true);
     }
   }, [messages.length, chatStarted, setChatStarted]);
 
-  // When an old chat is loaded, prefill the models / evaluation method / iterations used in that chat
   useEffect(() => {
     if (modelsFromLastLoadedChat && modelsFromLastLoadedChat.length > 0) {
       setSelectedModels(modelsFromLastLoadedChat);
@@ -132,7 +128,6 @@ export default function Home() {
     clearChatMetadataFromLoadedChat,
   ]);
 
-  // Check if user has API key when signed in
   useEffect(() => {
     shouldSuppressRef.current = shouldSuppressBlockingDialogs;
   }, [shouldSuppressBlockingDialogs]);
@@ -154,7 +149,6 @@ export default function Home() {
         const result = await hasApiKey();
         setHasKey(result.hasKey);
 
-        // If user is signed in but doesn't have a key, show settings dialog
         if (!result.hasKey) {
           if (shouldSuppressRef.current) {
             setPendingSettingsPrompt(true);
@@ -187,15 +181,27 @@ export default function Home() {
     }
   }, [hasKey, pendingSettingsPrompt, shouldSuppressBlockingDialogs, user]);
 
-  // Refresh API key status when settings dialog closes
   const handleSettingsClose = async (open: boolean) => {
     setIsSettingsOpen(open);
     if (!open && user) {
-      // Check again when dialog closes
       const result = await hasApiKey();
       setHasKey(result.hasKey);
     }
   };
+
+  useEffect(() => {
+    if (!user) return;
+
+    const handleApiKeySaved = async () => {
+      const result = await hasApiKey();
+      setHasKey(result.hasKey);
+    };
+
+    window.addEventListener("openrouter-key-saved", handleApiKeySaved);
+    return () => {
+      window.removeEventListener("openrouter-key-saved", handleApiKeySaved);
+    };
+  }, [user]);
 
   const handleMultiModelChange = (newModels: string[]) => {
     if (chatStarted && messages.length > 0) {

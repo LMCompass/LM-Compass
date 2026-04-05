@@ -58,11 +58,6 @@ interface ParsedCSV {
   rows: Record<string, string>[];
 }
 
-type RubricOption = {
-  id: string;
-  title: string;
-};
-
 const NONE_VALUE = "__none__";
 
 const EVALUATION_METHOD_LABELS: Record<ExperimentEvaluationMethod, string> = {
@@ -132,6 +127,11 @@ export default function NewExperimentPage() {
 
     if (!isCsv && !isParquet) {
       setParseError("Please upload a .csv, .parquet, or .pqt file.");
+      return;
+    }
+
+    if (selectedFile.size === 0) {
+      setParseError("File is empty. Please upload a non-empty dataset.");
       return;
     }
 
@@ -834,6 +834,27 @@ export default function NewExperimentPage() {
                 {estimate.pricingStatus === "unavailable" && (
                   <div className="text-xs text-muted-foreground border-t border-border pt-2">
                     {estimate.pricingError || "Live model pricing is currently unavailable."}
+                  </div>
+                )}
+                {estimate.perModelEstimates.length > 0 && (
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <p className="text-sm font-medium">Per-model estimate</p>
+                    <ul className="space-y-1.5 text-sm">
+                      {estimate.perModelEstimates.map((m) => (
+                        <li
+                          key={m.model}
+                          className="flex justify-between gap-2"
+                          data-testid="experiment-estimate-per-model-row"
+                        >
+                          <span className="text-muted-foreground truncate" title={m.model}>
+                            {m.model}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {m.estimatedUsd == null ? "—" : formatCurrency(m.estimatedUsd)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>

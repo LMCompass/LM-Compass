@@ -21,12 +21,10 @@ import {
   type ChatMetadata,
 } from "@/lib/chat-storage";
 
-// Generate a random chat ID using crypto.randomUUID for better entropy and collision resistance
 const generateChatId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // Fallback for older browsers/environments
   return (
     Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15) +
@@ -34,10 +32,8 @@ const generateChatId = () => {
   );
 };
 
-// Re-export ChatHistoryItem from storage
 export type { ChatHistoryItem } from "@/lib/chat-storage";
 
-/** Extract unique model IDs from the most recent message with multiResults */
 function getModelsUsedInMessages(messages: Message[]): string[] {
   const mostRecentWithResults = messages.findLast(
     (msg) => msg.multiResults && msg.multiResults.length > 0,
@@ -65,7 +61,6 @@ type ChatContextType = {
   chatHistory: ChatHistoryItem[];
   modelsFromLastLoadedChat: string[] | null;
   chatMetadataFromLoadedChat: ChatMetadata | null;
-  /** Snapshot of models + evaluation method for display when viewing a loaded chat */
   loadedChatDisplayInfo: {
     models: string[];
     evaluationMethod?: string;
@@ -136,10 +131,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           setHasMoreMessages(hasMore);
           setChatId(chatIdToLoad);
           setChatStarted(true);
-          // So the UI can prefill the models field when continuing this chat
           const modelsUsed = getModelsUsedInMessages(loadedMessages);
           setModelsFromLastLoadedChat(modelsUsed.length > 0 ? modelsUsed : null);
-          // Store evaluation method/iterations for display when reopening
           setChatMetadataFromLoadedChat(chatMetadata ?? null);
           setLoadedChatDisplayInfo({
             models: modelsUsed,
@@ -147,7 +140,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             ...(chatMetadata?.iterations != null && { iterations: chatMetadata.iterations }),
             ...(chatMetadata?.rubricTitle != null && { rubricTitle: chatMetadata.rubricTitle }),
           });
-          // Mark that we've loaded a chat (prevents auto-loading on new chat)
           hasLoadedInitialChat.current = true;
         }
       } catch {}
@@ -172,7 +164,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setLoadedChatDisplayInfo(null);
     const newChatId = generateChatId();
     setChatId(newChatId);
-    // Prevent auto-loading after new chat
     hasLoadedInitialChat.current = true;
   }, []);
 
@@ -182,15 +173,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Get the sequence order of the first (oldest) message currently loaded
     const oldestMessage = messages[0];
     if (!oldestMessage?.sequenceOrder) {
-      // If oldest message doesn't have sequenceOrder, we're at the beginning or messages are new
       setHasMoreMessages(false);
       return;
     }
 
-    // If the oldest message has sequenceOrder 0, we're at the beginning
     if (oldestMessage.sequenceOrder === 0) {
       setHasMoreMessages(false);
       return;
@@ -224,22 +212,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, chatId, messages, isLoadingMore, hasMoreMessages, supabase]);
 
-  // Update hasMoreMessages based on current messages state
   useEffect(() => {
     if (messages.length === 0) {
       setHasMoreMessages(false);
       return;
     }
 
-    // Check if any messages don't have sequenceOrder (newly created, not from storage)
     const hasNewMessages = messages.some(msg => msg.sequenceOrder === undefined);
     if (hasNewMessages) {
-      // If there are new messages without sequenceOrder, we can't load more from storage
       setHasMoreMessages(false);
       return;
     }
 
-    // Check if the oldest message is at the beginning (sequenceOrder 0)
     const oldestMessage = messages[0];
     if (oldestMessage?.sequenceOrder !== undefined && oldestMessage.sequenceOrder === 0) {
       setHasMoreMessages(false);
@@ -260,8 +244,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
       setChatHistory(chats);
       
-      // Don't auto-load on initial mount - start with a new chat
-      // Users can click on a chat in the sidebar if they want to load it
       hasLoadedInitialChat.current = true;
     } catch {}
   }, [user?.id, supabase]);
@@ -318,9 +300,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [user?.id, supabase]
   );
 
-  // Fetch chat history on mount and when user changes
   useEffect(() => {
-    // Only retrieve if user is loaded
     if (user) {
       retrieveChatHistory();
     }

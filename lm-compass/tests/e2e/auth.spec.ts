@@ -1,6 +1,7 @@
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { test, expect } from "@playwright/test";
-import { createSignInToken, getTestUserId, pathnameUrlRegex } from "./helpers";
+import { getTestUserId, signInAsTestUser } from "./clerk-auth";
+import { pathnameUrlRegex } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Unauthenticated tests
@@ -79,44 +80,7 @@ test.describe("Authenticated access", () => {
       return;
     }
 
-    const ticket = await createSignInToken(userId);
-
-    await setupClerkTestingToken({ page });
-    await page.goto("/");
-
-    // Wait for Clerk to fully initialize
-    await page.waitForFunction(
-      () => (window as unknown as { Clerk?: { loaded: boolean } }).Clerk?.loaded === true,
-      null,
-      { timeout: 15_000 }
-    );
-
-    // Sign in via the ticket strategy (bypasses password/OAuth requirements)
-    await page.evaluate(async (t) => {
-      const clerk = (
-        window as unknown as {
-          Clerk: {
-            client: {
-              signIn: {
-                create: (params: {
-                  strategy: string;
-                  ticket: string;
-                }) => Promise<{ createdSessionId: string }>;
-              };
-            };
-            setActive: (params: { session: string }) => Promise<void>;
-          };
-        }
-      ).Clerk;
-      const signIn = await clerk.client.signIn.create({
-        strategy: "ticket",
-        ticket: t,
-      });
-      await clerk.setActive({ session: signIn.createdSessionId });
-    }, ticket);
-
-    // Wait for auth state to propagate
-    await page.waitForTimeout(1000);
+    await signInAsTestUser(page, userId);
   });
 
   test("authenticated user sees prompt input or API key banner on /chat", async ({

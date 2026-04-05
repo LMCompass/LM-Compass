@@ -1,3 +1,5 @@
+import "server-only";
+
 import { auth } from "@clerk/nextjs/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
@@ -46,6 +48,10 @@ export const createClient = async () => {
  *
  * ⚠️  Only call this from server-side code (API routes, Server Actions).
  *     Never import/use this anywhere that runs in the browser.
+ *
+ * This module uses the `server-only` package so importing it from Client
+ * Components fails at build time. Keep SUPABASE_SERVICE_ROLE_KEY out of
+ * NEXT_PUBLIC_* env vars — it bypasses RLS and must stay server-only.
  */
 export const createAdminClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

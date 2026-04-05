@@ -18,7 +18,6 @@ setup("global setup", async ({}) => {
     "Content-Type": "application/json",
   };
 
-  // Find the first existing user in the Clerk dev instance
   const listRes = await fetch("https://api.clerk.com/v1/users?limit=1", {
     headers,
   });

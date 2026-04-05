@@ -5,7 +5,6 @@ import {
   useMotionValueEvent,
   useScroll,
   motion,
-  AnimatePresence,
 } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +29,6 @@ export function StickyScroll({
   });
 
   const cardLength = content.length;
-  // Switch earlier so right panel stays in sync with left text (responsive thresholds)
   const switchThresholds = Array.from(
     { length: cardLength - 1 },
     (_, i) => (i + 1) / cardLength,
@@ -47,7 +45,6 @@ export function StickyScroll({
   return (
     <div ref={ref} className="relative">
       <div className="flex justify-between gap-16">
-        {/* Left side: scrolling text content */}
         <div className="w-full lg:w-1/2">
           {content.map((item, index) => (
             <div
@@ -71,7 +68,6 @@ export function StickyScroll({
           ))}
         </div>
 
-        {/* Right side: sticky visual panel */}
         <div className="hidden lg:flex w-1/2 items-start">
           <div
             className={cn(
@@ -79,7 +75,6 @@ export function StickyScroll({
               contentClassName,
             )}
           >
-            {/* Render all cards stacked, crossfade via opacity only */}
             {content.map((item, index) => (
               <motion.div
                 key={index}

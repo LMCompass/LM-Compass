@@ -310,7 +310,6 @@
   scrollbar-width: none;
 }
 
-/* Global, theme-aware scrollbar styling */
 * {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklch, var(--ring) 80%, transparent)
