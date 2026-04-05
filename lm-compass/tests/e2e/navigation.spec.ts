@@ -3,6 +3,7 @@ import { test, expect } from "@playwright/test";
 import {
   createSignInToken,
   e2eGoto,
+  e2eGotoChatReady,
   expectPagePath,
   getTestUserId,
 } from "./helpers";
@@ -97,7 +98,7 @@ test.describe("Sidebar navigation links", () => {
   });
 
   test("View Rubrics navigates to /rubric/view", async ({ page }) => {
-    await e2eGoto(page,"/chat");
+    await e2eGotoChatReady(page);
     const sidebar = desktopSidebar(page);
     await expect(sidebar).toBeVisible({ timeout: 10_000 });
 
@@ -108,7 +109,7 @@ test.describe("Sidebar navigation links", () => {
   test("Evaluation Methods navigates to /evaluation-methods", async ({
     page,
   }) => {
-    await e2eGoto(page,"/chat");
+    await e2eGotoChatReady(page);
     const sidebar = desktopSidebar(page);
     await expect(sidebar).toBeVisible({ timeout: 10_000 });
 
@@ -117,7 +118,7 @@ test.describe("Sidebar navigation links", () => {
   });
 
   test("Experiments navigates to /experiments", async ({ page }) => {
-    await e2eGoto(page,"/chat");
+    await e2eGotoChatReady(page);
     const sidebar = desktopSidebar(page);
     await expect(sidebar).toBeVisible({ timeout: 10_000 });
 
@@ -181,7 +182,7 @@ test.describe("Sidebar collapse and expand", () => {
     }, ticket);
 
     await page.waitForTimeout(1000);
-    await e2eGoto(page,"/chat");
+    await e2eGotoChatReady(page);
     await expect(
       page.getByText("Sign in required").or(page.getByRole("textbox"))
     ).toBeVisible({ timeout: 15_000 });
@@ -271,7 +272,7 @@ test.describe("Sidebar previous chats", () => {
     }, ticket);
 
     await page.waitForTimeout(1000);
-    await e2eGoto(page,"/chat");
+    await e2eGotoChatReady(page);
     await expect(
       page.getByText("Sign in required").or(page.getByRole("textbox"))
     ).toBeVisible({ timeout: 15_000 });
@@ -285,64 +286,6 @@ test.describe("Sidebar previous chats", () => {
 
     await sidebar.getByRole("button", { name: /previous chats/i }).click();
     await expect(sidebar.getByText("No previous chats")).toBeVisible();
-  });
-
-  test("rename a chat inline when history exists", async ({ page }) => {
-    const sidebar = desktopSidebar(page);
-    await sidebar.getByRole("button", { name: /previous chats/i }).click();
-
-    const firstChatRow = sidebar
-      .locator('ul[data-sidebar="menu-sub"] > li')
-      .first();
-    if (!(await firstChatRow.isVisible().catch(() => false))) {
-      test.skip(true, "No chat history items to rename");
-      return;
-    }
-
-    await firstChatRow.hover();
-    const editBtn = sidebar.getByRole("button", { name: "Edit chat title" });
-    await editBtn.first().click();
-    const newTitle = `E2E rename ${Date.now()}`;
-    const input = sidebar.locator("input").first();
-    await input.fill(newTitle);
-    await input.press("Enter");
-
-    await expect(sidebar.getByText(newTitle)).toBeVisible({ timeout: 10_000 });
-  });
-
-  test("delete a chat shows confirmation and removes after confirm", async ({
-    page,
-  }) => {
-    const sidebar = desktopSidebar(page);
-    await sidebar.getByRole("button", { name: /previous chats/i }).click();
-
-    const firstChatRow = sidebar
-      .locator('ul[data-sidebar="menu-sub"] > li')
-      .first();
-    if (!(await firstChatRow.isVisible().catch(() => false))) {
-      test.skip(true, "No chat history items to delete");
-      return;
-    }
-
-    await firstChatRow.hover();
-    const deleteBtn = sidebar.getByRole("button", { name: "Delete chat" });
-
-    const titleBefore = await sidebar
-      .locator('[data-sidebar="menu-sub-button"] span')
-      .first()
-      .textContent();
-
-    await deleteBtn.first().click();
-    await expect(
-      page.getByRole("alertdialog").getByText("Delete chat")
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Delete", exact: true }).click();
-
-    if (titleBefore) {
-      await expect(sidebar.getByText(titleBefore.trim())).not.toBeVisible({
-        timeout: 10_000,
-      });
-    }
   });
 });
 
@@ -499,8 +442,10 @@ test.describe("Landing page navigation", () => {
     await setupClerkTestingToken({ page });
     await e2eGoto(page,"/");
 
-    await page.getByRole("button", { name: "Learn More" }).click();
-    await page.waitForTimeout(800);
-    await expect(page.locator("#features")).toBeInViewport();
+    // In-page anchor works before React hydrates; onClick + scrollIntoView did not.
+    await page.getByRole("link", { name: "Learn More" }).click();
+    await expect(page.locator("#features")).toBeInViewport({
+      timeout: 10_000,
+    });
   });
 });

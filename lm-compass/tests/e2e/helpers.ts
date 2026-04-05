@@ -45,6 +45,43 @@ export async function e2eGoto(page: Page, url: string) {
   throw lastError;
 }
 
+/**
+ * On /chat, first-time users get an onboarding overlay that sits above the sidebar and can
+ * swallow clicks, so sidebar `router.push` never runs. Skip the tour before sidebar nav tests.
+ *
+ * Route-transition steps use a card without role=dialog; handle that Skip too.
+ */
+export async function dismissOnboardingTourIfPresent(page: Page) {
+  const dialog = page.getByRole("dialog", { name: "Onboarding tour" });
+  const transition = page.getByText("Press The Highlighted Button");
+  await dialog
+    .or(transition)
+    .waitFor({ state: "visible", timeout: 3_000 })
+    .catch(() => {});
+
+  if (await dialog.isVisible().catch(() => false)) {
+    await dialog.getByRole("button", { name: /^Skip$/ }).click();
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
+    return;
+  }
+
+  if (await transition.isVisible().catch(() => false)) {
+    await page.getByRole("button", { name: /^Skip$/ }).first().click();
+    await expect(transition).toBeHidden({ timeout: 15_000 });
+  }
+}
+
+/** Navigate to chat and ensure the onboarding overlay is not blocking the sidebar. */
+export async function e2eGotoChatReady(page: Page) {
+  await e2eGoto(page, "/chat");
+  await expect(page.getByTestId("onboarding-eligibility")).toHaveAttribute(
+    "data-loading",
+    "false",
+    { timeout: 15_000 }
+  );
+  await dismissOnboardingTourIfPresent(page);
+}
+
 export const TEST_USER_FILE = path.resolve(__dirname, ".test-user.json");
 
 export function getTestUserId(): string | null {
