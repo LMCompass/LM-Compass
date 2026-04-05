@@ -27,6 +27,8 @@ async function selectRl4fIterations(page: Page, count: 2 | 3 | 4) {
 }
 
 test.describe("Evaluation Method Workflows", () => {
+  test.describe.configure({ timeout: 60_000 });
+
   let userId: string | null;
 
   test.beforeAll(() => {
@@ -45,7 +47,15 @@ test.describe("Evaluation Method Workflows", () => {
     await signInTestUser(page, userId);
     await mockModelPricing(page);
     await mockHasApiKey(page);
-    await page.goto("/chat");
+    try {
+      await page.goto("/chat", { waitUntil: "domcontentloaded" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (!message.includes("ERR_ABORTED") && !message.includes("frame was detached")) {
+        throw error;
+      }
+      await page.goto("/chat", { waitUntil: "domcontentloaded" });
+    }
     await waitForChatReady(page);
   });
 

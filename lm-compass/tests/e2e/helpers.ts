@@ -207,9 +207,21 @@ export async function mockChatSSE(page: Page, options: MockSSEOptions) {
     const OriginalFetch = window.__originalFetch;
 
     window.fetch = async (input, init) => {
-      const url = typeof input === "string" ? input : (input instanceof Request ? input.url : "");
+      const rawUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof Request
+            ? input.url
+            : "";
+      const pathname = (() => {
+        try {
+          return new URL(rawUrl, window.location.origin).pathname;
+        } catch {
+          return "";
+        }
+      })();
 
-      if (url.includes("/api/chat") && init?.method === "POST") {
+      if (pathname === "/api/chat" && init?.method === "POST") {
         if (init?.signal?.aborted) {
           return Promise.reject(new DOMException('Aborted', 'AbortError'));
         }
