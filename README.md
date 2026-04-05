@@ -29,7 +29,7 @@ Deliverables can be found at the following links:
 - [**Design & V&V Document**](./deliverables/Design-V&V-Document_team_7.pdf)
 - [**CS-Group 7 Poster**](./deliverables/CS-%20Group%207.pdf)
 - [**Final Demo Video**](https://www.macvideo.ca/media/1_1vfv9d3j)
-- [**Final Reflection (To be uploaded)**]()
+- [**Final Reflection**](./deliverables/Group_7_Reflection.pdf)
 
 ---
 
