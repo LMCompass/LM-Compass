@@ -2,6 +2,8 @@
 
 ## Overview
 
+<img width="1101" height="848" alt="image" src="https://github.com/user-attachments/assets/935a7575-d4cc-469b-bc3b-7acb3921dd25" />
+
 **LM Compass** is an evaluation platform for Large Language Models (LLMs) and Small Language Models (SLMs). 
 
 ### Objective
@@ -54,7 +56,9 @@ The application is deployed and ready for evaluation.
     - **Username**: `lmcompass_demo`
     - **Password**: `LM_Compass_Demo2026`
 
-Once signed in, you are ready to access the full suite of features including Chat, Experiments, and Rubric Management. This test account is already configured with an API key.
+Once signed in, you are ready to access the full suite of features including Chat, Experiments, and Rubric Management. This test account is already configured with an API key. To test experiments, you will need a dataset (.csv or .parquet).
+
+If needed, we have attached an example dataset [in the repo (to be attached)]().
 
 ---
 
