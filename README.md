@@ -58,7 +58,7 @@ The application is deployed and ready for evaluation.
 
 Once signed in, you are ready to access the full suite of features including Chat, Experiments, and Rubric Management. This test account is already configured with an API key. To test experiments, you will need a dataset (.csv or .parquet).
 
-If needed, we have attached an example dataset [in the repo (to be attached)]().
+If needed, we have attached an example dataset [in the repo](https://github.com/LMCompass/LM-Compass/blob/main/Example_Dataset.csv).
 
 ---
 
